@@ -37,12 +37,12 @@ class Settings(BaseSettings):
     s3_bucket_name: str = "slack-ai-outputs"
 
     # Database configuration
-    database_url: str = "mssql+pyodbc://sa:YourStrong!Passw0rd@sqlserver:1433/slack_ai?driver=ODBC+Driver+18+for+SQL+Server"
-    database_host: str = "sqlserver"
-    database_port: int = 1433
+    database_url: str = "postgresql://postgres:password@localhost:5432/slack_ai"
+    database_host: str = "localhost"
+    database_port: int = 5432
     database_name: str = "slack_ai"
-    database_user: str = "sa"
-    database_password: str = "YourStrong!Passw0rd"
+    database_user: str = "postgres"
+    database_password: str = "password"
 
     # Application settings
     debug: bool = False
