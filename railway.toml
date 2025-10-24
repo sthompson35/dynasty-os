@@ -2,7 +2,8 @@ app = "dynasty-os"
 primary_region = "us-west1"
 
 [build]
-  buildCommand = "pip install -r requirements.txt"
+  builder = "NIXPACKS"
+  buildCommand = "pip install --upgrade pip && pip install -r requirements.txt"
 
 [deploy]
   startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
