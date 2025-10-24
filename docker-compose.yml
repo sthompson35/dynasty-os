@@ -1,0 +1,145 @@
+version: "3.8"
+
+services:
+  # Gateway API - Handles Slack webhooks and job orchestration
+  gateway:
+    build:
+      context: ./services/gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - SLACK_SIGNING_SECRET=${SLACK_SIGNING_SECRET}
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
+      - ABACUS_API_KEY=${ABACUS_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LM_STUDIO_BASE_URL=${LM_STUDIO_BASE_URL}
+      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      - DATABASE_URL=${DATABASE_URL}
+    depends_on:
+      - redis
+    volumes:
+      - ./services/gateway:/app
+    networks:
+      - slack-ai-network
+    restart: unless-stopped
+
+  # SQL Server - Local database for persistent storage
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    ports:
+      - "1434:1433" # Changed from 1433 to 1434 to avoid conflict
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong!Passw0rd
+      - MSSQL_PID=Express
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - slack-ai-network
+    restart: unless-stopped
+
+  # Redis - Message queue and cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379" # Changed from 6379 to 6380 to avoid conflict
+    volumes:
+      - redis_data:/data
+    networks:
+      - slack-ai-network
+    restart: unless-stopped
+
+  # LLM Worker - Handles AI inference tasks
+  llm_worker:
+    build:
+      context: ./services/workers/llm_worker
+      dockerfile: Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - ABACUS_API_KEY=${ABACUS_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LM_STUDIO_BASE_URL=${LM_STUDIO_BASE_URL}
+      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+    depends_on:
+      - redis
+    volumes:
+      - ./services/workers/llm_worker:/app
+    networks:
+      - slack-ai-network
+    restart: unless-stopped
+
+  # Blender Worker - Handles 3D rendering tasks
+  blender_worker:
+    build:
+      context: ./services/workers/blender_worker
+      dockerfile: Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+    depends_on:
+      - redis
+    volumes:
+      - ./services/workers/blender_worker:/app
+      - blender_assets:/app/assets
+      - blender_cache:/app/cache
+    networks:
+      - slack-ai-network
+    restart: unless-stopped
+
+  # MinIO - Local S3-compatible object storage (optional for dev)
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio_data:/data
+    networks:
+      - slack-ai-network
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+
+  # Celery Flower - Task monitoring (optional)
+  flower:
+    image: mher/flower:latest
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - FLOWER_BASIC_AUTH=${FLOWER_BASIC_AUTH:-admin:admin}
+    depends_on:
+      - redis
+    networks:
+      - slack-ai-network
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  minio_data:
+  blender_assets:
+  blender_cache:
+  sqlserver_data:
+
+networks:
+  slack-ai-network:
+    driver: bridge

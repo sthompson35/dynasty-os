@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Slack Integration Setup Script
+# Run this to get your webhook URLs for Slack app configuration
+
+echo "🔗 Slack AI Gateway Webhook URLs"
+echo "================================"
+echo ""
+echo "Copy these URLs to your Slack app configuration:"
+echo ""
+echo "🏥 Health Check:"
+echo "https://your-domain.com/health"
+echo ""
+echo "📝 Slash Commands:"
+echo "https://your-domain.com/slack/commands"
+echo ""
+echo "📣 Events (for mentions/messages):"
+echo "https://your-domain.com/slack/events"
+echo ""
+echo "⚠️  IMPORTANT: Replace 'your-domain.com' with your actual domain"
+echo "   For local development, you can use ngrok or similar tunneling service"
+echo ""
+echo "📋 Current Configuration:"
+echo "   SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:0:10}..."
+echo "   SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:0:10}..."
+echo ""
+echo "✅ Ready for Slack app configuration!"

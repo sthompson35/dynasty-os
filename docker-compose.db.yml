@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  # Database management service for migrations and admin
+  db_admin:
+    image: adminer:latest
+    ports:
+      - "8080:8080"
+    depends_on:
+      - sqlserver
+    networks:
+      - slack-ai-network
+    restart: unless-stopped
+
+  # PgAdmin alternative for SQL Server (optional)
+  # azure-data-studio could be used locally instead
