@@ -2,8 +2,7 @@ app = "dynasty-os"
 primary_region = "us-west1"
 
 [build]
-  builder = "NIXPACKS"
-  buildCommand = "pip install --upgrade pip && pip install -r requirements.txt"
+  builder = "dockerfile"
 
 [deploy]
   startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
@@ -11,7 +10,3 @@ primary_region = "us-west1"
   healthcheckTimeout = 300
   restartPolicyType = "ON_FAILURE"
   restartPolicyMaxRetries = 10
-
-[env]
-  NIXPACKS_PYTHON_VERSION = "3.11"
-  PYTHON_VERSION = "3.11"
