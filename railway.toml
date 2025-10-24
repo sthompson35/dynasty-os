@@ -12,4 +12,5 @@ primary_region = "us-west1"
   restartPolicyMaxRetries = 10
 
 [env]
+  NIXPACKS_PYTHON_VERSION = "3.11"
   PYTHON_VERSION = "3.11"
