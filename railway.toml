@@ -2,7 +2,6 @@ app = "dynasty-os"
 primary_region = "us-west1"
 
 [build]
-  builder = "python"
   buildCommand = "pip install -r requirements.txt"
 
 [deploy]
