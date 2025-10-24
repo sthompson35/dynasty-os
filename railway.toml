@@ -3,10 +3,10 @@ primary_region = "us-west1"
 
 [build]
   builder = "python"
-  buildCommand = "pip install -r services/gateway/requirements.txt"
+  buildCommand = "pip install -r requirements.txt"
 
 [deploy]
-  startCommand = "uvicorn services.gateway.main:app --host 0.0.0.0 --port $PORT"
+  startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
   healthcheckPath = "/health"
   healthcheckTimeout = 300
   restartPolicyType = "ON_FAILURE"
