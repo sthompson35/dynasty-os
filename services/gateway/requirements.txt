@@ -12,5 +12,5 @@ structlog==23.2.0
 python-dotenv==1.0.0
 abacusai==1.4.67
 sqlalchemy==2.0.23
-pymssql==2.2.11
+pyodbc==5.1.0
 alembic==1.12.1

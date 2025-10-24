@@ -222,6 +222,7 @@ lt --port 8000 --subdomain your-app-name
 #### Railway (Recommended - Easiest)
 
 1. **Push to GitHub**:
+
    ```bash
    git add .
    git commit -m "Ready for deployment"
@@ -229,6 +230,7 @@ lt --port 8000 --subdomain your-app-name
    ```
 
 2. **Deploy on Railway**:
+
    - Go to [railway.app](https://railway.app)
    - Create new project from GitHub repo
    - Railway auto-detects Python/FastAPI
@@ -247,6 +249,7 @@ lt --port 8000 --subdomain your-app-name
 #### Fly.io
 
 1. **Install Fly CLI**:
+
    ```bash
    curl -L https://fly.io/install.sh | sh
    fly auth login
