@@ -1,4 +1,4 @@
-fastapi==0.104.1
+fastapi==0.95.2
 uvicorn[standard]==0.24.0
 pydantic==1.10.13
 celery==5.3.4
@@ -13,4 +13,4 @@ abacusai==1.4.67
 sqlalchemy==2.0.23
 psycopg2-binary==2.9.9
 alembic==1.12.1
-# Force rebuild 8 - Downgrade to pydantic v1 for Python 3.13 compatibility
+# Force rebuild 9 - Downgrade FastAPI for pydantic v1 compatibility
