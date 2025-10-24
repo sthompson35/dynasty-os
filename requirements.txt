@@ -9,8 +9,8 @@ python-multipart==0.0.6
 httpx==0.25.2
 structlog==23.2.0
 python-dotenv==1.0.0
-abacusai==1.4.67
+# abacusai==1.4.67  # Temporarily removed to test pydantic-core issue
 sqlalchemy==2.0.23
 psycopg2-binary==2.9.9
 alembic==1.12.1
-# Force rebuild 9 - Downgrade FastAPI for pydantic v1 compatibility
+# Force rebuild 10 - Remove abacusai to test pydantic-core dependency
