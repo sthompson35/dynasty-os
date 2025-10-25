@@ -17,6 +17,11 @@ import structlog
 from slack_sdk import WebClient
 import httpx
 
+import redis
+from urllib.parse import urlparse
+from rq import Queue
+
+
 from app.core.config import settings
 from app.core.celery_app import celery_app
 from app.services.llm_router import LLMRouter
@@ -24,6 +29,7 @@ from app.services.slack_service import SlackService
 from app.models import Job, SlackMessage
 from app.core.database import get_db
 from sqlalchemy.orm import Session
+import urllib.parse
 
 # Configure structured logging
 structlog.configure(
@@ -44,15 +50,39 @@ structlog.configure(
 
 logger = structlog.get_logger()
 
+
 app = FastAPI(
     title="Slack AI Gateway",
     description="Event-driven AI/3D rendering system with Slack integration",
     version="1.0.0"
 )
 
+# --- Railway Redis compatibility ---
+import redis
+from urllib.parse import urlparse
+
+redis_url = os.getenv("REDIS_URL")
+if redis_url:
+    parsed = urlparse(redis_url)
+    r = redis.Redis(
+        host=parsed.hostname,
+        port=parsed.port,
+        password=parsed.password,
+        ssl=True if parsed.scheme == "rediss" else False,
+    )
+else:
+    r = redis.Redis(
+        host=os.getenv("REDIS_HOST", "localhost"),
+        port=int(os.getenv("REDIS_PORT", "6379")),
+        password=os.getenv("REDIS_PASSWORD"),
+    )
+
+q_default = Queue("default", connection=r)
+q_renders = Queue("renders", connection=r)
+
 # Initialize services
 llm_router = LLMRouter()
-slack_service = SlackService()
+slack_service = SlackService() if settings.slack_bot_token else None
 
 class SlackCommand(BaseModel):
     token: str
@@ -69,6 +99,10 @@ class SlackCommand(BaseModel):
 
 def verify_slack_request(request: Request, body: bytes) -> bool:
     """Verify Slack request signature"""
+    secret = settings.slack_signing_secret
+    if not secret:
+        return True  # dev mode, skip verification
+
     timestamp = request.headers.get("X-Slack-Request-Timestamp")
     signature = request.headers.get("X-Slack-Signature")
 
@@ -85,7 +119,7 @@ def verify_slack_request(request: Request, body: bytes) -> bool:
 
     # Create expected signature
     my_signature = "v0=" + hmac.new(
-        settings.slack_signing_secret.encode(),
+        secret.encode(),
         sig_basestring.encode(),
         hashlib.sha256
     ).hexdigest()
@@ -248,10 +282,27 @@ async def process_slack_event(event: Dict[str, Any]):
     # Handle mentions, messages, etc.
     logger.info("Processing Slack event", event_type=event.get("type"))
 
+
 @app.get("/health")
-async def health_check():
+def health_check():
     """Health check endpoint"""
+    from datetime import datetime
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+@app.get("/healthz")
+def healthz():
+    """Health check endpoint for Docker/Railway compatibility"""
+    from datetime import datetime
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+@app.get("/readyz")
+def readyz():
+    """Readiness check endpoint - verifies Redis connection"""
+    try:
+        r.ping()
+        return {"ready": True}
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
 @app.get("/jobs/{job_id}")
 async def get_job_status(job_id: str):
