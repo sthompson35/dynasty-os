@@ -1,17 +1,13 @@
-fastapi==0.95.2
+fastapi==0.104.1
 uvicorn[standard]==0.24.0
-pydantic==1.10.13
-pydantic-core==2.16.3
+pydantic==2.5.0
+pydantic-settings==2.1.0
 celery==5.3.4
 redis==5.0.1
 slack-sdk==3.27.1
 boto3==1.34.34
-python-multipart==0.0.6
 httpx==0.25.2
 structlog==23.2.0
-python-dotenv==1.0.0
-# abacusai==1.4.67  # Temporarily removed to test pydantic-core dependency issue
-sqlalchemy==2.0.23
-psycopg2-binary==2.9.9
+sqlalchemy==1.4.52
 alembic==1.12.1
-# Force rebuild 11 - Try latest pydantic-core for Python 3.13 compatibility
+asgiref==3.7.2
