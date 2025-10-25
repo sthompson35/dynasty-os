@@ -9,7 +9,6 @@ celery_app = Celery(
     "slack_ai_gateway",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["app.tasks"]
 )
 
 # Celery configuration

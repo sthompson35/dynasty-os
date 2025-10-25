@@ -1,5 +1,5 @@
 """
-Slack AI Gateway - Main FastAPI Application
+Slack AI Gateway - Flask Application
 Handles Slack webhooks, job orchestration, and LLM routing
 """
 
@@ -10,19 +10,19 @@ import json
 from typing import Dict, Any, Optional
 from datetime import datetime
 
-from fastapi import FastAPI, Request, HTTPException, BackgroundTasks
-from fastapi.responses import JSONResponse
+from flask import Flask, request, jsonify
 from pydantic import BaseModel
 import structlog
 from slack_sdk import WebClient
 import httpx
+from asgiref.wsgi import WsgiToAsgi
 
-from app.core.config import settings
-from app.core.celery_app import celery_app
-from app.services.llm_router import LLMRouter
-from app.services.slack_service import SlackService
-from app.models import Job, SlackMessage
-from app.core.database import get_db
+from services.gateway.app.core.config import settings
+from services.gateway.app.core.celery_app import celery_app
+from services.gateway.app.services.llm_router import LLMRouter
+from services.gateway.app.services.slack_service import SlackService
+from services.gateway.app.models import Job, SlackMessage
+from services.gateway.app.core.database import get_db
 from sqlalchemy.orm import Session
 
 # Configure structured logging
@@ -44,11 +44,7 @@ structlog.configure(
 
 logger = structlog.get_logger()
 
-app = FastAPI(
-    title="Slack AI Gateway",
-    description="Event-driven AI/3D rendering system with Slack integration",
-    version="1.0.0"
-)
+app = Flask(__name__)
 
 # Initialize services
 llm_router = LLMRouter()
@@ -67,11 +63,8 @@ class SlackCommand(BaseModel):
     response_url: str
     trigger_id: str
 
-def verify_slack_request(request: Request, body: bytes) -> bool:
+def verify_slack_request(request_data: bytes, timestamp: str, signature: str) -> bool:
     """Verify Slack request signature"""
-    timestamp = request.headers.get("X-Slack-Request-Timestamp")
-    signature = request.headers.get("X-Slack-Signature")
-
     if not timestamp or not signature:
         return False
 
@@ -81,7 +74,7 @@ def verify_slack_request(request: Request, body: bytes) -> bool:
         return False
 
     # Create signature base string
-    sig_basestring = f"v0:{timestamp}:{body.decode('utf-8')}"
+    sig_basestring = f"v0:{timestamp}:{request_data.decode('utf-8')}"
 
     # Create expected signature
     my_signature = "v0=" + hmac.new(
@@ -92,56 +85,56 @@ def verify_slack_request(request: Request, body: bytes) -> bool:
 
     return hmac.compare_digest(my_signature, signature)
 
-@app.post("/slack/commands")
-async def handle_slack_command(
-    request: Request,
-    background_tasks: BackgroundTasks
-):
+@app.route("/slack/commands", methods=["POST"])
+def handle_slack_command():
     """Handle Slack slash commands"""
-    body = await request.body()
+    request_data = request.get_data()
 
     # Verify request signature
-    if not verify_slack_request(request, body):
-        raise HTTPException(status_code=403, detail="Invalid request signature")
+    timestamp = request.headers.get("X-Slack-Request-Timestamp")
+    signature = request.headers.get("X-Slack-Signature")
+
+    if not verify_slack_request(request_data, timestamp, signature):
+        return jsonify({"error": "Invalid request signature"}), 403
 
     # Parse form data
-    form_data = await request.form()
+    form_data = request.form
     command_data = SlackCommand(**dict(form_data))
 
     logger.info("Received Slack command", command=command_data.command, user=command_data.user_name)
 
-    # Acknowledge command immediately
-    background_tasks.add_task(
-        process_slack_command,
-        command_data
-    )
+    # Acknowledge command immediately and process in background
+    import threading
+    threading.Thread(target=process_slack_command, args=(command_data,)).start()
 
-    return JSONResponse({"response_type": "in_channel", "text": "Processing your request..."})
+    return jsonify({"response_type": "in_channel", "text": "Processing your request..."})
 
-@app.post("/slack/events")
-async def handle_slack_events(request: Request, background_tasks: BackgroundTasks):
+@app.route("/slack/events", methods=["POST"])
+def handle_slack_events():
     """Handle Slack events (mentions, messages, etc.)"""
-    body = await request.body()
+    request_data = request.get_data()
 
-    if not verify_slack_request(request, body):
-        raise HTTPException(status_code=403, detail="Invalid request signature")
+    # Verify request signature
+    timestamp = request.headers.get("X-Slack-Request-Timestamp")
+    signature = request.headers.get("X-Slack-Signature")
 
-    event_data = await request.json()
+    if not verify_slack_request(request_data, timestamp, signature):
+        return jsonify({"error": "Invalid request signature"}), 403
+
+    event_data = request.get_json()
 
     # Handle URL verification
     if event_data.get("type") == "url_verification":
-        return JSONResponse({"challenge": event_data["challenge"]})
+        return jsonify({"challenge": event_data["challenge"]})
 
     # Handle actual events
     if "event" in event_data:
-        background_tasks.add_task(
-            process_slack_event,
-            event_data["event"]
-        )
+        import threading
+        threading.Thread(target=process_slack_event, args=(event_data["event"],)).start()
 
-    return JSONResponse({"ok": True})
+    return jsonify({"ok": True})
 
-async def process_slack_command(command: SlackCommand):
+def process_slack_command(command: SlackCommand):
     """Process Slack command in background"""
     db: Session = next(get_db())
 
@@ -159,7 +152,7 @@ async def process_slack_command(command: SlackCommand):
         db.commit()  # Commit the message record immediately
 
         # Route to LLM for interpretation
-        llm_response = await llm_router.process_request(
+        llm_response = llm_router.process_request_sync(
             text=command.text,
             context={
                 "command": command.command,
@@ -223,12 +216,12 @@ async def process_slack_command(command: SlackCommand):
 
         # Send initial response
         if job_ids:
-            await slack_service.send_response(
+            slack_service.send_response_sync(
                 command.response_url,
                 f"🚀 Processing request with {len(job_ids)} job(s). Job IDs: {', '.join(job_ids[:3])}"
             )
         else:
-            await slack_service.send_response(
+            slack_service.send_response_sync(
                 command.response_url,
                 "✅ Command received and logged. No specific actions identified."
             )
@@ -236,36 +229,41 @@ async def process_slack_command(command: SlackCommand):
     except Exception as e:
         db.rollback()
         logger.error("Error processing Slack command", error=str(e))
-        await slack_service.send_response(
+        slack_service.send_response_sync(
             command.response_url,
             f"❌ Error processing request: {str(e)}"
         )
     finally:
         db.close()
 
-async def process_slack_event(event: Dict[str, Any]):
+def process_slack_event(event: Dict[str, Any]):
     """Process Slack events in background"""
     # Handle mentions, messages, etc.
     logger.info("Processing Slack event", event_type=event.get("type"))
 
-@app.get("/health")
-async def health_check():
+@app.route("/health")
+def health_check():
     """Health check endpoint"""
-    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+    return jsonify({
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat()
+    })
 
-@app.get("/jobs/{job_id}")
-async def get_job_status(job_id: str):
+@app.route("/jobs/<job_id>")
+def get_job_status(job_id: str):
     """Get job status"""
     # Check Celery task status
     from celery.result import AsyncResult
     result = AsyncResult(job_id, app=celery_app)
 
-    return {
+    return jsonify({
         "job_id": job_id,
         "status": result.status,
         "result": result.result if result.ready() else None
-    }
+    })
+
+# Wrap the Flask app with ASGI compatibility
+asgi_app = WsgiToAsgi(app)
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    app.run(host="0.0.0.0", port=8000, debug=True)

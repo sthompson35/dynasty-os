@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = None
 
     # LM Studio configuration
-    lm_studio_base_url: str = "http://localhost:1234/v1"
+    lm_studio_base_url: str = "http://host.docker.internal:1234/v1"
 
     # Storage configuration
     s3_endpoint_url: str = "http://localhost:9000"
@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     database_password: Optional[str] = None
 
     # LM Studio configuration
-    lm_studio_base_url: str = "http://localhost:1234/v1"
+    lm_studio_base_url: str = "http://host.docker.internal:1234/v1"
 
     # Storage configuration
     s3_endpoint_url: str = "http://localhost:9000"

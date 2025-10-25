@@ -22,12 +22,12 @@ from urllib.parse import urlparse
 from rq import Queue
 
 
-from app.core.config import settings
-from app.core.celery_app import celery_app
-from app.services.llm_router import LLMRouter
-from app.services.slack_service import SlackService
-from app.models import Job, SlackMessage
-from app.core.database import get_db
+from .core.config import settings
+from .core.celery_app import celery_app
+from .services.llm_router import LLMRouter
+from .services.slack_service import SlackService
+from .models import Job, SlackMessage
+from .core.database import get_db
 from sqlalchemy.orm import Session
 import urllib.parse
 

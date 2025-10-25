@@ -29,7 +29,7 @@ def upgrade() -> None:
     sa.Column('parameters', sa.JSON(), nullable=True),
     sa.Column('result', sa.JSON(), nullable=True),
     sa.Column('error_message', sa.Text(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(getdate())'), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(datetime(\'now\'))'), nullable=True),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
     sa.PrimaryKeyConstraint('id')
@@ -42,7 +42,7 @@ def upgrade() -> None:
     sa.Column('message_text', sa.Text(), nullable=False),
     sa.Column('message_type', sa.String(length=20), nullable=False),
     sa.Column('job_id', sa.String(length=50), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(getdate())'), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(datetime(\'now\'))'), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     # ### end Alembic commands ###

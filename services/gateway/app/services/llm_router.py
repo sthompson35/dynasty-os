@@ -193,5 +193,13 @@ class LLMRouter:
     async def __aenter__(self):
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.client.aclose()
+    def process_request_sync(
+        self,
+        text: str,
+        context: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Synchronous wrapper for process_request
+        """
+        import asyncio
+        return asyncio.run(self.process_request(text, context))

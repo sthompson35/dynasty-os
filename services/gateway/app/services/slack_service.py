@@ -106,8 +106,15 @@ class SlackService:
             logger.error("Failed to update Slack message", error=str(e))
             raise
 
-    async def __aenter__(self):
-        return self
+    def send_response_sync(
+        self,
+        response_url: str,
+        text: str,
+        attachments: Optional[list] = None
+    ):
+        """Synchronous wrapper for send_response"""
+        import asyncio
+        asyncio.run(self.send_response(response_url, text, attachments))
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.http_client.aclose()
