@@ -27,9 +27,12 @@ from .core.celery_app import celery_app
 from .services.llm_router import LLMRouter
 from .services.slack_service import SlackService
 from .models import Job, SlackMessage
-from .core.database import get_db
+from .core.database import get_db, engine, Base
 from sqlalchemy.orm import Session
 import urllib.parse
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
 # Configure structured logging
 structlog.configure(
