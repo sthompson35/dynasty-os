@@ -61,24 +61,36 @@ app = FastAPI(
 import redis
 from urllib.parse import urlparse
 
-redis_url = os.getenv("REDIS_URL")
-if redis_url:
-    parsed = urlparse(redis_url)
-    r = redis.Redis(
-        host=parsed.hostname,
-        port=parsed.port,
-        password=parsed.password,
-        ssl=True if parsed.scheme == "rediss" else False,
-    )
-else:
-    r = redis.Redis(
-        host=os.getenv("REDIS_HOST", "localhost"),
-        port=int(os.getenv("REDIS_PORT", "6379")),
-        password=os.getenv("REDIS_PASSWORD"),
-    )
+try:
+    redis_url = os.getenv("REDIS_URL")
+    if redis_url:
+        parsed = urlparse(redis_url)
+        r = redis.Redis(
+            host=parsed.hostname,
+            port=parsed.port,
+            password=parsed.password,
+            ssl=True if parsed.scheme == "rediss" else False,
+        )
+    else:
+        r = redis.Redis(
+            host=os.getenv("REDIS_HOST", "localhost"),
+            port=int(os.getenv("REDIS_PORT", "6379")),
+            password=os.getenv("REDIS_PASSWORD"),
+        )
+    # Test connection
+    r.ping()
+    redis_available = True
+except Exception as e:
+    print(f"Redis connection failed: {e}. Running without Redis.")
+    r = None
+    redis_available = False
 
-q_default = Queue("default", connection=r)
-q_renders = Queue("renders", connection=r)
+if redis_available:
+    q_default = Queue("default", connection=r)
+    q_renders = Queue("renders", connection=r)
+else:
+    q_default = None
+    q_renders = None
 
 # Initialize services
 llm_router = LLMRouter()
@@ -224,12 +236,13 @@ async def process_slack_command(command: SlackCommand):
                 db.add(job)
 
                 # Queue Blender job
-                task = celery_app.send_task(
-                    "blender_worker.render_scene",
-                    args=[action["parameters"]],
-                    kwargs={"callback_url": command.response_url, "job_id": job_id}
-                )
-                job_ids.append(job_id)
+                if q_renders:
+                    task = celery_app.send_task(
+                        "blender_worker.render_scene",
+                        args=[action["parameters"]],
+                        kwargs={"callback_url": command.response_url, "job_id": job_id}
+                    )
+                    job_ids.append(job_id)
 
             elif action["type"] == "analyze":
                 # Create job record
@@ -244,12 +257,13 @@ async def process_slack_command(command: SlackCommand):
                 db.add(job)
 
                 # Queue LLM analysis job
-                task = celery_app.send_task(
-                    "llm_worker.analyze_content",
-                    args=[action["parameters"]],
-                    kwargs={"callback_url": command.response_url, "job_id": job_id}
-                )
-                job_ids.append(job_id)
+                if q_default:
+                    task = celery_app.send_task(
+                        "llm_worker.analyze_content",
+                        args=[action["parameters"]],
+                        kwargs={"callback_url": command.response_url, "job_id": job_id}
+                    )
+                    job_ids.append(job_id)
 
         # Commit job records
         if job_ids:
@@ -298,6 +312,8 @@ def healthz():
 @app.get("/readyz")
 def readyz():
     """Readiness check endpoint - verifies Redis connection"""
+    if not redis_available:
+        raise HTTPException(status_code=503, detail="Redis not available")
     try:
         r.ping()
         return {"ready": True}
