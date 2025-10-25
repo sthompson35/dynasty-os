@@ -23,6 +23,5 @@ COPY . .
 # Expose port
 EXPOSE 8000
 
-# Force rebuild 2
 # Run the application
-CMD ["python", "main.py"]
+CMD uvicorn services.gateway.main:app --host 0.0.0.0 --port $PORT
