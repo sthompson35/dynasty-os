@@ -4,7 +4,7 @@ Configuration settings for the Blender Worker
 
 import os
 from typing import Optional
-from pydantic_settings import BaseSettings
+from pydantic import BaseSettings
 
 
 class Settings(BaseSettings):
