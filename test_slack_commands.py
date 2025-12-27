@@ -25,7 +25,7 @@ def create_slack_signature(timestamp: str, body: str) -> str:
     ).hexdigest()
     return f"v0={signature}"
 
-async def test_slack_command(command: str, text: str):
+async def run_slack_command(command: str, text: str):
     """Test a Slack command"""
     print(f"\n🧪 Testing Slack command: /{command} {text}")
 
@@ -78,15 +78,15 @@ async def test_slack_command(command: str, text: str):
 
 async def test_render_command():
     """Test render command"""
-    await test_slack_command("render", "Create a 3D scene of a futuristic city")
+    await run_slack_command("render", "Create a 3D scene of a futuristic city")
 
 async def test_analyze_command():
     """Test analyze command"""
-    await test_slack_command("analyze", "Analyze this text for sentiment: 'I love this amazing product!'")
+    await run_slack_command("analyze", "Analyze this text for sentiment: 'I love this amazing product!'")
 
 async def test_general_command():
     """Test general AI command"""
-    await test_slack_command("ai", "What is the capital of France?")
+    await run_slack_command("ai", "What is the capital of France?")
 
 async def test_job_status():
     """Test job status endpoint"""
