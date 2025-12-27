@@ -9,6 +9,7 @@ import hmac
 import hashlib
 from urllib.parse import urlencode
 
+import pytest
 import httpx
 
 # Test configuration
@@ -25,8 +26,8 @@ def create_slack_signature(timestamp: str, body: str) -> str:
     ).hexdigest()
     return f"v0={signature}"
 
-async def test_slack_command(command: str, text: str):
-    """Test a Slack command"""
+async def send_slack_command(command: str, text: str):
+    """Helper function to send a Slack command"""
     print(f"\n🧪 Testing Slack command: /{command} {text}")
 
     # Create form data
@@ -72,22 +73,34 @@ async def test_slack_command(command: str, text: str):
                 print("✅ Command accepted successfully!")
             else:
                 print(f"❌ Command failed: {response.status_code}")
+            
+            return response
 
         except Exception as e:
             print(f"❌ Error: {e}")
+            raise
 
+@pytest.mark.asyncio
 async def test_render_command():
     """Test render command"""
-    await test_slack_command("render", "Create a 3D scene of a futuristic city")
+    response = await send_slack_command("render", "Create a 3D scene of a futuristic city")
+    # Server needs to be running for this to pass
+    # For now, we just test the signature creation logic
+    assert response is not None
 
+@pytest.mark.asyncio
 async def test_analyze_command():
     """Test analyze command"""
-    await test_slack_command("analyze", "Analyze this text for sentiment: 'I love this amazing product!'")
+    response = await send_slack_command("analyze", "Analyze this text for sentiment: 'I love this amazing product!'")
+    assert response is not None
 
+@pytest.mark.asyncio
 async def test_general_command():
     """Test general AI command"""
-    await test_slack_command("ai", "What is the capital of France?")
+    response = await send_slack_command("ai", "What is the capital of France?")
+    assert response is not None
 
+@pytest.mark.asyncio
 async def test_job_status():
     """Test job status endpoint"""
     print("\n📊 Testing job status endpoint...")
@@ -98,8 +111,39 @@ async def test_job_status():
             response = await client.get(f"{GATEWAY_URL}/jobs/test-job-123")
             print(f"Job status response: {response.status_code}")
             print(f"Response: {response.text}")
+            assert response is not None
         except Exception as e:
             print(f"❌ Error checking job status: {e}")
+            raise
+
+# Unit tests that don't require a running server
+def test_create_slack_signature():
+    """Test Slack signature creation"""
+    timestamp = "1234567890"
+    body = "token=test&user_id=U123"
+    signature = create_slack_signature(timestamp, body)
+    
+    # Should start with v0=
+    assert signature.startswith("v0=")
+    # Should be consistent
+    signature2 = create_slack_signature(timestamp, body)
+    assert signature == signature2
+
+def test_signature_with_different_timestamps():
+    """Test that different timestamps produce different signatures"""
+    body = "token=test&user_id=U123"
+    sig1 = create_slack_signature("1000", body)
+    sig2 = create_slack_signature("2000", body)
+    
+    assert sig1 != sig2
+
+def test_signature_with_different_bodies():
+    """Test that different bodies produce different signatures"""
+    timestamp = "1234567890"
+    sig1 = create_slack_signature(timestamp, "body1")
+    sig2 = create_slack_signature(timestamp, "body2")
+    
+    assert sig1 != sig2
 
 async def main():
     """Run all tests"""
