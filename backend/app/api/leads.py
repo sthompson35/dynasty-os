@@ -228,8 +228,7 @@ def score_lead(lead_id: UUID, payload: LeadScoreBreakdown):
 
     db = get_supabase()
 
-    # Upsert scoring record (replace existing for this lead)
-    db.table("lead_scoring").upsert({
+    scoring_payload = {
         "lead_id": str(lead_id),
         "motivation_score": payload.motivation_score,
         "equity_score": payload.equity_score,
@@ -238,7 +237,13 @@ def score_lead(lead_id: UUID, payload: LeadScoreBreakdown):
         "price_expectation_score": payload.price_expectation_score,
         "total_score": total,
         "grade": grade,
-    }, on_conflict="lead_id").execute()
+    }
+
+    existing = db.table("lead_scoring").select("scoring_id").eq("lead_id", str(lead_id)).limit(1).execute().data or []
+    if existing:
+        db.table("lead_scoring").update(scoring_payload).eq("scoring_id", existing[0]["scoring_id"]).execute()
+    else:
+        db.table("lead_scoring").insert(scoring_payload).execute()
 
     # Update aggregate score on the lead
     db.table("leads").update({"score": total}).eq("lead_id", str(lead_id)).execute()
