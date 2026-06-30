@@ -47,6 +47,51 @@ Handle Slack events (mentions, messages).
 }
 ```
 
+### GET /healthz
+
+Liveness check — confirms the process is running. Always returns 200.
+
+**Response:**
+
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-01-24T10:30:00Z"
+}
+```
+
+### GET /readyz
+
+Readiness check — validates database connectivity, Redis availability, and critical configuration.
+
+Returns `200` when fully ready. Returns `503` when the database is unreachable or required config is missing. Redis unavailability is surfaced as a `degraded` status but does not fail the readiness check.
+
+**Response (ready):**
+
+```json
+{
+  "status": "ready",
+  "checks": {
+    "database": "ok",
+    "redis": "ok",
+    "config": "ok"
+  }
+}
+```
+
+**Response (not ready — DB unreachable):**
+
+```json
+{
+  "status": "not_ready",
+  "checks": {
+    "database": "error: connection refused",
+    "redis": "degraded",
+    "config": "ok"
+  }
+}
+```
+
 ### GET /health
 
 Health check endpoint.

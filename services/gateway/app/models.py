@@ -1,13 +1,13 @@
 """
-Database models for the Slack AI Gateway
+Database models for the Slack AI Gateway.
+Uses the shared Base from core.database — do not redefine Base here.
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, String, DateTime, Text
 from datetime import datetime
 
-Base = declarative_base()
+from .core.database import Base
+
 
 class Job(Base):
     __tablename__ = "jobs"
