@@ -1,5 +1,5 @@
-{
-  "name": "Dynasty OS — V3 Automation Command Layer",
+﻿{
+  "name": "Dynasty OS â€” V3 Automation Command Layer",
   "nodes": [
 
     {
@@ -12,7 +12,7 @@
         "mode": "manual",
         "assignments": {
           "assignments": [
-            { "id": "url",           "name": "dynastyApiUrl",     "type": "string", "value": "http://localhost:8010" },
+            { "id": "url",           "name": "dynastyApiUrl",     "type": "string", "value": "https://dynasty-os-production.up.railway.app" },
             { "id": "owner-email",   "name": "ownerEmail",        "type": "string", "value": "sdthompson35@gmail.com" },
             { "id": "owner-phone",   "name": "ownerPhone",        "type": "string", "value": "" },
             { "id": "squad-ch",      "name": "squadChannel",      "type": "string", "value": "#dynasty-squad-review" },
@@ -95,7 +95,7 @@
       "position": [700, 1240],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const config   = $('Dynasty Config').item.json;\nconst health   = $('Daily Brief: Health Check').item.json;\nconst stats    = $('Daily Brief: Lead Stats').item.json;\nconst capital  = $('Daily Brief: Capital Available').item.json;\nconst deployed = $('Daily Brief: Capital Deployed').item.json;\nconst date = new Date().toLocaleDateString('en-US',{ weekday:'long', year:'numeric', month:'long', day:'numeric', timeZone:'America/New_York' });\nreturn [{ json: {\n  date,\n  apiStatus:        health?.ok ? 'ONLINE ✅' : 'OFFLINE ⚠️',\n  totalLeads:       stats?.total ?? 'N/A',\n  hotLeads:         stats?.by_status?.Hot ?? 0,\n  qualifiedLeads:   stats?.by_status?.Qualified ?? 0,\n  gradeALeads:      stats?.by_grade?.A ?? 0,\n  availableCapital: capital?.total_available != null ? `$${Number(capital.total_available).toLocaleString()}` : 'N/A',\n  deployedCapital:  deployed?.total_deployed_allocations != null ? `$${Number(deployed.total_deployed_allocations).toLocaleString()}` : 'N/A',\n  byStatus:         stats?.by_status ?? {},\n}}];"
+        "jsCode": "const config   = $('Dynasty Config').item.json;\nconst health   = $('Daily Brief: Health Check').item.json;\nconst stats    = $('Daily Brief: Lead Stats').item.json;\nconst capital  = $('Daily Brief: Capital Available').item.json;\nconst deployed = $('Daily Brief: Capital Deployed').item.json;\nconst date = new Date().toLocaleDateString('en-US',{ weekday:'long', year:'numeric', month:'long', day:'numeric', timeZone:'America/New_York' });\nreturn [{ json: {\n  date,\n  apiStatus:        health?.ok ? 'ONLINE âœ…' : 'OFFLINE âš ï¸',\n  totalLeads:       stats?.total ?? 'N/A',\n  hotLeads:         stats?.by_status?.Hot ?? 0,\n  qualifiedLeads:   stats?.by_status?.Qualified ?? 0,\n  gradeALeads:      stats?.by_grade?.A ?? 0,\n  availableCapital: capital?.total_available != null ? `$${Number(capital.total_available).toLocaleString()}` : 'N/A',\n  deployedCapital:  deployed?.total_deployed_allocations != null ? `$${Number(deployed.total_deployed_allocations).toLocaleString()}` : 'N/A',\n  byStatus:         stats?.by_status ?? {},\n}}];"
       }
     },
     {
@@ -115,7 +115,7 @@
         "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" },
         "messages": {
           "values": [
-            { "role": "system",  "content": "You are Dynasty OS — Shylow Thompson's real estate investment intelligence system. Write concise, action-oriented daily briefs. Use bullet points. Flag anything requiring immediate attention with 🚨." },
+            { "role": "system",  "content": "You are Dynasty OS â€” Shylow Thompson's real estate investment intelligence system. Write concise, action-oriented daily briefs. Use bullet points. Flag anything requiring immediate attention with ðŸš¨." },
             { "role": "user",    "content": "=Generate today's Dynasty OS daily brief:\n\n{{ JSON.stringify($json, null, 2) }}" }
           ]
         },
@@ -130,7 +130,7 @@
       "position": [700, 1560],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const content = $json?.message?.content;\nif (content) return [{ json: { aiText: content, aiError: false } }];\ntry {\n  const c = $('Daily Brief: Compile').item.json;\n  return [{ json: {\n    aiText: `Dynasty OS Daily Brief — ${c.date || new Date().toDateString()}\\n• API: ${c.apiStatus || 'N/A'}\\n• Hot Leads: ${c.hotLeads || 0} | Grade A: ${c.gradeALeads || 0}\\n• Available Capital: ${c.availableCapital || 'N/A'}\\n• Deployed Capital: ${c.deployedCapital || 'N/A'}\\n\\n⚠️ AI summary unavailable — raw data shown.`,\n    aiError: true\n  }}];\n} catch(e) {\n  return [{ json: { aiText: 'Dynasty OS Daily Brief: AI summary unavailable. Check PropertyOS dashboard.', aiError: true } }];\n}"
+        "jsCode": "const content = $json?.message?.content;\nif (content) return [{ json: { aiText: content, aiError: false } }];\ntry {\n  const c = $('Daily Brief: Compile').item.json;\n  return [{ json: {\n    aiText: `Dynasty OS Daily Brief â€” ${c.date || new Date().toDateString()}\\nâ€¢ API: ${c.apiStatus || 'N/A'}\\nâ€¢ Hot Leads: ${c.hotLeads || 0} | Grade A: ${c.gradeALeads || 0}\\nâ€¢ Available Capital: ${c.availableCapital || 'N/A'}\\nâ€¢ Deployed Capital: ${c.deployedCapital || 'N/A'}\\n\\nâš ï¸ AI summary unavailable â€” raw data shown.`,\n    aiError: true\n  }}];\n} catch(e) {\n  return [{ json: { aiText: 'Dynasty OS Daily Brief: AI summary unavailable. Check PropertyOS dashboard.', aiError: true } }];\n}"
       }
     },
     {
@@ -145,7 +145,7 @@
         "resource": "message",
         "operation": "post",
         "channel": "={{ $('Dynasty Config').item.json.dailyChannel }}",
-        "text": "=*Dynasty OS Daily Brief — {{ $('Daily Brief: Compile').item.json.date }}*\n\n{{ $json.aiText }}",
+        "text": "=*Dynasty OS Daily Brief â€” {{ $('Daily Brief: Compile').item.json.date }}*\n\n{{ $json.aiText }}",
         "otherOptions": {}
       }
     },
@@ -159,7 +159,7 @@
       "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
       "parameters": {
         "sendTo": "={{ $('Dynasty Config').item.json.ownerEmail }}",
-        "subject": "=Dynasty OS Daily Brief — {{ $('Daily Brief: Compile').item.json.date }}",
+        "subject": "=Dynasty OS Daily Brief â€” {{ $('Daily Brief: Compile').item.json.date }}",
         "emailType": "text",
         "message": "={{ $('Daily Brief: AI Fallback').item.json.aiText }}",
         "options": {}
@@ -204,7 +204,7 @@
         "agentType": "toolsAgent",
         "text": "={{ ($json.body || $json).chatInput || ($json.body || $json).message || '' }}",
         "options": {
-          "systemMessage": "You are Dynasty OS — Shylow Thompson's real estate investment intelligence system. You analyze deals, score leads, evaluate capital stacks, and provide strategic recommendations for flips, build-to-sell, and rental exits in Atlanta and surrounding markets. Be concise, data-driven, and decisive. Always state GO or NO-GO with supporting numbers when analyzing deals.",
+          "systemMessage": "You are Dynasty OS â€” Shylow Thompson's real estate investment intelligence system. You analyze deals, score leads, evaluate capital stacks, and provide strategic recommendations for flips, build-to-sell, and rental exits in Atlanta and surrounding markets. Be concise, data-driven, and decisive. Always state GO or NO-GO with supporting numbers when analyzing deals.",
           "returnIntermediateSteps": false
         }
       }
@@ -231,7 +231,7 @@
         "name": "flip_analysis",
         "description": "Analyze a fix-and-flip deal. Required JSON body fields: purchase_price (number), repair_budget (number), arv (number). Optional: closing_costs, holding_costs, selling_costs. Returns decision (GO/NO-GO), profit, and ROI.",
         "method": "POST",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/investor/flip-analysis",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/investor/flip-analysis",
         "sendBody": true,
         "contentType": "json",
         "jsonBody": "={purchase_price: {purchase_price}, repair_budget: {repair_budget}, arv: {arv}, closing_costs: {closing_costs}, holding_costs: {holding_costs}, selling_costs: {selling_costs}}",
@@ -248,7 +248,7 @@
         "name": "lead_score",
         "description": "Look up a lead's current score and grade. Provide lead_id (UUID). Returns the lead record including score (0-100), grade (A-D), status, and scoring breakdown.",
         "method": "GET",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/leads/{lead_id}",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/leads/{lead_id}",
         "options": {}
       }
     },
@@ -260,9 +260,9 @@
       "position": [1360, 560],
       "parameters": {
         "name": "capital_stack",
-        "description": "Get current Dynasty capital position — available funds, deployed capital, and investor commitments.",
+        "description": "Get current Dynasty capital position â€” available funds, deployed capital, and investor commitments.",
         "method": "GET",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/capital/available",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/capital/available",
         "options": {}
       }
     },
@@ -276,7 +276,7 @@
         "name": "build_analysis",
         "description": "Calculate the optimal offer price for a Land + Build deal. Required fields: property_id (string), arv (number). Optional: repair_cost (default 0), exit_strategy (default 'Flip'), target_roi (default 0.20), holding_cost_monthly (default 0), holding_months (default 12). Returns the recommended offer and supporting metrics.",
         "method": "POST",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/land-build/offer-calculation",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/land-build/offer-calculation",
         "sendBody": true,
         "contentType": "json",
         "jsonBody": "={property_id: {property_id}, arv: {arv}, repair_cost: {repair_cost}, exit_strategy: {exit_strategy}, target_roi: {target_roi}, holding_cost_monthly: {holding_cost_monthly}, holding_months: {holding_months}}",
@@ -293,7 +293,7 @@
         "name": "disposition_plan",
         "description": "Get Dynasty disposition profit analysis and exit strategy comparison across wholesale, flip, rental, and owner-finance exits.",
         "method": "GET",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/disposition/profit",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/disposition/profit",
         "options": {}
       }
     },
@@ -307,7 +307,7 @@
         "name": "investor_summary",
         "description": "Get list of active Dynasty investors, their capital commitments, and contact details.",
         "method": "GET",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/capital/investors",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/capital/investors",
         "options": {}
       }
     },
@@ -345,7 +345,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "GET",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/health",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/health",
         "options": { "timeout": 5000 }
       }
     },
@@ -394,7 +394,7 @@
         "operation": "send",
         "from": "={{ $env.TWILIO_PHONE_NUMBER }}",
         "to": "={{ $env.DYNASTY_OWNER_PHONE }}",
-        "message": "=🚨 Dynasty OS ALERT: API is DOWN. Deal intake webhook received but PropertyOS API is unreachable. Check Railway/backend immediately."
+        "message": "=ðŸš¨ Dynasty OS ALERT: API is DOWN. Deal intake webhook received but PropertyOS API is unreachable. Check Railway/backend immediately."
       }
     },
     {
@@ -407,7 +407,7 @@
       "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
       "parameters": {
         "sendTo": "sdthompson35@gmail.com",
-        "subject": "🚨 Dynasty OS: API DOWN — Deal Intake Blocked",
+        "subject": "ðŸš¨ Dynasty OS: API DOWN â€” Deal Intake Blocked",
         "emailType": "text",
         "message": "=Dynasty PropertyOS API is unreachable.\n\nA deal intake webhook was received but could not be processed because the backend API is down.\n\nDeal data received:\n{{ JSON.stringify($json, null, 2) }}\n\nAction required: Check Railway deployment and restart the backend service.",
         "options": {}
@@ -433,7 +433,7 @@
       "position": [1980, 680],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const body = items[0].json.body ?? items[0].json;\nconst required = ['purchase_price','repair_budget','arv','address'];\nconst missing  = required.filter(f => body[f] == null || body[f] === '');\nif (missing.length) throw new Error(`Missing required fields: ${missing.join(', ')}`);\nconst pp  = Number(body.purchase_price);\nconst arv = Number(body.arv);\nconst rb  = Number(body.repair_budget) || 0;\nif (pp  <= 0) throw new Error('purchase_price must be a positive number');\nif (arv <= 0) throw new Error('arv must be a positive number');\nif (arv <  pp) throw new Error('ARV cannot be less than purchase_price — check your numbers');\nreturn [{ json: { ...body, purchase_price: pp, repair_budget: rb, arv,\n  closing_costs:  Number(body.closing_costs)  || 0,\n  holding_costs:  Number(body.holding_costs)  || 0,\n  selling_costs:  Number(body.selling_costs)  || 0,\n}}];"
+        "jsCode": "const body = items[0].json.body ?? items[0].json;\nconst required = ['purchase_price','repair_budget','arv','address'];\nconst missing  = required.filter(f => body[f] == null || body[f] === '');\nif (missing.length) throw new Error(`Missing required fields: ${missing.join(', ')}`);\nconst pp  = Number(body.purchase_price);\nconst arv = Number(body.arv);\nconst rb  = Number(body.repair_budget) || 0;\nif (pp  <= 0) throw new Error('purchase_price must be a positive number');\nif (arv <= 0) throw new Error('arv must be a positive number');\nif (arv <  pp) throw new Error('ARV cannot be less than purchase_price â€” check your numbers');\nreturn [{ json: { ...body, purchase_price: pp, repair_budget: rb, arv,\n  closing_costs:  Number(body.closing_costs)  || 0,\n  holding_costs:  Number(body.holding_costs)  || 0,\n  selling_costs:  Number(body.selling_costs)  || 0,\n}}];"
       }
     },
     {
@@ -445,7 +445,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "POST",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/investor/flip-analysis",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/investor/flip-analysis",
         "sendBody": true,
         "contentType": "json",
         "jsonBody": "={{ JSON.stringify({ purchase_price: $json.purchase_price, repair_budget: $json.repair_budget, arv: $json.arv, closing_costs: $json.closing_costs, holding_costs: $json.holding_costs, selling_costs: $json.selling_costs }) }}"
@@ -489,7 +489,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "GET",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/property",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/property",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -540,7 +540,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "POST",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/property",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/property",
         "sendBody": true,
         "contentType": "json",
         "jsonBody": "={{ JSON.stringify($json._create_body) }}"
@@ -566,7 +566,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "POST",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/deal",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/deal",
         "sendBody": true,
         "contentType": "json",
         "jsonBody": "={{ JSON.stringify({ property_id: $json.property_id || null, asking_price: $json.purchase_price, arv: $json.arv, repairs: $json.repair_budget }) }}"
@@ -581,7 +581,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "POST",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/deal/approve",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/deal/approve",
         "sendBody": true,
         "contentType": "json",
         "jsonBody": "={{ JSON.stringify({ deal_id: $('Deal Intake: Create Deal').item.json.id, decision: 'GO', approved_by: 'dynasty_os_automation', notes: 'Auto-approved by Dynasty OS Deal Intake workflow' }) }}"
@@ -619,7 +619,7 @@
       "position": [1760, 2360],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const content = $json?.message?.content;\nif (content) return [{ json: { aiText: content, aiError: false } }];\ntry {\n  const deal = $('Deal Intake: Validate').item.json;\n  const analysis = $('Deal Intake: Flip Analysis').item.json;\n  const roi = analysis?.roi != null ? `${(Number(analysis.roi) * 100).toFixed(1)}%` : 'N/A';\n  const profit = analysis?.profit != null ? `$${Number(analysis.profit).toLocaleString()}` : 'N/A';\n  return [{ json: {\n    aiText: `GO Deal — ${deal.address || 'Unknown Address'}\\n• ROI: ${roi}\\n• Profit: ${profit}\\n• ARV: $${Number(deal.arv || 0).toLocaleString()}\\n• Purchase: $${Number(deal.purchase_price || 0).toLocaleString()}\\n• Repairs: $${Number(deal.repair_budget || 0).toLocaleString()}\\n\\nSquad review required. AI summary unavailable — act on raw numbers.`,\n    aiError: true\n  }}];\n} catch(e) {\n  return [{ json: { aiText: 'GO Deal detected. Squad review required. AI summary unavailable.', aiError: true } }];\n}"
+        "jsCode": "const content = $json?.message?.content;\nif (content) return [{ json: { aiText: content, aiError: false } }];\ntry {\n  const deal = $('Deal Intake: Validate').item.json;\n  const analysis = $('Deal Intake: Flip Analysis').item.json;\n  const roi = analysis?.roi != null ? `${(Number(analysis.roi) * 100).toFixed(1)}%` : 'N/A';\n  const profit = analysis?.profit != null ? `$${Number(analysis.profit).toLocaleString()}` : 'N/A';\n  return [{ json: {\n    aiText: `GO Deal â€” ${deal.address || 'Unknown Address'}\\nâ€¢ ROI: ${roi}\\nâ€¢ Profit: ${profit}\\nâ€¢ ARV: $${Number(deal.arv || 0).toLocaleString()}\\nâ€¢ Purchase: $${Number(deal.purchase_price || 0).toLocaleString()}\\nâ€¢ Repairs: $${Number(deal.repair_budget || 0).toLocaleString()}\\n\\nSquad review required. AI summary unavailable â€” act on raw numbers.`,\n    aiError: true\n  }}];\n} catch(e) {\n  return [{ json: { aiText: 'GO Deal detected. Squad review required. AI summary unavailable.', aiError: true } }];\n}"
       }
     },
     {
@@ -634,7 +634,7 @@
         "resource": "message",
         "operation": "post",
         "channel": "#dynasty-squad-review",
-        "text": "=🏠 *NEW GO DEAL — Squad Review Required*\n\n*Address:* {{ $('Deal Intake: Validate').item.json.address }}\n*ROI:* {{ (Number($('Deal Intake: Flip Analysis').item.json.roi) * 100).toFixed(1) }}%  |  *Profit:* ${{ Number($('Deal Intake: Flip Analysis').item.json.profit).toLocaleString() }}\n*Deal ID:* {{ $('Deal Intake: Create Deal').item.json.id || 'pending' }}\n\n{{ $json.aiText }}",
+        "text": "=ðŸ  *NEW GO DEAL â€” Squad Review Required*\n\n*Address:* {{ $('Deal Intake: Validate').item.json.address }}\n*ROI:* {{ (Number($('Deal Intake: Flip Analysis').item.json.roi) * 100).toFixed(1) }}%  |  *Profit:* ${{ Number($('Deal Intake: Flip Analysis').item.json.profit).toLocaleString() }}\n*Deal ID:* {{ $('Deal Intake: Create Deal').item.json.id || 'pending' }}\n\n{{ $json.aiText }}",
         "otherOptions": {}
       }
     },
@@ -648,7 +648,7 @@
       "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
       "parameters": {
         "sendTo": "sdthompson35@gmail.com",
-        "subject": "=🏠 Dynasty OS GO Deal — {{ $('Deal Intake: Validate').item.json.address }}",
+        "subject": "=ðŸ  Dynasty OS GO Deal â€” {{ $('Deal Intake: Validate').item.json.address }}",
         "emailType": "text",
         "message": "={{ $('Deal Intake: GO - AI Fallback').item.json.aiText }}\n\nDeal ID: {{ $('Deal Intake: Create Deal').item.json.id || 'pending' }}\nProperty ID: {{ $('Deal Intake: Resolve Property').item.json.property_id || 'pending' }}",
         "options": {}
@@ -675,7 +675,7 @@
       "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
       "parameters": {
         "sendTo": "sdthompson35@gmail.com",
-        "subject": "=❌ Dynasty OS NO-GO — {{ $json.address }}",
+        "subject": "=âŒ Dynasty OS NO-GO â€” {{ $json.address }}",
         "emailType": "text",
         "message": "=Address: {{ $json.address }}\nDecision: NO-GO\nReason: {{ $json.reason }}\n\nDeal archived. No action required.",
         "options": {}
@@ -690,7 +690,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "POST",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/automation/log",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/automation/log",
         "sendBody": true,
         "contentType": "json",
         "jsonBody": "={{ JSON.stringify({ event: 'deal_intake', trigger: 'webhook', address: $('Deal Intake: Validate').item.json.address, decision: $('Deal Intake: Flip Analysis').item.json.decision, roi: $('Deal Intake: Flip Analysis').item.json.roi, deal_id: (function(){ try { return $('Deal Intake: Create Deal').item.json?.id || null; } catch(e) { return null; } })(), property_id: (function(){ try { return $('Deal Intake: Resolve Property').item.json?.property_id || null; } catch(e) { return null; } })(), timestamp: new Date().toISOString() }) }}"
@@ -741,7 +741,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "GET",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/leads/{{ $('Hot Lead: Validate').item.json.lead_id }}"
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/leads/{{ $('Hot Lead: Validate').item.json.lead_id }}"
       }
     },
     {
@@ -785,7 +785,7 @@
         "operation": "send",
         "from": "={{ $env.TWILIO_PHONE_NUMBER }}",
         "to": "={{ $env.DYNASTY_OWNER_PHONE }}",
-        "message": "=🔥 Dynasty OS HOT LEAD!\nLead: {{ $('Hot Lead: Validate').item.json.lead_id }}\nScore: {{ $('Hot Lead: Score').item.json.score }}/100\n{{ $('Hot Lead: Validate').item.json.address || '' }}\nAction required NOW."
+        "message": "=ðŸ”¥ Dynasty OS HOT LEAD!\nLead: {{ $('Hot Lead: Validate').item.json.lead_id }}\nScore: {{ $('Hot Lead: Score').item.json.score }}/100\n{{ $('Hot Lead: Validate').item.json.address || '' }}\nAction required NOW."
       }
     },
     {
@@ -798,9 +798,9 @@
       "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
       "parameters": {
         "sendTo": "sdthompson35@gmail.com",
-        "subject": "=🔥 Dynasty OS HOT LEAD — Score {{ $('Hot Lead: Score').item.json.score }}/100",
+        "subject": "=ðŸ”¥ Dynasty OS HOT LEAD â€” Score {{ $('Hot Lead: Score').item.json.score }}/100",
         "emailType": "text",
-        "message": "=🔥 HOT LEAD DETECTED\n\nLead ID: {{ $('Hot Lead: Validate').item.json.lead_id }}\nScore: {{ $('Hot Lead: Score').item.json.score }}/100\nAddress: {{ $('Hot Lead: Validate').item.json.address || 'N/A' }}\n\nContact immediately — top-tier score, time-sensitive.\n\nLog in to Dynasty OS to take action.",
+        "message": "=ðŸ”¥ HOT LEAD DETECTED\n\nLead ID: {{ $('Hot Lead: Validate').item.json.lead_id }}\nScore: {{ $('Hot Lead: Score').item.json.score }}/100\nAddress: {{ $('Hot Lead: Validate').item.json.address || 'N/A' }}\n\nContact immediately â€” top-tier score, time-sensitive.\n\nLog in to Dynasty OS to take action.",
         "options": {}
       }
     },
@@ -816,7 +816,7 @@
         "resource": "message",
         "operation": "post",
         "channel": "#dynasty-squad-review",
-        "text": "=🌡️ Warm Lead — Score: {{ $('Hot Lead: Score').item.json.score }}/100\nLead ID: {{ $('Hot Lead: Validate').item.json.lead_id }}\n{{ $('Hot Lead: Validate').item.json.address ? 'Address: ' + $('Hot Lead: Validate').item.json.address : '' }}\n→ Add to nurture sequence.",
+        "text": "=ðŸŒ¡ï¸ Warm Lead â€” Score: {{ $('Hot Lead: Score').item.json.score }}/100\nLead ID: {{ $('Hot Lead: Validate').item.json.lead_id }}\n{{ $('Hot Lead: Validate').item.json.address ? 'Address: ' + $('Hot Lead: Validate').item.json.address : '' }}\nâ†’ Add to nurture sequence.",
         "otherOptions": {}
       }
     },
@@ -829,7 +829,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "POST",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/automation/log",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/automation/log",
         "sendBody": true,
         "contentType": "json",
         "jsonBody": "={{ JSON.stringify({ event: 'hot_lead_detected', trigger: 'webhook', lead_id: $('Hot Lead: Validate').item.json.lead_id, score: $('Hot Lead: Score').item.json.score, timestamp: new Date().toISOString() }) }}"
@@ -899,7 +899,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "POST",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/deal/approve",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/deal/approve",
         "sendBody": true,
         "contentType": "json",
         "jsonBody": "={{ JSON.stringify({ deal_id: $('Deal Status: Validate').item.json.deal_id, decision: 'GO', approved_by: 'dynasty_os_automation', notes: $('Deal Status: Validate').item.json.notes || '' }) }}"
@@ -917,7 +917,7 @@
         "resource": "message",
         "operation": "post",
         "channel": "#dynasty-squad-review",
-        "text": "=✅ *DEAL APPROVED* — ID: {{ $('Deal Status: Validate').item.json.deal_id }}\n{{ $('Deal Status: Validate').item.json.notes ? 'Notes: ' + $('Deal Status: Validate').item.json.notes : '' }}\n\nNext steps: Capital allocation → Acquisition → Rehab plan.",
+        "text": "=âœ… *DEAL APPROVED* â€” ID: {{ $('Deal Status: Validate').item.json.deal_id }}\n{{ $('Deal Status: Validate').item.json.notes ? 'Notes: ' + $('Deal Status: Validate').item.json.notes : '' }}\n\nNext steps: Capital allocation â†’ Acquisition â†’ Rehab plan.",
         "otherOptions": {}
       }
     },
@@ -930,7 +930,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "GET",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/capital/available"
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/capital/available"
       }
     },
     {
@@ -945,7 +945,7 @@
         "resource": "message",
         "operation": "post",
         "channel": "#capital-command",
-        "text": "=⚠️ *CAPITAL GAP* — Deal: {{ $('Deal Status: Validate').item.json.deal_id }}\nGap: ${{ Number($('Deal Status: Validate').item.json.gap_amount || 0).toLocaleString() }}\nAvailable: ${{ Number($('Deal Status: CAP GAP - Get Capital').item.json.total_available || 0).toLocaleString() }}\n\n→ Review investor pipeline and fund sources.",
+        "text": "=âš ï¸ *CAPITAL GAP* â€” Deal: {{ $('Deal Status: Validate').item.json.deal_id }}\nGap: ${{ Number($('Deal Status: Validate').item.json.gap_amount || 0).toLocaleString() }}\nAvailable: ${{ Number($('Deal Status: CAP GAP - Get Capital').item.json.total_available || 0).toLocaleString() }}\n\nâ†’ Review investor pipeline and fund sources.",
         "otherOptions": {}
       }
     },
@@ -961,7 +961,7 @@
         "operation": "send",
         "from": "={{ $env.TWILIO_PHONE_NUMBER }}",
         "to": "={{ $env.DYNASTY_OWNER_PHONE }}",
-        "message": "=⚠️ Dynasty: Project DELAYED\nDeal: {{ $('Deal Status: Validate').item.json.deal_id }}\nDays: {{ $('Deal Status: Validate').item.json.days_delayed || 'TBD' }}\nReason: {{ $('Deal Status: Validate').item.json.delay_reason || 'See Slack' }}"
+        "message": "=âš ï¸ Dynasty: Project DELAYED\nDeal: {{ $('Deal Status: Validate').item.json.deal_id }}\nDays: {{ $('Deal Status: Validate').item.json.days_delayed || 'TBD' }}\nReason: {{ $('Deal Status: Validate').item.json.delay_reason || 'See Slack' }}"
       }
     },
     {
@@ -976,7 +976,7 @@
         "resource": "message",
         "operation": "post",
         "channel": "#atlas-alerts",
-        "text": "=🚨 *ATLAS DELAY ALERT*\nDeal: {{ $('Deal Status: Validate').item.json.deal_id }}\nDays Delayed: {{ $('Deal Status: Validate').item.json.days_delayed || 'Unknown' }}\nReason: {{ $('Deal Status: Validate').item.json.delay_reason || 'Not specified' }}\n\n→ Review timeline and exit-strategy impact.",
+        "text": "=ðŸš¨ *ATLAS DELAY ALERT*\nDeal: {{ $('Deal Status: Validate').item.json.deal_id }}\nDays Delayed: {{ $('Deal Status: Validate').item.json.days_delayed || 'Unknown' }}\nReason: {{ $('Deal Status: Validate').item.json.delay_reason || 'Not specified' }}\n\nâ†’ Review timeline and exit-strategy impact.",
         "otherOptions": {}
       }
     },
@@ -989,7 +989,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "GET",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/capital/investors"
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/capital/investors"
       }
     },
     {
@@ -1002,7 +1002,7 @@
       "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
       "parameters": {
         "sendTo": "sdthompson35@gmail.com",
-        "subject": "=👥 Dynasty OS: Investor Interest — Deal {{ $('Deal Status: Validate').item.json.deal_id }}",
+        "subject": "=ðŸ‘¥ Dynasty OS: Investor Interest â€” Deal {{ $('Deal Status: Validate').item.json.deal_id }}",
         "emailType": "text",
         "message": "=Investor interest logged for Deal {{ $('Deal Status: Validate').item.json.deal_id }}\n\nInvestor: {{ $('Deal Status: Validate').item.json.investor_name || 'Unknown' }}\nInterest level: {{ $('Deal Status: Validate').item.json.interest_level || 'N/A' }}\nNotes: {{ $('Deal Status: Validate').item.json.notes || 'None' }}\n\nReview and schedule follow-up call.",
         "options": {}
@@ -1017,7 +1017,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "POST",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/automation/log",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/automation/log",
         "sendBody": true,
         "contentType": "json",
         "jsonBody": "={{ JSON.stringify({ event: 'deal_status_changed', deal_id: $('Deal Status: Validate').item.json.deal_id, status: $('Deal Status: Validate').item.json.status, timestamp: new Date().toISOString() }) }}"
@@ -1055,7 +1055,7 @@
       "typeVersion": 4.2,
       "position": [3900, 340],
       "continueOnFail": true,
-      "parameters": { "method": "GET", "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/capital/available" }
+      "parameters": { "method": "GET", "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/capital/available" }
     },
     {
       "id": "cap-investors-http",
@@ -1064,7 +1064,7 @@
       "typeVersion": 4.2,
       "position": [3900, 600],
       "continueOnFail": true,
-      "parameters": { "method": "GET", "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/capital/investors" }
+      "parameters": { "method": "GET", "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/capital/investors" }
     },
     {
       "id": "cap-ai-brief",
@@ -1098,7 +1098,7 @@
       "position": [3900, 1020],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const content = $json?.message?.content;\nif (content) return [{ json: { aiText: content, aiError: false } }];\ntry {\n  const body = $('Capital Gap: Webhook').item.json.body ?? $('Capital Gap: Webhook').item.json;\n  return [{ json: {\n    aiText: `Capital Gap Alert\\n• Gap Amount: $${Number(body.gap_amount || 0).toLocaleString()}\\n• Deal ID: ${body.deal_id || 'N/A'}\\n\\nAction required: Review capital sources and investor pipeline. AI brief unavailable.`,\n    aiError: true\n  }}];\n} catch(e) {\n  return [{ json: { aiText: 'Capital gap detected. Review capital sources immediately. AI brief unavailable.', aiError: true } }];\n}"
+        "jsCode": "const content = $json?.message?.content;\nif (content) return [{ json: { aiText: content, aiError: false } }];\ntry {\n  const body = $('Capital Gap: Webhook').item.json.body ?? $('Capital Gap: Webhook').item.json;\n  return [{ json: {\n    aiText: `Capital Gap Alert\\nâ€¢ Gap Amount: $${Number(body.gap_amount || 0).toLocaleString()}\\nâ€¢ Deal ID: ${body.deal_id || 'N/A'}\\n\\nAction required: Review capital sources and investor pipeline. AI brief unavailable.`,\n    aiError: true\n  }}];\n} catch(e) {\n  return [{ json: { aiText: 'Capital gap detected. Review capital sources immediately. AI brief unavailable.', aiError: true } }];\n}"
       }
     },
     {
@@ -1113,7 +1113,7 @@
         "resource": "message",
         "operation": "post",
         "channel": "#capital-command",
-        "text": "=💰 *CAPITAL GAP ALERT*\n\n{{ $json.aiText }}",
+        "text": "=ðŸ’° *CAPITAL GAP ALERT*\n\n{{ $json.aiText }}",
         "otherOptions": {}
       }
     },
@@ -1127,7 +1127,7 @@
       "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
       "parameters": {
         "sendTo": "sdthompson35@gmail.com",
-        "subject": "💰 Dynasty OS: Capital Gap — Action Required",
+        "subject": "ðŸ’° Dynasty OS: Capital Gap â€” Action Required",
         "emailType": "text",
         "message": "={{ $('Capital Gap: AI Fallback').item.json.aiText }}",
         "options": {}
@@ -1142,7 +1142,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "POST",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/automation/log",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/automation/log",
         "sendBody": true,
         "contentType": "json",
         "jsonBody": "={{ JSON.stringify({ event: 'capital_gap_detected', ai_error: $('Capital Gap: AI Fallback').item.json.aiError || false, timestamp: new Date().toISOString() }) }}"
@@ -1193,7 +1193,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "GET",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/deal/{{ $('Draw Request: Validate').item.json.deal_id }}"
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/deal/{{ $('Draw Request: Validate').item.json.deal_id }}"
       }
     },
     {
@@ -1228,7 +1228,7 @@
       "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
       "parameters": {
         "sendTo": "sdthompson35@gmail.com",
-        "subject": "=✅ Draw Approved — ${{ Number($('Draw Request: Validate').item.json.draw_amount).toLocaleString() }} | {{ $('Draw Request: Validate').item.json.milestone }}",
+        "subject": "=âœ… Draw Approved â€” ${{ Number($('Draw Request: Validate').item.json.draw_amount).toLocaleString() }} | {{ $('Draw Request: Validate').item.json.milestone }}",
         "emailType": "text",
         "message": "=Draw approved and released.\n\nDeal ID: {{ $('Draw Request: Validate').item.json.deal_id }}\nMilestone: {{ $('Draw Request: Validate').item.json.milestone }}\nAmount: ${{ Number($('Draw Request: Validate').item.json.draw_amount).toLocaleString() }}\nGC/Vendor: {{ $('Draw Request: Validate').item.json.gc_name || 'On file' }}",
         "options": {}
@@ -1246,7 +1246,7 @@
         "resource": "message",
         "operation": "post",
         "channel": "#dynasty-squad-review",
-        "text": "=✅ Draw Released: ${{ Number($('Draw Request: Validate').item.json.draw_amount).toLocaleString() }} — {{ $('Draw Request: Validate').item.json.milestone }}\nDeal {{ $('Draw Request: Validate').item.json.deal_id }}",
+        "text": "=âœ… Draw Released: ${{ Number($('Draw Request: Validate').item.json.draw_amount).toLocaleString() }} â€” {{ $('Draw Request: Validate').item.json.milestone }}\nDeal {{ $('Draw Request: Validate').item.json.deal_id }}",
         "otherOptions": {}
       }
     },
@@ -1262,7 +1262,7 @@
         "resource": "message",
         "operation": "post",
         "channel": "#atlas-alerts",
-        "text": "=🚨 *Draw FLAGGED — Over Budget*\nDeal: {{ $('Draw Request: Validate').item.json.deal_id }}\nRequested: ${{ Number($('Draw Request: Validate').item.json.draw_amount).toLocaleString() }}\nMilestone: {{ $('Draw Request: Validate').item.json.milestone }}\n\n→ Manual review required before release.",
+        "text": "=ðŸš¨ *Draw FLAGGED â€” Over Budget*\nDeal: {{ $('Draw Request: Validate').item.json.deal_id }}\nRequested: ${{ Number($('Draw Request: Validate').item.json.draw_amount).toLocaleString() }}\nMilestone: {{ $('Draw Request: Validate').item.json.milestone }}\n\nâ†’ Manual review required before release.",
         "otherOptions": {}
       }
     },
@@ -1275,7 +1275,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "POST",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/automation/log",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/automation/log",
         "sendBody": true,
         "contentType": "json",
         "jsonBody": "={{ JSON.stringify({ event: 'draw_request_submitted', deal_id: $('Draw Request: Validate').item.json.deal_id, draw_amount: $('Draw Request: Validate').item.json.draw_amount, milestone: $('Draw Request: Validate').item.json.milestone, timestamp: new Date().toISOString() }) }}"
@@ -1315,7 +1315,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "GET",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/deal/{{ ($json.body || $json).deal_id }}"
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/deal/{{ ($json.body || $json).deal_id }}"
       }
     },
     {
@@ -1350,7 +1350,7 @@
       "position": [5180, 760],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const content = $json?.message?.content;\nif (content) return [{ json: { aiText: content, aiError: false } }];\ntry {\n  const body = $('Project Delay: Webhook').item.json.body ?? $('Project Delay: Webhook').item.json;\n  return [{ json: {\n    aiText: `ATLAS Delay Alert\\n• Deal: ${body.deal_id || 'N/A'}\\n• Days Delayed: ${body.days_delayed || 'TBD'}\\n• Reason: ${body.delay_reason || 'Not specified'}\\n\\nReview timeline and exit-strategy impact immediately. AI analysis unavailable.`,\n    aiError: true\n  }}];\n} catch(e) {\n  return [{ json: { aiText: 'Project delay detected. Review timeline immediately. AI analysis unavailable.', aiError: true } }];\n}"
+        "jsCode": "const content = $json?.message?.content;\nif (content) return [{ json: { aiText: content, aiError: false } }];\ntry {\n  const body = $('Project Delay: Webhook').item.json.body ?? $('Project Delay: Webhook').item.json;\n  return [{ json: {\n    aiText: `ATLAS Delay Alert\\nâ€¢ Deal: ${body.deal_id || 'N/A'}\\nâ€¢ Days Delayed: ${body.days_delayed || 'TBD'}\\nâ€¢ Reason: ${body.delay_reason || 'Not specified'}\\n\\nReview timeline and exit-strategy impact immediately. AI analysis unavailable.`,\n    aiError: true\n  }}];\n} catch(e) {\n  return [{ json: { aiText: 'Project delay detected. Review timeline immediately. AI analysis unavailable.', aiError: true } }];\n}"
       }
     },
     {
@@ -1365,7 +1365,7 @@
         "operation": "send",
         "from": "={{ $env.TWILIO_PHONE_NUMBER }}",
         "to": "={{ $env.DYNASTY_OWNER_PHONE }}",
-        "message": "=🚨 ATLAS: Project delayed! Deal {{ ($('Project Delay: Webhook').item.json.body || $('Project Delay: Webhook').item.json).deal_id }}. Days: {{ ($('Project Delay: Webhook').item.json.body || $('Project Delay: Webhook').item.json).days_delayed }}. Check Slack for impact analysis."
+        "message": "=ðŸš¨ ATLAS: Project delayed! Deal {{ ($('Project Delay: Webhook').item.json.body || $('Project Delay: Webhook').item.json).deal_id }}. Days: {{ ($('Project Delay: Webhook').item.json.body || $('Project Delay: Webhook').item.json).days_delayed }}. Check Slack for impact analysis."
       }
     },
     {
@@ -1380,7 +1380,7 @@
         "resource": "message",
         "operation": "post",
         "channel": "#atlas-alerts",
-        "text": "=🚨 *ATLAS DELAY ALERT*\n\n{{ $('Project Delay: AI Fallback').item.json.aiText }}",
+        "text": "=ðŸš¨ *ATLAS DELAY ALERT*\n\n{{ $('Project Delay: AI Fallback').item.json.aiText }}",
         "otherOptions": {}
       }
     },
@@ -1394,7 +1394,7 @@
       "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
       "parameters": {
         "sendTo": "sdthompson35@gmail.com",
-        "subject": "=🚨 Dynasty ATLAS: Project Delay — Deal {{ ($('Project Delay: Webhook').item.json.body || $('Project Delay: Webhook').item.json).deal_id }}",
+        "subject": "=ðŸš¨ Dynasty ATLAS: Project Delay â€” Deal {{ ($('Project Delay: Webhook').item.json.body || $('Project Delay: Webhook').item.json).deal_id }}",
         "emailType": "text",
         "message": "={{ $('Project Delay: AI Fallback').item.json.aiText }}",
         "options": {}
@@ -1409,7 +1409,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "POST",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/automation/log",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/automation/log",
         "sendBody": true,
         "contentType": "json",
         "jsonBody": "={{ JSON.stringify({ event: 'project_delayed', deal_id: ($('Project Delay: Webhook').item.json.body || $('Project Delay: Webhook').item.json).deal_id, days_delayed: ($('Project Delay: Webhook').item.json.body || $('Project Delay: Webhook').item.json).days_delayed, ai_error: $('Project Delay: AI Fallback').item.json.aiError || false, timestamp: new Date().toISOString() }) }}"
@@ -1447,7 +1447,7 @@
       "typeVersion": 4.2,
       "position": [5820, 340],
       "continueOnFail": true,
-      "parameters": { "method": "GET", "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/capital/investors" }
+      "parameters": { "method": "GET", "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/capital/investors" }
     },
     {
       "id": "inv-ai-outreach",
@@ -1466,7 +1466,7 @@
         "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" },
         "messages": {
           "values": [
-            { "role": "system", "content": "You are Dynasty OS. Draft a professional investor package announcement. Lead with projected returns and timeline. Include deal highlights and a clear call to action. Keep under 250 words — investors are busy." },
+            { "role": "system", "content": "You are Dynasty OS. Draft a professional investor package announcement. Lead with projected returns and timeline. Include deal highlights and a clear call to action. Keep under 250 words â€” investors are busy." },
             { "role": "user",   "content": "=Package details: {{ JSON.stringify(($('Investor Package: Webhook').item.json.body || $('Investor Package: Webhook').item.json)) }}\nActive investors: {{ JSON.stringify($('Investor Package: Get Investors').item.json) }}" }
           ]
         },
@@ -1481,7 +1481,7 @@
       "position": [5820, 760],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const content = $json?.message?.content;\nif (content) return [{ json: { aiText: content, aiError: false } }];\ntry {\n  const body = $('Investor Package: Webhook').item.json.body ?? $('Investor Package: Webhook').item.json;\n  return [{ json: {\n    aiText: `Investor Package — ${body.deal_name || 'New Deal'}\\n\\nContact Dynasty OS to review this investor package. AI outreach unavailable — manual follow-up required.`,\n    aiError: true\n  }}];\n} catch(e) {\n  return [{ json: { aiText: 'Investor package ready for review. Contact Dynasty OS. AI outreach unavailable.', aiError: true } }];\n}"
+        "jsCode": "const content = $json?.message?.content;\nif (content) return [{ json: { aiText: content, aiError: false } }];\ntry {\n  const body = $('Investor Package: Webhook').item.json.body ?? $('Investor Package: Webhook').item.json;\n  return [{ json: {\n    aiText: `Investor Package â€” ${body.deal_name || 'New Deal'}\\n\\nContact Dynasty OS to review this investor package. AI outreach unavailable â€” manual follow-up required.`,\n    aiError: true\n  }}];\n} catch(e) {\n  return [{ json: { aiText: 'Investor package ready for review. Contact Dynasty OS. AI outreach unavailable.', aiError: true } }];\n}"
       }
     },
     {
@@ -1494,7 +1494,7 @@
       "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
       "parameters": {
         "sendTo": "sdthompson35@gmail.com",
-        "subject": "=📊 Dynasty OS: Investor Package — {{ ($('Investor Package: Webhook').item.json.body || $('Investor Package: Webhook').item.json).deal_name || 'New Deal' }}",
+        "subject": "=ðŸ“Š Dynasty OS: Investor Package â€” {{ ($('Investor Package: Webhook').item.json.body || $('Investor Package: Webhook').item.json).deal_name || 'New Deal' }}",
         "emailType": "text",
         "message": "={{ $json.aiText }}",
         "options": {}
@@ -1512,7 +1512,7 @@
         "resource": "message",
         "operation": "post",
         "channel": "#dynasty-squad-review",
-        "text": "=📊 *Investor Package Ready*\n\n{{ $('Investor Package: AI Fallback').item.json.aiText }}",
+        "text": "=ðŸ“Š *Investor Package Ready*\n\n{{ $('Investor Package: AI Fallback').item.json.aiText }}",
         "otherOptions": {}
       }
     },
@@ -1525,7 +1525,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "POST",
-        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/automation/log",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/automation/log",
         "sendBody": true,
         "contentType": "json",
         "jsonBody": "={{ JSON.stringify({ event: 'investor_package_generated', deal_name: ($('Investor Package: Webhook').item.json.body || $('Investor Package: Webhook').item.json).deal_name, ai_error: $('Investor Package: AI Fallback').item.json.aiError || false, timestamp: new Date().toISOString() }) }}"
@@ -1868,3 +1868,4 @@
   },
   "pinData": {}
 }
+
