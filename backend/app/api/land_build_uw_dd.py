@@ -285,20 +285,46 @@ def evaluate_against_buybox(
 @router.post("/offer-calculation", status_code=200)
 def calculate_optimal_offer(payload: OfferCalculationRequest):
     """Calculate optimal offer price based on deal parameters."""
-    from dynasty_os.engines.land_build_uw_dd_engine import OfferCalculationEngine
-    
-    engine = OfferCalculationEngine()
-    result = engine.calculate_offer(
-        property_id=payload.property_id,
-        arv=payload.arv,
-        repair_cost=payload.repair_cost,
-        exit_strategy=payload.exit_strategy,
-        target_roi=payload.target_roi,
-        holding_cost_monthly=payload.holding_cost_monthly,
-        holding_months=payload.holding_months,
-    )
-    
-    return {"offer": result, "metrics": engine.get_metrics()}
+    try:
+        from dynasty_os.engines.land_build_uw_dd_engine import OfferCalculationEngine
+
+        engine = OfferCalculationEngine()
+        result = engine.calculate_offer(
+            property_id=payload.property_id,
+            arv=payload.arv,
+            repair_cost=payload.repair_cost,
+            exit_strategy=payload.exit_strategy,
+            target_roi=payload.target_roi,
+            holding_cost_monthly=payload.holding_cost_monthly,
+            holding_months=payload.holding_months,
+        )
+        return {"offer": result, "metrics": engine.get_metrics(), "fallback": False}
+    except ModuleNotFoundError:
+        holding_cost = payload.holding_cost_monthly * payload.holding_months
+        target_profit = payload.arv * payload.target_roi
+        closing_buffer = payload.arv * 0.03
+        selling_buffer = payload.arv * 0.06 if payload.exit_strategy.lower() in {"flip", "fix & flip"} else 0
+        recommended_offer = max(0, payload.arv - payload.repair_cost - holding_cost - closing_buffer - selling_buffer - target_profit)
+        total_project_cost = recommended_offer + payload.repair_cost + holding_cost + closing_buffer + selling_buffer
+        expected_profit = max(0, payload.arv - total_project_cost)
+        roi = expected_profit / total_project_cost if total_project_cost else 0
+        return {
+            "offer": {
+                "property_id": payload.property_id,
+                "recommended_offer": round(recommended_offer, 2),
+                "max_allowable_offer": round(recommended_offer, 2),
+                "arv": payload.arv,
+                "repair_cost": payload.repair_cost,
+                "holding_cost": round(holding_cost, 2),
+                "target_profit": round(target_profit, 2),
+                "expected_profit": round(expected_profit, 2),
+                "roi": round(roi, 4),
+                "exit_strategy": payload.exit_strategy,
+                "decision": "BUY" if roi >= payload.target_roi else "REVIEW",
+            },
+            "metrics": {"engine": "deterministic_fallback", "optional_engine_available": False},
+            "fallback": True,
+        }
 
 
 @router.get("/metrics", status_code=200)
