@@ -1,0 +1,73 @@
+{
+  "name": "07 - ARV Engine",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "ARV Request Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "arv-engine", "httpMethod": "POST", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "fetch-comps",
+      "name": "Fetch Local Comps",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/property/{{ $json.property_id }}/comps",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "calculate-arv",
+      "name": "Calculate ARV",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/deal/arv",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ address: $('ARV Request Webhook').first().json.address, sqft: $('ARV Request Webhook').first().json.sqft, beds: $('ARV Request Webhook').first().json.beds, baths: $('ARV Request Webhook').first().json.baths, comps: $('Fetch Local Comps').first().json.comps || [] }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "update-deal",
+      "name": "Update Deal ARV",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [900, 300],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/deal/{{ $('ARV Request Webhook').first().json.deal_id }}",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ arv: $json.arv }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "respond",
+      "name": "Return ARV",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [1120, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($('Calculate ARV').first().json) }}"
+      },
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "ARV Request Webhook": { "main": [[{ "node": "Fetch Local Comps", "type": "main", "index": 0 }]] },
+    "Fetch Local Comps": { "main": [[{ "node": "Calculate ARV", "type": "main", "index": 0 }]] },
+    "Calculate ARV": { "main": [[{ "node": "Update Deal ARV", "type": "main", "index": 0 }]] },
+    "Update Deal ARV": { "main": [[{ "node": "Return ARV", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Deal Engine", "ARV"]
+}

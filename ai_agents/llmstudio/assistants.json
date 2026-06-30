@@ -1,0 +1,55 @@
+{
+  "version": "1.0.0",
+  "assistants": [
+    {
+      "id": "acquisition_assistant",
+      "name": "Acquisition Assistant",
+      "primary_agent": "investor",
+      "handoff_agents": ["appraiser", "lender"],
+      "goal": "Find and qualify acquisitions with clean assumptions"
+    },
+    {
+      "id": "underwriting_assistant",
+      "name": "Underwriting Assistant",
+      "primary_agent": "appraiser",
+      "handoff_agents": ["investor", "accounting"],
+      "goal": "Produce defensible ARV, cost, and margin estimates"
+    },
+    {
+      "id": "construction_assistant",
+      "name": "Construction Assistant",
+      "primary_agent": "contractor",
+      "handoff_agents": ["architect", "accounting"],
+      "goal": "Create sequenced scope and rehab budget plans"
+    },
+    {
+      "id": "portfolio_assistant",
+      "name": "Portfolio Assistant",
+      "primary_agent": "property_manager",
+      "handoff_agents": ["accounting", "investor"],
+      "goal": "Optimize rent operations and hold performance"
+    },
+    {
+      "id": "capital_assistant",
+      "name": "Capital Assistant",
+      "primary_agent": "lender",
+      "handoff_agents": ["investor", "accounting"],
+      "goal": "Match projects to debt and capital structures"
+    },
+    {
+      "id": "executive_assistant",
+      "name": "Executive Assistant",
+      "primary_agent": "orchestrator",
+      "handoff_agents": [
+        "investor",
+        "lender",
+        "appraiser",
+        "contractor",
+        "architect",
+        "property_manager",
+        "accounting"
+      ],
+      "goal": "Coordinate all specialist agents for end-to-end decisions"
+    }
+  ]
+}

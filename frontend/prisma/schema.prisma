@@ -1,0 +1,511 @@
+generator client {
+    provider        = "prisma-client-js"
+    binaryTargets   = ["native"]
+    previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+    schemas  = ["dynasty"]
+}
+
+model User {
+  id            String     @id @default(cuid())
+  name          String?
+  email         String?    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          String     @default("INVESTOR")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  accounts             Account[]
+  sessions             Session[]
+  properties           Property[]
+  shares               DealShare[]
+  documents            PropertyDocument[]
+  contacts             Contact[]
+  images               PropertyImage[]
+  leads                Lead[]
+  deals                Deal[]
+  investors            Investor[]
+  capitalTransactions  CapitalTransaction[]
+  projects             Project[]
+  buyers               Buyer[]
+  dispositions         Disposition[]
+
+  @@index([email])
+  @@schema("dynasty")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@schema("dynasty")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@schema("dynasty")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@schema("dynasty")
+}
+
+model Property {
+  id             String   @id @default(cuid())
+  userId         String
+  address        String
+  city           String
+  state          String
+  zip            String?
+  propertyType   String   @default("single-family")
+  bedrooms       Int?
+  bathrooms      Float?
+  sqft           Int?
+  lotSize        Float?
+  yearBuilt      Int?
+  purchasePrice  Decimal? @db.Decimal(14, 2)
+  currentValue   Decimal? @db.Decimal(14, 2)
+  status         String   @default("prospect")
+  photoUrl       String?  @db.Text
+  notes          String?  @db.Text
+  virtualTourUrl String?  @db.Text
+  arv            Decimal? @db.Decimal(14, 2)
+  repairCosts    Decimal? @db.Decimal(14, 2)
+  holdingCosts   Decimal? @db.Decimal(14, 2)
+  closingCosts   Decimal? @db.Decimal(14, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rehabItems     RehabItem[]
+  shares         DealShare[]
+  documents      PropertyDocument[]
+  contactLinks   PropertyContact[]
+  draws          Draw[]
+  images         PropertyImage[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, propertyType])
+  @@index([userId, updatedAt])
+  @@schema("dynasty")
+}
+
+model RehabItem {
+  id          String   @id @default(cuid())
+  propertyId  String
+  room        String   @default("General")
+  category    String   @default("Materials")
+  description String
+  quantity    Float    @default(1)
+  unitCost    Decimal  @default(0) @db.Decimal(14, 2)
+  status      String   @default("planned")
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@schema("dynasty")
+}
+
+model Draw {
+  id            String    @id @default(cuid())
+  propertyId    String
+  name          String
+  description   String?   @db.Text
+  amount        Decimal   @default(0) @db.Decimal(14, 2)
+  status        String    @default("pending")
+  sortOrder     Int       @default(0)
+  scheduledDate DateTime?
+  fundedDate    DateTime?
+  lender        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  property      Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@schema("dynasty")
+}
+
+model DealShare {
+  id             String   @id @default(cuid())
+  propertyId     String
+  userId         String
+  token          String   @unique
+  title          String?
+  message        String?  @db.Text
+  preparedBy     String?
+  contactEmail   String?
+  showFinancials Boolean  @default(true)
+  showRehab      Boolean  @default(true)
+  isActive       Boolean  @default(true)
+  viewCount      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  property       Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@index([userId])
+  @@index([token])
+  @@schema("dynasty")
+}
+
+model PropertyDocument {
+  id               String   @id @default(cuid())
+  propertyId       String
+  userId           String
+  fileName         String
+  cloudStoragePath String   @db.Text
+  contentType      String   @default("application/octet-stream")
+  fileSize         Int      @default(0)
+  category         String   @default("other")
+  isPublic         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  property         Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@index([userId])
+  @@index([propertyId, category])
+  @@schema("dynasty")
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  role      String   @default("other")
+  email     String?
+  phone     String?
+  company   String?
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  links     PropertyContact[]
+
+  @@index([userId])
+  @@index([userId, role])
+  @@schema("dynasty")
+}
+
+model PropertyImage {
+  id               String   @id @default(cuid())
+  propertyId       String
+  userId           String
+  url              String   @db.Text
+  cloudStoragePath String   @db.Text
+  caption          String?
+  isPrimary        Boolean  @default(false)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  property         Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@index([userId])
+  @@index([propertyId, sortOrder])
+  @@schema("dynasty")
+}
+
+model PropertyContact {
+  id                   String   @id @default(cuid())
+  propertyId           String
+  contactId            String
+  userId               String
+  roleOnDeal           String?
+  relationshipType     String?
+  dealResponsibility   String?  @db.Text
+  status               String   @default("active")
+  nextActionDate       DateTime?
+  lastContacted        DateTime?
+  documentsNeeded      String?  @db.Text
+  paymentOwed          Decimal? @db.Decimal(14, 2)
+  receivesUpdates      Boolean  @default(false)
+  communicationHistory String?  @db.Text
+  createdAt            DateTime @default(now())
+  property             Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  contact              Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([propertyId, contactId])
+  @@index([propertyId])
+  @@index([contactId])
+  @@index([userId])
+  @@index([propertyId, status])
+  @@index([propertyId, nextActionDate])
+  @@schema("dynasty")
+}
+
+// ─── LEAD ENGINE ─────────────────────────────────────────────────────────────
+
+model Lead {
+  id             String    @id @default(cuid())
+  userId         String
+  leadType       String    @default("seller")
+  source         String    @default("direct")
+  score          Int       @default(0)
+  status         String    @default("new")
+  stage          String    @default("intake")
+  firstName      String?
+  lastName       String?
+  email          String?
+  phone          String?
+  address        String?
+  city           String?
+  state          String?
+  zip            String?
+  motivation     String?
+  equity         Decimal?  @db.Decimal(14, 2)
+  askingPrice    Decimal?  @db.Decimal(14, 2)
+  notes          String?   @db.Text
+  nextAction     String?
+  nextActionDate DateTime?
+  owner          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, leadType])
+  @@index([userId, status])
+  @@schema("dynasty")
+}
+
+// ─── DEAL ENGINE ──────────────────────────────────────────────────────────────
+
+model Deal {
+  id               String    @id @default(cuid())
+  userId           String
+  propertyId       String?
+  address          String
+  city             String
+  state            String
+  zip              String?
+  exitStrategy     String    @default("wholesale")
+  status           String    @default("intake")
+  purchasePrice    Decimal?  @db.Decimal(14, 2)
+  arv              Decimal?  @db.Decimal(14, 2)
+  repairCosts      Decimal?  @db.Decimal(14, 2)
+  holdingCosts     Decimal?  @db.Decimal(14, 2)
+  closingCosts     Decimal?  @db.Decimal(14, 2)
+  mao              Decimal?  @db.Decimal(14, 2)
+  wholesaleFee     Decimal?  @db.Decimal(14, 2)
+  flipProfit       Decimal?  @db.Decimal(14, 2)
+  rentalEquity     Decimal?  @db.Decimal(14, 2)
+  monthlyCashFlow  Decimal?  @db.Decimal(14, 2)
+  roi              Decimal?  @db.Decimal(8, 4)
+  riskScore        Int       @default(0)
+  decision         String    @default("pending")
+  capitalRequired  Decimal?  @db.Decimal(14, 2)
+  capitalAllocated Decimal?  @db.Decimal(14, 2)
+  notes            String?   @db.Text
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dispositions     Disposition[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, decision])
+  @@schema("dynasty")
+}
+
+// ─── CAPITAL ENGINE ───────────────────────────────────────────────────────────
+
+model Investor {
+  id               String    @id @default(cuid())
+  userId           String
+  name             String
+  entity           String?
+  email            String?
+  phone            String?
+  status           String    @default("prospect")
+  availableCapital Decimal?  @db.Decimal(14, 2)
+  committedCapital Decimal?  @db.Decimal(14, 2)
+  investedCapital  Decimal?  @db.Decimal(14, 2)
+  preferredReturn  Decimal?  @db.Decimal(5, 4)
+  investmentType   String    @default("private_loan")
+  markets          String?
+  notes            String?   @db.Text
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  distributions    InvestorDistribution[]
+  transactions     CapitalTransaction[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@schema("dynasty")
+}
+
+model CapitalTransaction {
+  id         String    @id @default(cuid())
+  userId     String
+  investorId String?
+  dealId     String?
+  type       String
+  amount     Decimal   @db.Decimal(14, 2)
+  date       DateTime  @default(now())
+  status     String    @default("pending")
+  notes      String?   @db.Text
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investor   Investor? @relation(fields: [investorId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([userId, type])
+  @@index([investorId])
+  @@schema("dynasty")
+}
+
+// ─── OPERATIONS ENGINE ────────────────────────────────────────────────────────
+
+model Project {
+  id                String    @id @default(cuid())
+  userId            String
+  propertyId        String?
+  dealId            String?
+  name              String
+  status            String    @default("intake")
+  startDate         DateTime?
+  targetCompletion  DateTime?
+  budget            Decimal?  @db.Decimal(14, 2)
+  actualCost        Decimal?  @db.Decimal(14, 2)
+  completionPercent Int       @default(0)
+  riskScore         Int       @default(0)
+  exitStrategy      String    @default("flip")
+  notes             String?   @db.Text
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks             ProjectTask[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@schema("dynasty")
+}
+
+model ProjectTask {
+  id          String    @id @default(cuid())
+  projectId   String
+  category    String    @default("general")
+  description String
+  assignedTo  String?
+  dueDate     DateTime?
+  status      String    @default("not_started")
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([projectId, status])
+  @@schema("dynasty")
+}
+
+// ─── DISPOSITION ENGINE ───────────────────────────────────────────────────────
+
+model Buyer {
+  id              String    @id @default(cuid())
+  userId          String
+  name            String
+  entity          String?
+  email           String?
+  phone           String?
+  markets         String?
+  criteria        String?   @db.Text
+  buyerType       String    @default("cash")
+  fundingCapacity Decimal?  @db.Decimal(14, 2)
+  closeSpeed      Int?
+  score           Int       @default(0)
+  notes           String?   @db.Text
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dispositions    Disposition[]
+
+  @@index([userId])
+  @@index([userId, buyerType])
+  @@index([userId, active])
+  @@schema("dynasty")
+}
+
+model Disposition {
+  id            String    @id @default(cuid())
+  userId        String
+  propertyId    String?
+  dealId        String?
+  buyerId       String?
+  exitStrategy  String    @default("wholesale")
+  status        String    @default("marketing")
+  listPrice     Decimal?  @db.Decimal(14, 2)
+  salePrice     Decimal?  @db.Decimal(14, 2)
+  netProfit     Decimal?  @db.Decimal(14, 2)
+  daysToExit    Int?
+  closeDate     DateTime?
+  notes         String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  buyer         Buyer?    @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+  deal          Deal?     @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  distributions InvestorDistribution[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, exitStrategy])
+  @@schema("dynasty")
+}
+
+model InvestorDistribution {
+  id            String       @id @default(cuid())
+  userId        String
+  investorId    String
+  dispositionId String?
+  amount        Decimal      @db.Decimal(14, 2)
+  date          DateTime     @default(now())
+  status        String       @default("pending")
+  notes         String?      @db.Text
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  investor      Investor     @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  disposition   Disposition? @relation(fields: [dispositionId], references: [id], onDelete: SetNull)
+
+  @@index([investorId])
+  @@index([dispositionId])
+  @@schema("dynasty")
+}

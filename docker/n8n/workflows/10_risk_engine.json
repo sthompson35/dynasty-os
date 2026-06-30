@@ -1,0 +1,76 @@
+{
+  "name": "10 - Risk Engine",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Risk Score Request",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "risk-engine", "httpMethod": "POST", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "score-risk",
+      "name": "Score Risk",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/deal/risk",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "alert-high-risk",
+      "name": "Alert on HIGH/CRITICAL Risk",
+      "type": "n8n-nodes-base.if",
+      "position": [680, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false },
+          "conditions": [{ "leftValue": "={{ $json.risk_level }}", "rightValue": "LOW", "operator": { "type": "string", "operation": "notEquals" } }]
+        }
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "slack-alert",
+      "name": "Slack Risk Alert",
+      "type": "n8n-nodes-base.slack",
+      "position": [900, 180],
+      "parameters": {
+        "channel": "#deal-desk",
+        "text": "=⚠️ Risk Alert — Deal {{ $json.deal_id || 'Unknown' }}\nRisk Level: {{ $json.risk_level }}\nTotal Score: {{ $json.total_score }}/100\nMarket Risk: {{ $json.market_risk }} | Legal: {{ $json.legal_risk }} | Execution: {{ $json.execution_risk }}",
+        "otherOptions": {}
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "respond",
+      "name": "Return Risk Score",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [900, 420],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($('Score Risk').first().json) }}"
+      },
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Risk Score Request": { "main": [[{ "node": "Score Risk", "type": "main", "index": 0 }]] },
+    "Score Risk": { "main": [[{ "node": "Alert on HIGH/CRITICAL Risk", "type": "main", "index": 0 }]] },
+    "Alert on HIGH/CRITICAL Risk": {
+      "main": [
+        [{ "node": "Slack Risk Alert", "type": "main", "index": 0 }],
+        [{ "node": "Return Risk Score", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Deal Engine", "Risk"]
+}

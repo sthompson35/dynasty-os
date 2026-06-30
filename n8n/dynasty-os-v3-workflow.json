@@ -1,0 +1,1870 @@
+{
+  "name": "Dynasty OS — V3 Automation Command Layer",
+  "nodes": [
+
+    {
+      "id": "dynasty-config",
+      "name": "Dynasty Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [700, 340],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            { "id": "url",           "name": "dynastyApiUrl",     "type": "string", "value": "http://localhost:8010" },
+            { "id": "owner-email",   "name": "ownerEmail",        "type": "string", "value": "sdthompson35@gmail.com" },
+            { "id": "owner-phone",   "name": "ownerPhone",        "type": "string", "value": "" },
+            { "id": "squad-ch",      "name": "squadChannel",      "type": "string", "value": "#dynasty-squad-review" },
+            { "id": "capital-ch",    "name": "capitalChannel",    "type": "string", "value": "#capital-command" },
+            { "id": "atlas-ch",      "name": "atlasChannel",      "type": "string", "value": "#atlas-alerts" },
+            { "id": "daily-ch",      "name": "dailyChannel",      "type": "string", "value": "#dynasty-daily" },
+            { "id": "score-thresh",  "name": "hotLeadThreshold",  "type": "number", "value": 80 }
+          ]
+        },
+        "options": {}
+      }
+    },
+
+    {
+      "id": "trigger-daily-brief",
+      "name": "Daily Brief: Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [700, 80],
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 6 * * 1-5" }]
+        }
+      }
+    },
+    {
+      "id": "http-health",
+      "name": "Daily Brief: Health Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 600],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Dynasty Config').item.json.dynastyApiUrl }}/health",
+        "options": { "timeout": 5000 }
+      }
+    },
+    {
+      "id": "http-lead-stats",
+      "name": "Daily Brief: Lead Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 760],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Dynasty Config').item.json.dynastyApiUrl }}/api/leads/stats"
+      }
+    },
+    {
+      "id": "http-capital",
+      "name": "Daily Brief: Capital Available",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 920],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Dynasty Config').item.json.dynastyApiUrl }}/api/capital/available"
+      }
+    },
+    {
+      "id": "http-capital-deployed",
+      "name": "Daily Brief: Capital Deployed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 1080],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Dynasty Config').item.json.dynastyApiUrl }}/api/capital/deployed"
+      }
+    },
+    {
+      "id": "compile-brief",
+      "name": "Daily Brief: Compile",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 1240],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const config   = $('Dynasty Config').item.json;\nconst health   = $('Daily Brief: Health Check').item.json;\nconst stats    = $('Daily Brief: Lead Stats').item.json;\nconst capital  = $('Daily Brief: Capital Available').item.json;\nconst deployed = $('Daily Brief: Capital Deployed').item.json;\nconst date = new Date().toLocaleDateString('en-US',{ weekday:'long', year:'numeric', month:'long', day:'numeric', timeZone:'America/New_York' });\nreturn [{ json: {\n  date,\n  apiStatus:        health?.ok ? 'ONLINE ✅' : 'OFFLINE ⚠️',\n  totalLeads:       stats?.total ?? 'N/A',\n  hotLeads:         stats?.by_status?.Hot ?? 0,\n  qualifiedLeads:   stats?.by_status?.Qualified ?? 0,\n  gradeALeads:      stats?.by_grade?.A ?? 0,\n  availableCapital: capital?.total_available != null ? `$${Number(capital.total_available).toLocaleString()}` : 'N/A',\n  deployedCapital:  deployed?.total_deployed_allocations != null ? `$${Number(deployed.total_deployed_allocations).toLocaleString()}` : 'N/A',\n  byStatus:         stats?.by_status ?? {},\n}}];"
+      }
+    },
+    {
+      "id": "openai-brief",
+      "name": "Daily Brief: AI Summary",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.7,
+      "position": [700, 1400],
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": { "openAiApi": { "id": "", "name": "OpenAI Account" } },
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" },
+        "messages": {
+          "values": [
+            { "role": "system",  "content": "You are Dynasty OS — Shylow Thompson's real estate investment intelligence system. Write concise, action-oriented daily briefs. Use bullet points. Flag anything requiring immediate attention with 🚨." },
+            { "role": "user",    "content": "=Generate today's Dynasty OS daily brief:\n\n{{ JSON.stringify($json, null, 2) }}" }
+          ]
+        },
+        "options": { "temperature": 0.4, "maxTokens": 600 }
+      }
+    },
+    {
+      "id": "brief-ai-fallback",
+      "name": "Daily Brief: AI Fallback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 1560],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const content = $json?.message?.content;\nif (content) return [{ json: { aiText: content, aiError: false } }];\ntry {\n  const c = $('Daily Brief: Compile').item.json;\n  return [{ json: {\n    aiText: `Dynasty OS Daily Brief — ${c.date || new Date().toDateString()}\\n• API: ${c.apiStatus || 'N/A'}\\n• Hot Leads: ${c.hotLeads || 0} | Grade A: ${c.gradeALeads || 0}\\n• Available Capital: ${c.availableCapital || 'N/A'}\\n• Deployed Capital: ${c.deployedCapital || 'N/A'}\\n\\n⚠️ AI summary unavailable — raw data shown.`,\n    aiError: true\n  }}];\n} catch(e) {\n  return [{ json: { aiText: 'Dynasty OS Daily Brief: AI summary unavailable. Check PropertyOS dashboard.', aiError: true } }];\n}"
+      }
+    },
+    {
+      "id": "slack-brief",
+      "name": "Daily Brief: Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [700, 1720],
+      "continueOnFail": true,
+      "credentials": { "slackApi": { "id": "", "name": "Slack Account" } },
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "={{ $('Dynasty Config').item.json.dailyChannel }}",
+        "text": "=*Dynasty OS Daily Brief — {{ $('Daily Brief: Compile').item.json.date }}*\n\n{{ $json.aiText }}",
+        "otherOptions": {}
+      }
+    },
+    {
+      "id": "gmail-brief",
+      "name": "Daily Brief: Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [700, 1880],
+      "continueOnFail": true,
+      "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
+      "parameters": {
+        "sendTo": "={{ $('Dynasty Config').item.json.ownerEmail }}",
+        "subject": "=Dynasty OS Daily Brief — {{ $('Daily Brief: Compile').item.json.date }}",
+        "emailType": "text",
+        "message": "={{ $('Daily Brief: AI Fallback').item.json.aiText }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "log-brief",
+      "name": "Daily Brief: Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 2040],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Dynasty Config').item.json.dynastyApiUrl }}/api/automation/log",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ event: 'daily_brief_sent', trigger: 'schedule', timestamp: new Date().toISOString(), result: $('Daily Brief: AI Fallback').item.json.aiError ? 'ai_fallback' : 'success' }) }}"
+      }
+    },
+
+    {
+      "id": "trigger-chat",
+      "name": "Chat: Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [1340, 80],
+      "parameters": {
+        "path": "dynasty-chat",
+        "httpMethod": "POST",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "chat-agent",
+      "name": "Dynasty Chat Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1340, 340],
+      "parameters": {
+        "agentType": "toolsAgent",
+        "text": "={{ ($json.body || $json).chatInput || ($json.body || $json).message || '' }}",
+        "options": {
+          "systemMessage": "You are Dynasty OS — Shylow Thompson's real estate investment intelligence system. You analyze deals, score leads, evaluate capital stacks, and provide strategic recommendations for flips, build-to-sell, and rental exits in Atlanta and surrounding markets. Be concise, data-driven, and decisive. Always state GO or NO-GO with supporting numbers when analyzing deals.",
+          "returnIntermediateSteps": false
+        }
+      }
+    },
+    {
+      "id": "chat-openai-model",
+      "name": "Chat: OpenAI Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [1120, 560],
+      "credentials": { "openAiApi": { "id": "", "name": "OpenAI Account" } },
+      "parameters": {
+        "model": "gpt-4o",
+        "options": { "temperature": 0.3 }
+      }
+    },
+    {
+      "id": "tool-flip-analysis",
+      "name": "Tool: Flip Analysis",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1200, 560],
+      "parameters": {
+        "name": "flip_analysis",
+        "description": "Analyze a fix-and-flip deal. Required JSON body fields: purchase_price (number), repair_budget (number), arv (number). Optional: closing_costs, holding_costs, selling_costs. Returns decision (GO/NO-GO), profit, and ROI.",
+        "method": "POST",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/investor/flip-analysis",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={purchase_price: {purchase_price}, repair_budget: {repair_budget}, arv: {arv}, closing_costs: {closing_costs}, holding_costs: {holding_costs}, selling_costs: {selling_costs}}",
+        "options": {}
+      }
+    },
+    {
+      "id": "tool-lead-score",
+      "name": "Tool: Lead Score",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1280, 560],
+      "parameters": {
+        "name": "lead_score",
+        "description": "Look up a lead's current score and grade. Provide lead_id (UUID). Returns the lead record including score (0-100), grade (A-D), status, and scoring breakdown.",
+        "method": "GET",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/leads/{lead_id}",
+        "options": {}
+      }
+    },
+    {
+      "id": "tool-capital-stack",
+      "name": "Tool: Capital Stack",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1360, 560],
+      "parameters": {
+        "name": "capital_stack",
+        "description": "Get current Dynasty capital position — available funds, deployed capital, and investor commitments.",
+        "method": "GET",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/capital/available",
+        "options": {}
+      }
+    },
+    {
+      "id": "tool-build-analysis",
+      "name": "Tool: Build Analysis",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1440, 560],
+      "parameters": {
+        "name": "build_analysis",
+        "description": "Calculate the optimal offer price for a Land + Build deal. Required fields: property_id (string), arv (number). Optional: repair_cost (default 0), exit_strategy (default 'Flip'), target_roi (default 0.20), holding_cost_monthly (default 0), holding_months (default 12). Returns the recommended offer and supporting metrics.",
+        "method": "POST",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/land-build/offer-calculation",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={property_id: {property_id}, arv: {arv}, repair_cost: {repair_cost}, exit_strategy: {exit_strategy}, target_roi: {target_roi}, holding_cost_monthly: {holding_cost_monthly}, holding_months: {holding_months}}",
+        "options": {}
+      }
+    },
+    {
+      "id": "tool-disposition-plan",
+      "name": "Tool: Disposition Plan",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1520, 560],
+      "parameters": {
+        "name": "disposition_plan",
+        "description": "Get Dynasty disposition profit analysis and exit strategy comparison across wholesale, flip, rental, and owner-finance exits.",
+        "method": "GET",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/disposition/profit",
+        "options": {}
+      }
+    },
+    {
+      "id": "tool-investor-summary",
+      "name": "Tool: Investor Summary",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1600, 560],
+      "parameters": {
+        "name": "investor_summary",
+        "description": "Get list of active Dynasty investors, their capital commitments, and contact details.",
+        "method": "GET",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/capital/investors",
+        "options": {}
+      }
+    },
+    {
+      "id": "chat-respond",
+      "name": "Chat: Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [1340, 600],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ output: $json.output, sessionId: ($('Chat: Webhook').item.json.body || $('Chat: Webhook').item.json).sessionId || null }) }}"
+      }
+    },
+
+    {
+      "id": "trigger-deal-intake",
+      "name": "Deal Intake: Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [1980, 80],
+      "parameters": {
+        "path": "dynasty-deal-intake",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "intake-health",
+      "name": "Deal Intake: API Health Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1980, 220],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/health",
+        "options": { "timeout": 5000 }
+      }
+    },
+    {
+      "id": "intake-api-guard",
+      "name": "Deal Intake: API Guard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1980, 380],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const health = $json;\nconst body = $('Deal Intake: Webhook').item.json.body ?? $('Deal Intake: Webhook').item.json;\nconst apiOk = health?.ok === true && !health?.error;\nreturn [{ json: { ...body, _apiOk: apiOk, _apiError: health?.error || null } }];"
+      }
+    },
+    {
+      "id": "intake-api-switch",
+      "name": "Deal Intake: API Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [1980, 520],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "outputKey": "UP",
+              "conditions": {
+                "options": { "version": 2 },
+                "conditions": [{ "leftValue": "={{ $json._apiOk }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true" } }]
+              }
+            }
+          ]
+        },
+        "fallbackOutput": 1
+      }
+    },
+    {
+      "id": "intake-api-sms",
+      "name": "Deal Intake: API Down - SMS",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [2220, 520],
+      "continueOnFail": true,
+      "credentials": { "twilioApi": { "id": "", "name": "Twilio Account" } },
+      "parameters": {
+        "operation": "send",
+        "from": "={{ $env.TWILIO_PHONE_NUMBER }}",
+        "to": "={{ $env.DYNASTY_OWNER_PHONE }}",
+        "message": "=🚨 Dynasty OS ALERT: API is DOWN. Deal intake webhook received but PropertyOS API is unreachable. Check Railway/backend immediately."
+      }
+    },
+    {
+      "id": "intake-api-gmail",
+      "name": "Deal Intake: API Down - Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [2220, 680],
+      "continueOnFail": true,
+      "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
+      "parameters": {
+        "sendTo": "sdthompson35@gmail.com",
+        "subject": "🚨 Dynasty OS: API DOWN — Deal Intake Blocked",
+        "emailType": "text",
+        "message": "=Dynasty PropertyOS API is unreachable.\n\nA deal intake webhook was received but could not be processed because the backend API is down.\n\nDeal data received:\n{{ JSON.stringify($json, null, 2) }}\n\nAction required: Check Railway deployment and restart the backend service.",
+        "options": {}
+      }
+    },
+    {
+      "id": "intake-api-503",
+      "name": "Deal Intake: API Down - Respond 503",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [2220, 840],
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 503,
+        "responseBody": "={{ JSON.stringify({ status: 'error', message: 'Dynasty PropertyOS API is currently unavailable. Your deal has been logged. Check back shortly.', timestamp: new Date().toISOString() }) }}"
+      }
+    },
+    {
+      "id": "validate-deal",
+      "name": "Deal Intake: Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1980, 680],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const body = items[0].json.body ?? items[0].json;\nconst required = ['purchase_price','repair_budget','arv','address'];\nconst missing  = required.filter(f => body[f] == null || body[f] === '');\nif (missing.length) throw new Error(`Missing required fields: ${missing.join(', ')}`);\nconst pp  = Number(body.purchase_price);\nconst arv = Number(body.arv);\nconst rb  = Number(body.repair_budget) || 0;\nif (pp  <= 0) throw new Error('purchase_price must be a positive number');\nif (arv <= 0) throw new Error('arv must be a positive number');\nif (arv <  pp) throw new Error('ARV cannot be less than purchase_price — check your numbers');\nreturn [{ json: { ...body, purchase_price: pp, repair_budget: rb, arv,\n  closing_costs:  Number(body.closing_costs)  || 0,\n  holding_costs:  Number(body.holding_costs)  || 0,\n  selling_costs:  Number(body.selling_costs)  || 0,\n}}];"
+      }
+    },
+    {
+      "id": "http-flip-analysis",
+      "name": "Deal Intake: Flip Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1980, 840],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/investor/flip-analysis",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ purchase_price: $json.purchase_price, repair_budget: $json.repair_budget, arv: $json.arv, closing_costs: $json.closing_costs, holding_costs: $json.holding_costs, selling_costs: $json.selling_costs }) }}"
+      }
+    },
+    {
+      "id": "deal-router",
+      "name": "Deal Intake: Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [1980, 1000],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "outputKey": "GO",
+              "conditions": {
+                "options": { "version": 2 },
+                "conditions": [{ "leftValue": "={{ $json.decision }}", "rightValue": "GO", "operator": { "type": "string", "operation": "equals" } }]
+              }
+            },
+            {
+              "outputKey": "NO-GO",
+              "conditions": {
+                "options": { "version": 2 },
+                "conditions": [{ "leftValue": "={{ $json.decision }}", "rightValue": "NO-GO", "operator": { "type": "string", "operation": "equals" } }]
+              }
+            }
+          ]
+        },
+        "fallbackOutput": 1
+      }
+    },
+    {
+      "id": "intake-lookup-prop",
+      "name": "Deal Intake: Lookup Property",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1760, 1160],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/property",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "address", "value": "={{ $('Deal Intake: Validate').item.json.address }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "intake-prop-logic",
+      "name": "Deal Intake: Property Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 1320],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const validated = $('Deal Intake: Validate').item.json;\nconst lookupResult = $json;\nconst existing = lookupResult?.properties?.[0];\nif (existing?.id) {\n  return [{ json: { ...validated, property_id: existing.id, property_source: 'existing', need_create: false } }];\n}\nconst code = (validated.address || 'PROP-' + Date.now())\n  .replace(/[^a-zA-Z0-9]/g, '')\n  .substring(0, 20)\n  .toUpperCase() || ('PROP' + Date.now().toString().slice(-8));\nconst addrParts = (validated.address || '').split(',');\nreturn [{ json: {\n  ...validated,\n  property_id: null,\n  property_source: 'new',\n  need_create: true,\n  _create_body: {\n    property_code: code,\n    address: validated.address || '',\n    city: addrParts[1]?.trim() || 'Unknown',\n    state: addrParts[2]?.trim()?.split(' ')[0] || 'GA',\n    acquisition_price: validated.purchase_price || null,\n    estimated_arv: validated.arv || null,\n    status: 'planning'\n  }\n} }];"
+      }
+    },
+    {
+      "id": "intake-prop-switch",
+      "name": "Deal Intake: Property Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [1760, 1480],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "outputKey": "CREATE",
+              "conditions": {
+                "options": { "version": 2 },
+                "conditions": [{ "leftValue": "={{ $json.need_create }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true" } }]
+              }
+            }
+          ]
+        },
+        "fallbackOutput": 1
+      }
+    },
+    {
+      "id": "intake-create-prop",
+      "name": "Deal Intake: Create Property",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 1640],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/property",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify($json._create_body) }}"
+      }
+    },
+    {
+      "id": "intake-resolve-prop",
+      "name": "Deal Intake: Resolve Property",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 1720],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const validated = $('Deal Intake: Validate').item.json;\n// $json is either the new property record (has .id) or the prop-logic output (has .property_id)\nconst property_id = $json.id || $json.property_id || null;\nconst property_source = $json.id ? 'created' : ($json.property_source || 'existing');\nreturn [{ json: { ...validated, property_id, property_source } }];"
+      }
+    },
+    {
+      "id": "intake-create-deal",
+      "name": "Deal Intake: Create Deal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1760, 1880],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/deal",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ property_id: $json.property_id || null, asking_price: $json.purchase_price, arv: $json.arv, repairs: $json.repair_budget }) }}"
+      }
+    },
+    {
+      "id": "intake-approve-deal",
+      "name": "Deal Intake: Approve Deal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1760, 2040],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/deal/approve",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ deal_id: $('Deal Intake: Create Deal').item.json.id, decision: 'GO', approved_by: 'dynasty_os_automation', notes: 'Auto-approved by Dynasty OS Deal Intake workflow' }) }}"
+      }
+    },
+    {
+      "id": "go-ai-summary",
+      "name": "Deal Intake: GO - AI Summary",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.7,
+      "position": [1760, 2200],
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": { "openAiApi": { "id": "", "name": "OpenAI Account" } },
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" },
+        "messages": {
+          "values": [
+            { "role": "system", "content": "You are Dynasty OS. Write a concise deal summary for squad review. Include: address, key numbers, decision rationale, and 3 recommended next steps. Use bullet points. Max 300 words." },
+            { "role": "user",   "content": "=Deal input: {{ JSON.stringify($('Deal Intake: Validate').item.json) }}\n\nAnalysis result: {{ JSON.stringify($('Deal Intake: Flip Analysis').item.json) }}\n\nProperty ID: {{ $('Deal Intake: Resolve Property').item.json.property_id || 'pending' }}\nDeal ID: {{ $('Deal Intake: Create Deal').item.json.id || 'pending' }}" }
+          ]
+        },
+        "options": { "maxTokens": 400 }
+      }
+    },
+    {
+      "id": "go-ai-fallback",
+      "name": "Deal Intake: GO - AI Fallback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 2360],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const content = $json?.message?.content;\nif (content) return [{ json: { aiText: content, aiError: false } }];\ntry {\n  const deal = $('Deal Intake: Validate').item.json;\n  const analysis = $('Deal Intake: Flip Analysis').item.json;\n  const roi = analysis?.roi != null ? `${(Number(analysis.roi) * 100).toFixed(1)}%` : 'N/A';\n  const profit = analysis?.profit != null ? `$${Number(analysis.profit).toLocaleString()}` : 'N/A';\n  return [{ json: {\n    aiText: `GO Deal — ${deal.address || 'Unknown Address'}\\n• ROI: ${roi}\\n• Profit: ${profit}\\n• ARV: $${Number(deal.arv || 0).toLocaleString()}\\n• Purchase: $${Number(deal.purchase_price || 0).toLocaleString()}\\n• Repairs: $${Number(deal.repair_budget || 0).toLocaleString()}\\n\\nSquad review required. AI summary unavailable — act on raw numbers.`,\n    aiError: true\n  }}];\n} catch(e) {\n  return [{ json: { aiText: 'GO Deal detected. Squad review required. AI summary unavailable.', aiError: true } }];\n}"
+      }
+    },
+    {
+      "id": "go-slack",
+      "name": "Deal Intake: GO - Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [1760, 2520],
+      "continueOnFail": true,
+      "credentials": { "slackApi": { "id": "", "name": "Slack Account" } },
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "#dynasty-squad-review",
+        "text": "=🏠 *NEW GO DEAL — Squad Review Required*\n\n*Address:* {{ $('Deal Intake: Validate').item.json.address }}\n*ROI:* {{ (Number($('Deal Intake: Flip Analysis').item.json.roi) * 100).toFixed(1) }}%  |  *Profit:* ${{ Number($('Deal Intake: Flip Analysis').item.json.profit).toLocaleString() }}\n*Deal ID:* {{ $('Deal Intake: Create Deal').item.json.id || 'pending' }}\n\n{{ $json.aiText }}",
+        "otherOptions": {}
+      }
+    },
+    {
+      "id": "go-gmail",
+      "name": "Deal Intake: GO - Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1760, 2680],
+      "continueOnFail": true,
+      "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
+      "parameters": {
+        "sendTo": "sdthompson35@gmail.com",
+        "subject": "=🏠 Dynasty OS GO Deal — {{ $('Deal Intake: Validate').item.json.address }}",
+        "emailType": "text",
+        "message": "={{ $('Deal Intake: GO - AI Fallback').item.json.aiText }}\n\nDeal ID: {{ $('Deal Intake: Create Deal').item.json.id || 'pending' }}\nProperty ID: {{ $('Deal Intake: Resolve Property').item.json.property_id || 'pending' }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "nogo-format",
+      "name": "Deal Intake: NO-GO - Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, 1160],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const deal     = $('Deal Intake: Validate').item.json;\nconst analysis = $('Deal Intake: Flip Analysis').item.json;\nconst roi      = analysis.roi != null ? `${(Number(analysis.roi) * 100).toFixed(1)}%` : 'N/A';\nconst profit   = analysis.profit != null ? `$${Number(analysis.profit).toLocaleString()}` : 'N/A';\nconst reason   = `ROI ${roi} is below the 30% Dynasty target. Projected profit: ${profit}. Deal does not meet buy-box criteria.`;\nreturn [{ json: { address: deal.address, reason, roi, profit, analysis } }];"
+      }
+    },
+    {
+      "id": "nogo-gmail",
+      "name": "Deal Intake: NO-GO - Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [2200, 1320],
+      "continueOnFail": true,
+      "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
+      "parameters": {
+        "sendTo": "sdthompson35@gmail.com",
+        "subject": "=❌ Dynasty OS NO-GO — {{ $json.address }}",
+        "emailType": "text",
+        "message": "=Address: {{ $json.address }}\nDecision: NO-GO\nReason: {{ $json.reason }}\n\nDeal archived. No action required.",
+        "options": {}
+      }
+    },
+    {
+      "id": "intake-log",
+      "name": "Deal Intake: Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1980, 2840],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/automation/log",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ event: 'deal_intake', trigger: 'webhook', address: $('Deal Intake: Validate').item.json.address, decision: $('Deal Intake: Flip Analysis').item.json.decision, roi: $('Deal Intake: Flip Analysis').item.json.roi, deal_id: (function(){ try { return $('Deal Intake: Create Deal').item.json?.id || null; } catch(e) { return null; } })(), property_id: (function(){ try { return $('Deal Intake: Resolve Property').item.json?.property_id || null; } catch(e) { return null; } })(), timestamp: new Date().toISOString() }) }}"
+      }
+    },
+    {
+      "id": "intake-respond",
+      "name": "Deal Intake: Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [1980, 3000],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'received', decision: $('Deal Intake: Flip Analysis').item.json.decision, address: $('Deal Intake: Validate').item.json.address, roi: $('Deal Intake: Flip Analysis').item.json.roi, profit: $('Deal Intake: Flip Analysis').item.json.profit, deal_id: (function(){ try { return $('Deal Intake: Create Deal').item.json?.id || null; } catch(e) { return null; } })() }) }}"
+      }
+    },
+
+    {
+      "id": "trigger-hot-lead",
+      "name": "Hot Lead: Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [2620, 80],
+      "parameters": {
+        "path": "dynasty-hot-lead",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "validate-lead",
+      "name": "Hot Lead: Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2620, 340],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const body = items[0].json.body ?? items[0].json;\nif (!body.lead_id) throw new Error('lead_id is required');\nreturn [{ json: { lead_id: String(body.lead_id), address: body.address || null, notes: body.notes || null } }];"
+      }
+    },
+    {
+      "id": "http-score-lead",
+      "name": "Hot Lead: Score",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2620, 600],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/leads/{{ $('Hot Lead: Validate').item.json.lead_id }}"
+      }
+    },
+    {
+      "id": "lead-router",
+      "name": "Hot Lead: Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [2620, 860],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "outputKey": "HOT",
+              "conditions": {
+                "options": { "version": 2 },
+                "conditions": [{ "leftValue": "={{ Number($json.score) }}", "rightValue": 80, "operator": { "type": "number", "operation": "gte" } }]
+              }
+            },
+            {
+              "outputKey": "WARM",
+              "conditions": {
+                "options": { "version": 2 },
+                "conditions": [{ "leftValue": "={{ Number($json.score) }}", "rightValue": 60, "operator": { "type": "number", "operation": "gte" } }]
+              }
+            }
+          ]
+        },
+        "fallbackOutput": "none"
+      }
+    },
+    {
+      "id": "hot-sms",
+      "name": "Hot Lead: HOT - SMS",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [2400, 1120],
+      "continueOnFail": true,
+      "credentials": { "twilioApi": { "id": "", "name": "Twilio Account" } },
+      "parameters": {
+        "operation": "send",
+        "from": "={{ $env.TWILIO_PHONE_NUMBER }}",
+        "to": "={{ $env.DYNASTY_OWNER_PHONE }}",
+        "message": "=🔥 Dynasty OS HOT LEAD!\nLead: {{ $('Hot Lead: Validate').item.json.lead_id }}\nScore: {{ $('Hot Lead: Score').item.json.score }}/100\n{{ $('Hot Lead: Validate').item.json.address || '' }}\nAction required NOW."
+      }
+    },
+    {
+      "id": "hot-gmail",
+      "name": "Hot Lead: HOT - Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [2400, 1380],
+      "continueOnFail": true,
+      "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
+      "parameters": {
+        "sendTo": "sdthompson35@gmail.com",
+        "subject": "=🔥 Dynasty OS HOT LEAD — Score {{ $('Hot Lead: Score').item.json.score }}/100",
+        "emailType": "text",
+        "message": "=🔥 HOT LEAD DETECTED\n\nLead ID: {{ $('Hot Lead: Validate').item.json.lead_id }}\nScore: {{ $('Hot Lead: Score').item.json.score }}/100\nAddress: {{ $('Hot Lead: Validate').item.json.address || 'N/A' }}\n\nContact immediately — top-tier score, time-sensitive.\n\nLog in to Dynasty OS to take action.",
+        "options": {}
+      }
+    },
+    {
+      "id": "warm-slack",
+      "name": "Hot Lead: WARM - Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [2840, 1120],
+      "continueOnFail": true,
+      "credentials": { "slackApi": { "id": "", "name": "Slack Account" } },
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "#dynasty-squad-review",
+        "text": "=🌡️ Warm Lead — Score: {{ $('Hot Lead: Score').item.json.score }}/100\nLead ID: {{ $('Hot Lead: Validate').item.json.lead_id }}\n{{ $('Hot Lead: Validate').item.json.address ? 'Address: ' + $('Hot Lead: Validate').item.json.address : '' }}\n→ Add to nurture sequence.",
+        "otherOptions": {}
+      }
+    },
+    {
+      "id": "lead-log",
+      "name": "Hot Lead: Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2620, 1640],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/automation/log",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ event: 'hot_lead_detected', trigger: 'webhook', lead_id: $('Hot Lead: Validate').item.json.lead_id, score: $('Hot Lead: Score').item.json.score, timestamp: new Date().toISOString() }) }}"
+      }
+    },
+    {
+      "id": "lead-respond",
+      "name": "Hot Lead: Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [2620, 1900],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'routed', lead_id: $('Hot Lead: Validate').item.json.lead_id, score: $('Hot Lead: Score').item.json.score, tier: Number($('Hot Lead: Score').item.json.score) >= 80 ? 'HOT' : 'WARM' }) }}"
+      }
+    },
+
+    {
+      "id": "trigger-deal-status",
+      "name": "Deal Status: Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [3260, 80],
+      "parameters": {
+        "path": "dynasty-deal-status",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "validate-status",
+      "name": "Deal Status: Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3260, 340],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const body    = items[0].json.body ?? items[0].json;\nconst allowed = ['approved','capital_gap','delayed','investor_interest'];\nif (!body.deal_id) throw new Error('deal_id is required');\nif (!body.status)  throw new Error('status is required');\nif (!allowed.includes(body.status)) throw new Error(`status must be one of: ${allowed.join(', ')}`);\nreturn [{ json: body }];"
+      }
+    },
+    {
+      "id": "status-router",
+      "name": "Deal Status: Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [3260, 600],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            { "outputKey": "approved",          "conditions": { "options": { "version": 2 }, "conditions": [{ "leftValue": "={{ $json.status }}", "rightValue": "approved",          "operator": { "type": "string", "operation": "equals" } }] } },
+            { "outputKey": "capital_gap",       "conditions": { "options": { "version": 2 }, "conditions": [{ "leftValue": "={{ $json.status }}", "rightValue": "capital_gap",       "operator": { "type": "string", "operation": "equals" } }] } },
+            { "outputKey": "delayed",           "conditions": { "options": { "version": 2 }, "conditions": [{ "leftValue": "={{ $json.status }}", "rightValue": "delayed",           "operator": { "type": "string", "operation": "equals" } }] } },
+            { "outputKey": "investor_interest", "conditions": { "options": { "version": 2 }, "conditions": [{ "leftValue": "={{ $json.status }}", "rightValue": "investor_interest", "operator": { "type": "string", "operation": "equals" } }] } }
+          ]
+        },
+        "fallbackOutput": "none"
+      }
+    },
+    {
+      "id": "approve-deal-http",
+      "name": "Deal Status: APPROVED - HTTP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3000, 860],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/deal/approve",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ deal_id: $('Deal Status: Validate').item.json.deal_id, decision: 'GO', approved_by: 'dynasty_os_automation', notes: $('Deal Status: Validate').item.json.notes || '' }) }}"
+      }
+    },
+    {
+      "id": "approve-slack",
+      "name": "Deal Status: APPROVED - Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [3000, 1120],
+      "continueOnFail": true,
+      "credentials": { "slackApi": { "id": "", "name": "Slack Account" } },
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "#dynasty-squad-review",
+        "text": "=✅ *DEAL APPROVED* — ID: {{ $('Deal Status: Validate').item.json.deal_id }}\n{{ $('Deal Status: Validate').item.json.notes ? 'Notes: ' + $('Deal Status: Validate').item.json.notes : '' }}\n\nNext steps: Capital allocation → Acquisition → Rehab plan.",
+        "otherOptions": {}
+      }
+    },
+    {
+      "id": "capital-gap-get",
+      "name": "Deal Status: CAP GAP - Get Capital",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3180, 860],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/capital/available"
+      }
+    },
+    {
+      "id": "capital-gap-slack",
+      "name": "Deal Status: CAP GAP - Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [3180, 1120],
+      "continueOnFail": true,
+      "credentials": { "slackApi": { "id": "", "name": "Slack Account" } },
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "#capital-command",
+        "text": "=⚠️ *CAPITAL GAP* — Deal: {{ $('Deal Status: Validate').item.json.deal_id }}\nGap: ${{ Number($('Deal Status: Validate').item.json.gap_amount || 0).toLocaleString() }}\nAvailable: ${{ Number($('Deal Status: CAP GAP - Get Capital').item.json.total_available || 0).toLocaleString() }}\n\n→ Review investor pipeline and fund sources.",
+        "otherOptions": {}
+      }
+    },
+    {
+      "id": "delayed-sms",
+      "name": "Deal Status: DELAYED - SMS",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [3360, 860],
+      "continueOnFail": true,
+      "credentials": { "twilioApi": { "id": "", "name": "Twilio Account" } },
+      "parameters": {
+        "operation": "send",
+        "from": "={{ $env.TWILIO_PHONE_NUMBER }}",
+        "to": "={{ $env.DYNASTY_OWNER_PHONE }}",
+        "message": "=⚠️ Dynasty: Project DELAYED\nDeal: {{ $('Deal Status: Validate').item.json.deal_id }}\nDays: {{ $('Deal Status: Validate').item.json.days_delayed || 'TBD' }}\nReason: {{ $('Deal Status: Validate').item.json.delay_reason || 'See Slack' }}"
+      }
+    },
+    {
+      "id": "delayed-slack",
+      "name": "Deal Status: DELAYED - Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [3360, 1120],
+      "continueOnFail": true,
+      "credentials": { "slackApi": { "id": "", "name": "Slack Account" } },
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "#atlas-alerts",
+        "text": "=🚨 *ATLAS DELAY ALERT*\nDeal: {{ $('Deal Status: Validate').item.json.deal_id }}\nDays Delayed: {{ $('Deal Status: Validate').item.json.days_delayed || 'Unknown' }}\nReason: {{ $('Deal Status: Validate').item.json.delay_reason || 'Not specified' }}\n\n→ Review timeline and exit-strategy impact.",
+        "otherOptions": {}
+      }
+    },
+    {
+      "id": "investor-interest-http",
+      "name": "Deal Status: INVESTOR - Get Investors",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3540, 860],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/capital/investors"
+      }
+    },
+    {
+      "id": "investor-interest-gmail",
+      "name": "Deal Status: INVESTOR - Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [3540, 1120],
+      "continueOnFail": true,
+      "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
+      "parameters": {
+        "sendTo": "sdthompson35@gmail.com",
+        "subject": "=👥 Dynasty OS: Investor Interest — Deal {{ $('Deal Status: Validate').item.json.deal_id }}",
+        "emailType": "text",
+        "message": "=Investor interest logged for Deal {{ $('Deal Status: Validate').item.json.deal_id }}\n\nInvestor: {{ $('Deal Status: Validate').item.json.investor_name || 'Unknown' }}\nInterest level: {{ $('Deal Status: Validate').item.json.interest_level || 'N/A' }}\nNotes: {{ $('Deal Status: Validate').item.json.notes || 'None' }}\n\nReview and schedule follow-up call.",
+        "options": {}
+      }
+    },
+    {
+      "id": "status-log",
+      "name": "Deal Status: Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3260, 1640],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/automation/log",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ event: 'deal_status_changed', deal_id: $('Deal Status: Validate').item.json.deal_id, status: $('Deal Status: Validate').item.json.status, timestamp: new Date().toISOString() }) }}"
+      }
+    },
+    {
+      "id": "status-respond",
+      "name": "Deal Status: Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [3260, 1900],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'routed', deal_id: $('Deal Status: Validate').item.json.deal_id, event: $('Deal Status: Validate').item.json.status }) }}"
+      }
+    },
+
+    {
+      "id": "trigger-capital-gap",
+      "name": "Capital Gap: Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [3900, 80],
+      "parameters": {
+        "path": "dynasty-capital-gap",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "cap-available-http",
+      "name": "Capital Gap: Get Available",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3900, 340],
+      "continueOnFail": true,
+      "parameters": { "method": "GET", "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/capital/available" }
+    },
+    {
+      "id": "cap-investors-http",
+      "name": "Capital Gap: Get Investors",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3900, 600],
+      "continueOnFail": true,
+      "parameters": { "method": "GET", "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/capital/investors" }
+    },
+    {
+      "id": "cap-ai-brief",
+      "name": "Capital Gap: AI Brief",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.7,
+      "position": [3900, 860],
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": { "openAiApi": { "id": "", "name": "OpenAI Account" } },
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" },
+        "messages": {
+          "values": [
+            { "role": "system", "content": "You are Dynasty OS Capital Command. Generate a capital gap brief. State: gap amount, available capital, nearest investors to activate, and 3 immediate actions. Be direct and numbers-first." },
+            { "role": "user",   "content": "=Gap details: {{ JSON.stringify(($('Capital Gap: Webhook').item.json.body || $('Capital Gap: Webhook').item.json)) }}\nAvailable capital: {{ JSON.stringify($('Capital Gap: Get Available').item.json) }}\nInvestors: {{ JSON.stringify($('Capital Gap: Get Investors').item.json) }}" }
+          ]
+        },
+        "options": { "maxTokens": 500 }
+      }
+    },
+    {
+      "id": "cap-ai-fallback",
+      "name": "Capital Gap: AI Fallback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3900, 1020],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const content = $json?.message?.content;\nif (content) return [{ json: { aiText: content, aiError: false } }];\ntry {\n  const body = $('Capital Gap: Webhook').item.json.body ?? $('Capital Gap: Webhook').item.json;\n  return [{ json: {\n    aiText: `Capital Gap Alert\\n• Gap Amount: $${Number(body.gap_amount || 0).toLocaleString()}\\n• Deal ID: ${body.deal_id || 'N/A'}\\n\\nAction required: Review capital sources and investor pipeline. AI brief unavailable.`,\n    aiError: true\n  }}];\n} catch(e) {\n  return [{ json: { aiText: 'Capital gap detected. Review capital sources immediately. AI brief unavailable.', aiError: true } }];\n}"
+      }
+    },
+    {
+      "id": "cap-slack",
+      "name": "Capital Gap: Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [3900, 1180],
+      "continueOnFail": true,
+      "credentials": { "slackApi": { "id": "", "name": "Slack Account" } },
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "#capital-command",
+        "text": "=💰 *CAPITAL GAP ALERT*\n\n{{ $json.aiText }}",
+        "otherOptions": {}
+      }
+    },
+    {
+      "id": "cap-gmail",
+      "name": "Capital Gap: Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [3900, 1340],
+      "continueOnFail": true,
+      "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
+      "parameters": {
+        "sendTo": "sdthompson35@gmail.com",
+        "subject": "💰 Dynasty OS: Capital Gap — Action Required",
+        "emailType": "text",
+        "message": "={{ $('Capital Gap: AI Fallback').item.json.aiText }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "cap-log",
+      "name": "Capital Gap: Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3900, 1500],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/automation/log",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ event: 'capital_gap_detected', ai_error: $('Capital Gap: AI Fallback').item.json.aiError || false, timestamp: new Date().toISOString() }) }}"
+      }
+    },
+    {
+      "id": "cap-respond",
+      "name": "Capital Gap: Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [3900, 1660],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'alerted', channels: ['slack', 'email'] }) }}"
+      }
+    },
+
+    {
+      "id": "trigger-draw",
+      "name": "Draw Request: Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [4540, 80],
+      "parameters": {
+        "path": "dynasty-draw-request",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "validate-draw",
+      "name": "Draw Request: Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4540, 340],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const body = items[0].json.body ?? items[0].json;\nconst required = ['deal_id','draw_amount','milestone'];\nconst missing = required.filter(f => !body[f]);\nif (missing.length) throw new Error(`Missing fields: ${missing.join(', ')}`);\nconst amount = Number(body.draw_amount);\nif (amount <= 0) throw new Error('draw_amount must be a positive number');\nreturn [{ json: { ...body, draw_amount: amount } }];"
+      }
+    },
+    {
+      "id": "draw-deal-http",
+      "name": "Draw Request: Get Deal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4540, 600],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/deal/{{ $('Draw Request: Validate').item.json.deal_id }}"
+      }
+    },
+    {
+      "id": "draw-router",
+      "name": "Draw Request: Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [4540, 860],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "outputKey": "APPROVED",
+              "conditions": {
+                "options": { "version": 2 },
+                "conditions": [{ "leftValue": "={{ $('Draw Request: Validate').item.json.draw_amount <= Number($json.repairs || 9999999) }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true" } }]
+              }
+            }
+          ]
+        },
+        "fallbackOutput": 1
+      }
+    },
+    {
+      "id": "draw-approved-gmail",
+      "name": "Draw Request: APPROVED - Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [4320, 1120],
+      "continueOnFail": true,
+      "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
+      "parameters": {
+        "sendTo": "sdthompson35@gmail.com",
+        "subject": "=✅ Draw Approved — ${{ Number($('Draw Request: Validate').item.json.draw_amount).toLocaleString() }} | {{ $('Draw Request: Validate').item.json.milestone }}",
+        "emailType": "text",
+        "message": "=Draw approved and released.\n\nDeal ID: {{ $('Draw Request: Validate').item.json.deal_id }}\nMilestone: {{ $('Draw Request: Validate').item.json.milestone }}\nAmount: ${{ Number($('Draw Request: Validate').item.json.draw_amount).toLocaleString() }}\nGC/Vendor: {{ $('Draw Request: Validate').item.json.gc_name || 'On file' }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "draw-approved-slack",
+      "name": "Draw Request: APPROVED - Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [4320, 1380],
+      "continueOnFail": true,
+      "credentials": { "slackApi": { "id": "", "name": "Slack Account" } },
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "#dynasty-squad-review",
+        "text": "=✅ Draw Released: ${{ Number($('Draw Request: Validate').item.json.draw_amount).toLocaleString() }} — {{ $('Draw Request: Validate').item.json.milestone }}\nDeal {{ $('Draw Request: Validate').item.json.deal_id }}",
+        "otherOptions": {}
+      }
+    },
+    {
+      "id": "draw-flagged-slack",
+      "name": "Draw Request: FLAGGED - Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [4760, 1120],
+      "continueOnFail": true,
+      "credentials": { "slackApi": { "id": "", "name": "Slack Account" } },
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "#atlas-alerts",
+        "text": "=🚨 *Draw FLAGGED — Over Budget*\nDeal: {{ $('Draw Request: Validate').item.json.deal_id }}\nRequested: ${{ Number($('Draw Request: Validate').item.json.draw_amount).toLocaleString() }}\nMilestone: {{ $('Draw Request: Validate').item.json.milestone }}\n\n→ Manual review required before release.",
+        "otherOptions": {}
+      }
+    },
+    {
+      "id": "draw-log",
+      "name": "Draw Request: Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4540, 1640],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/automation/log",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ event: 'draw_request_submitted', deal_id: $('Draw Request: Validate').item.json.deal_id, draw_amount: $('Draw Request: Validate').item.json.draw_amount, milestone: $('Draw Request: Validate').item.json.milestone, timestamp: new Date().toISOString() }) }}"
+      }
+    },
+    {
+      "id": "draw-respond",
+      "name": "Draw Request: Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [4540, 1900],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'processed', deal_id: $('Draw Request: Validate').item.json.deal_id, draw_amount: $('Draw Request: Validate').item.json.draw_amount, milestone: $('Draw Request: Validate').item.json.milestone }) }}"
+      }
+    },
+
+    {
+      "id": "trigger-delay",
+      "name": "Project Delay: Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [5180, 80],
+      "parameters": {
+        "path": "dynasty-atlas-delay",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "delay-get-deal",
+      "name": "Project Delay: Get Deal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [5180, 340],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/deal/{{ ($json.body || $json).deal_id }}"
+      }
+    },
+    {
+      "id": "delay-ai",
+      "name": "Project Delay: AI Impact",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.7,
+      "position": [5180, 600],
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": { "openAiApi": { "id": "", "name": "OpenAI Account" } },
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" },
+        "messages": {
+          "values": [
+            { "role": "system", "content": "You are Dynasty OS ATLAS. Analyze project delays with financial precision. Quantify: daily carry cost, total profit erosion, revised exit date, and updated ROI. Recommend 3 immediate corrective actions. Flag if deal falls below 20% ROI." },
+            { "role": "user",   "content": "=Delay report: {{ JSON.stringify(($('Project Delay: Webhook').item.json.body || $('Project Delay: Webhook').item.json)) }}\n\nDeal record: {{ JSON.stringify($('Project Delay: Get Deal').item.json) }}" }
+          ]
+        },
+        "options": { "maxTokens": 500 }
+      }
+    },
+    {
+      "id": "delay-ai-fallback",
+      "name": "Project Delay: AI Fallback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [5180, 760],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const content = $json?.message?.content;\nif (content) return [{ json: { aiText: content, aiError: false } }];\ntry {\n  const body = $('Project Delay: Webhook').item.json.body ?? $('Project Delay: Webhook').item.json;\n  return [{ json: {\n    aiText: `ATLAS Delay Alert\\n• Deal: ${body.deal_id || 'N/A'}\\n• Days Delayed: ${body.days_delayed || 'TBD'}\\n• Reason: ${body.delay_reason || 'Not specified'}\\n\\nReview timeline and exit-strategy impact immediately. AI analysis unavailable.`,\n    aiError: true\n  }}];\n} catch(e) {\n  return [{ json: { aiText: 'Project delay detected. Review timeline immediately. AI analysis unavailable.', aiError: true } }];\n}"
+      }
+    },
+    {
+      "id": "delay-sms",
+      "name": "Project Delay: SMS",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [5180, 920],
+      "continueOnFail": true,
+      "credentials": { "twilioApi": { "id": "", "name": "Twilio Account" } },
+      "parameters": {
+        "operation": "send",
+        "from": "={{ $env.TWILIO_PHONE_NUMBER }}",
+        "to": "={{ $env.DYNASTY_OWNER_PHONE }}",
+        "message": "=🚨 ATLAS: Project delayed! Deal {{ ($('Project Delay: Webhook').item.json.body || $('Project Delay: Webhook').item.json).deal_id }}. Days: {{ ($('Project Delay: Webhook').item.json.body || $('Project Delay: Webhook').item.json).days_delayed }}. Check Slack for impact analysis."
+      }
+    },
+    {
+      "id": "delay-slack",
+      "name": "Project Delay: Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [5180, 1080],
+      "continueOnFail": true,
+      "credentials": { "slackApi": { "id": "", "name": "Slack Account" } },
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "#atlas-alerts",
+        "text": "=🚨 *ATLAS DELAY ALERT*\n\n{{ $('Project Delay: AI Fallback').item.json.aiText }}",
+        "otherOptions": {}
+      }
+    },
+    {
+      "id": "delay-gmail",
+      "name": "Project Delay: Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [5180, 1240],
+      "continueOnFail": true,
+      "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
+      "parameters": {
+        "sendTo": "sdthompson35@gmail.com",
+        "subject": "=🚨 Dynasty ATLAS: Project Delay — Deal {{ ($('Project Delay: Webhook').item.json.body || $('Project Delay: Webhook').item.json).deal_id }}",
+        "emailType": "text",
+        "message": "={{ $('Project Delay: AI Fallback').item.json.aiText }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "delay-log",
+      "name": "Project Delay: Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [5180, 1400],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/automation/log",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ event: 'project_delayed', deal_id: ($('Project Delay: Webhook').item.json.body || $('Project Delay: Webhook').item.json).deal_id, days_delayed: ($('Project Delay: Webhook').item.json.body || $('Project Delay: Webhook').item.json).days_delayed, ai_error: $('Project Delay: AI Fallback').item.json.aiError || false, timestamp: new Date().toISOString() }) }}"
+      }
+    },
+    {
+      "id": "delay-respond",
+      "name": "Project Delay: Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [5180, 1560],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'atlas_alerted', deal_id: ($('Project Delay: Webhook').item.json.body || $('Project Delay: Webhook').item.json).deal_id }) }}"
+      }
+    },
+
+    {
+      "id": "trigger-investor-pkg",
+      "name": "Investor Package: Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [5820, 80],
+      "parameters": {
+        "path": "dynasty-investor-package",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "inv-get-investors",
+      "name": "Investor Package: Get Investors",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [5820, 340],
+      "continueOnFail": true,
+      "parameters": { "method": "GET", "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/capital/investors" }
+    },
+    {
+      "id": "inv-ai-outreach",
+      "name": "Investor Package: AI Outreach",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.7,
+      "position": [5820, 600],
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": { "openAiApi": { "id": "", "name": "OpenAI Account" } },
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" },
+        "messages": {
+          "values": [
+            { "role": "system", "content": "You are Dynasty OS. Draft a professional investor package announcement. Lead with projected returns and timeline. Include deal highlights and a clear call to action. Keep under 250 words — investors are busy." },
+            { "role": "user",   "content": "=Package details: {{ JSON.stringify(($('Investor Package: Webhook').item.json.body || $('Investor Package: Webhook').item.json)) }}\nActive investors: {{ JSON.stringify($('Investor Package: Get Investors').item.json) }}" }
+          ]
+        },
+        "options": { "maxTokens": 500 }
+      }
+    },
+    {
+      "id": "inv-ai-fallback",
+      "name": "Investor Package: AI Fallback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [5820, 760],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const content = $json?.message?.content;\nif (content) return [{ json: { aiText: content, aiError: false } }];\ntry {\n  const body = $('Investor Package: Webhook').item.json.body ?? $('Investor Package: Webhook').item.json;\n  return [{ json: {\n    aiText: `Investor Package — ${body.deal_name || 'New Deal'}\\n\\nContact Dynasty OS to review this investor package. AI outreach unavailable — manual follow-up required.`,\n    aiError: true\n  }}];\n} catch(e) {\n  return [{ json: { aiText: 'Investor package ready for review. Contact Dynasty OS. AI outreach unavailable.', aiError: true } }];\n}"
+      }
+    },
+    {
+      "id": "inv-gmail",
+      "name": "Investor Package: Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [5820, 920],
+      "continueOnFail": true,
+      "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail Account" } },
+      "parameters": {
+        "sendTo": "sdthompson35@gmail.com",
+        "subject": "=📊 Dynasty OS: Investor Package — {{ ($('Investor Package: Webhook').item.json.body || $('Investor Package: Webhook').item.json).deal_name || 'New Deal' }}",
+        "emailType": "text",
+        "message": "={{ $json.aiText }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "inv-slack",
+      "name": "Investor Package: Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [5820, 1080],
+      "continueOnFail": true,
+      "credentials": { "slackApi": { "id": "", "name": "Slack Account" } },
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "#dynasty-squad-review",
+        "text": "=📊 *Investor Package Ready*\n\n{{ $('Investor Package: AI Fallback').item.json.aiText }}",
+        "otherOptions": {}
+      }
+    },
+    {
+      "id": "inv-log",
+      "name": "Investor Package: Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [5820, 1240],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.dynastyApiUrl || 'http://localhost:8010' }}/api/automation/log",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ event: 'investor_package_generated', deal_name: ($('Investor Package: Webhook').item.json.body || $('Investor Package: Webhook').item.json).deal_name, ai_error: $('Investor Package: AI Fallback').item.json.aiError || false, timestamp: new Date().toISOString() }) }}"
+      }
+    },
+    {
+      "id": "inv-respond",
+      "name": "Investor Package: Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [5820, 1400],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'sent', channels: ['email', 'slack'] }) }}"
+      }
+    }
+
+  ],
+
+  "connections": {
+    "Daily Brief: Schedule": {
+      "main": [[{ "node": "Dynasty Config", "type": "main", "index": 0 }]]
+    },
+    "Dynasty Config": {
+      "main": [[{ "node": "Daily Brief: Health Check", "type": "main", "index": 0 }]]
+    },
+    "Daily Brief: Health Check": {
+      "main": [[{ "node": "Daily Brief: Lead Stats", "type": "main", "index": 0 }]]
+    },
+    "Daily Brief: Lead Stats": {
+      "main": [[{ "node": "Daily Brief: Capital Available", "type": "main", "index": 0 }]]
+    },
+    "Daily Brief: Capital Available": {
+      "main": [[{ "node": "Daily Brief: Capital Deployed", "type": "main", "index": 0 }]]
+    },
+    "Daily Brief: Capital Deployed": {
+      "main": [[{ "node": "Daily Brief: Compile", "type": "main", "index": 0 }]]
+    },
+    "Daily Brief: Compile": {
+      "main": [[{ "node": "Daily Brief: AI Summary", "type": "main", "index": 0 }]]
+    },
+    "Daily Brief: AI Summary": {
+      "main": [[{ "node": "Daily Brief: AI Fallback", "type": "main", "index": 0 }]]
+    },
+    "Daily Brief: AI Fallback": {
+      "main": [[{ "node": "Daily Brief: Slack", "type": "main", "index": 0 }]]
+    },
+    "Daily Brief: Slack": {
+      "main": [[{ "node": "Daily Brief: Gmail", "type": "main", "index": 0 }]]
+    },
+    "Daily Brief: Gmail": {
+      "main": [[{ "node": "Daily Brief: Log", "type": "main", "index": 0 }]]
+    },
+
+    "Chat: Webhook": {
+      "main": [[{ "node": "Dynasty Chat Agent", "type": "main", "index": 0 }]]
+    },
+    "Dynasty Chat Agent": {
+      "main": [[{ "node": "Chat: Respond", "type": "main", "index": 0 }]]
+    },
+    "Chat: OpenAI Model": {
+      "ai_languageModel": [[{ "node": "Dynasty Chat Agent", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Tool: Flip Analysis": {
+      "ai_tool": [[{ "node": "Dynasty Chat Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "Tool: Lead Score": {
+      "ai_tool": [[{ "node": "Dynasty Chat Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "Tool: Capital Stack": {
+      "ai_tool": [[{ "node": "Dynasty Chat Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "Tool: Build Analysis": {
+      "ai_tool": [[{ "node": "Dynasty Chat Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "Tool: Disposition Plan": {
+      "ai_tool": [[{ "node": "Dynasty Chat Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "Tool: Investor Summary": {
+      "ai_tool": [[{ "node": "Dynasty Chat Agent", "type": "ai_tool", "index": 0 }]]
+    },
+
+    "Deal Intake: Webhook": {
+      "main": [[{ "node": "Deal Intake: API Health Check", "type": "main", "index": 0 }]]
+    },
+    "Deal Intake: API Health Check": {
+      "main": [[{ "node": "Deal Intake: API Guard", "type": "main", "index": 0 }]]
+    },
+    "Deal Intake: API Guard": {
+      "main": [[{ "node": "Deal Intake: API Switch", "type": "main", "index": 0 }]]
+    },
+    "Deal Intake: API Switch": {
+      "main": [
+        [{ "node": "Deal Intake: Validate",        "type": "main", "index": 0 }],
+        [{ "node": "Deal Intake: API Down - SMS",   "type": "main", "index": 0 }]
+      ]
+    },
+    "Deal Intake: API Down - SMS": {
+      "main": [[{ "node": "Deal Intake: API Down - Gmail", "type": "main", "index": 0 }]]
+    },
+    "Deal Intake: API Down - Gmail": {
+      "main": [[{ "node": "Deal Intake: API Down - Respond 503", "type": "main", "index": 0 }]]
+    },
+    "Deal Intake: Validate": {
+      "main": [[{ "node": "Deal Intake: Flip Analysis", "type": "main", "index": 0 }]]
+    },
+    "Deal Intake: Flip Analysis": {
+      "main": [[{ "node": "Deal Intake: Router", "type": "main", "index": 0 }]]
+    },
+    "Deal Intake: Router": {
+      "main": [
+        [{ "node": "Deal Intake: Lookup Property", "type": "main", "index": 0 }],
+        [{ "node": "Deal Intake: NO-GO - Format",  "type": "main", "index": 0 }]
+      ]
+    },
+    "Deal Intake: Lookup Property": {
+      "main": [[{ "node": "Deal Intake: Property Logic", "type": "main", "index": 0 }]]
+    },
+    "Deal Intake: Property Logic": {
+      "main": [[{ "node": "Deal Intake: Property Switch", "type": "main", "index": 0 }]]
+    },
+    "Deal Intake: Property Switch": {
+      "main": [
+        [{ "node": "Deal Intake: Create Property", "type": "main", "index": 0 }],
+        [{ "node": "Deal Intake: Resolve Property","type": "main", "index": 0 }]
+      ]
+    },
+    "Deal Intake: Create Property": {
+      "main": [[{ "node": "Deal Intake: Resolve Property", "type": "main", "index": 0 }]]
+    },
+    "Deal Intake: Resolve Property": {
+      "main": [[{ "node": "Deal Intake: Create Deal", "type": "main", "index": 0 }]]
+    },
+    "Deal Intake: Create Deal": {
+      "main": [[{ "node": "Deal Intake: Approve Deal", "type": "main", "index": 0 }]]
+    },
+    "Deal Intake: Approve Deal": {
+      "main": [[{ "node": "Deal Intake: GO - AI Summary", "type": "main", "index": 0 }]]
+    },
+    "Deal Intake: GO - AI Summary": {
+      "main": [[{ "node": "Deal Intake: GO - AI Fallback", "type": "main", "index": 0 }]]
+    },
+    "Deal Intake: GO - AI Fallback": {
+      "main": [[{ "node": "Deal Intake: GO - Slack", "type": "main", "index": 0 }]]
+    },
+    "Deal Intake: GO - Slack": {
+      "main": [[{ "node": "Deal Intake: GO - Gmail", "type": "main", "index": 0 }]]
+    },
+    "Deal Intake: GO - Gmail": {
+      "main": [[{ "node": "Deal Intake: Log", "type": "main", "index": 0 }]]
+    },
+    "Deal Intake: NO-GO - Format": {
+      "main": [[{ "node": "Deal Intake: NO-GO - Gmail", "type": "main", "index": 0 }]]
+    },
+    "Deal Intake: NO-GO - Gmail": {
+      "main": [[{ "node": "Deal Intake: Log", "type": "main", "index": 0 }]]
+    },
+    "Deal Intake: Log": {
+      "main": [[{ "node": "Deal Intake: Respond", "type": "main", "index": 0 }]]
+    },
+
+    "Hot Lead: Webhook": {
+      "main": [[{ "node": "Hot Lead: Validate", "type": "main", "index": 0 }]]
+    },
+    "Hot Lead: Validate": {
+      "main": [[{ "node": "Hot Lead: Score", "type": "main", "index": 0 }]]
+    },
+    "Hot Lead: Score": {
+      "main": [[{ "node": "Hot Lead: Router", "type": "main", "index": 0 }]]
+    },
+    "Hot Lead: Router": {
+      "main": [
+        [{ "node": "Hot Lead: HOT - SMS",   "type": "main", "index": 0 }],
+        [{ "node": "Hot Lead: WARM - Slack", "type": "main", "index": 0 }]
+      ]
+    },
+    "Hot Lead: HOT - SMS": {
+      "main": [[{ "node": "Hot Lead: HOT - Gmail", "type": "main", "index": 0 }]]
+    },
+    "Hot Lead: HOT - Gmail": {
+      "main": [[{ "node": "Hot Lead: Log", "type": "main", "index": 0 }]]
+    },
+    "Hot Lead: WARM - Slack": {
+      "main": [[{ "node": "Hot Lead: Log", "type": "main", "index": 0 }]]
+    },
+    "Hot Lead: Log": {
+      "main": [[{ "node": "Hot Lead: Respond", "type": "main", "index": 0 }]]
+    },
+
+    "Deal Status: Webhook": {
+      "main": [[{ "node": "Deal Status: Validate", "type": "main", "index": 0 }]]
+    },
+    "Deal Status: Validate": {
+      "main": [[{ "node": "Deal Status: Router", "type": "main", "index": 0 }]]
+    },
+    "Deal Status: Router": {
+      "main": [
+        [{ "node": "Deal Status: APPROVED - HTTP",          "type": "main", "index": 0 }],
+        [{ "node": "Deal Status: CAP GAP - Get Capital",    "type": "main", "index": 0 }],
+        [{ "node": "Deal Status: DELAYED - SMS",            "type": "main", "index": 0 }],
+        [{ "node": "Deal Status: INVESTOR - Get Investors", "type": "main", "index": 0 }]
+      ]
+    },
+    "Deal Status: APPROVED - HTTP": {
+      "main": [[{ "node": "Deal Status: APPROVED - Slack", "type": "main", "index": 0 }]]
+    },
+    "Deal Status: APPROVED - Slack": {
+      "main": [[{ "node": "Deal Status: Log", "type": "main", "index": 0 }]]
+    },
+    "Deal Status: CAP GAP - Get Capital": {
+      "main": [[{ "node": "Deal Status: CAP GAP - Slack", "type": "main", "index": 0 }]]
+    },
+    "Deal Status: CAP GAP - Slack": {
+      "main": [[{ "node": "Deal Status: Log", "type": "main", "index": 0 }]]
+    },
+    "Deal Status: DELAYED - SMS": {
+      "main": [[{ "node": "Deal Status: DELAYED - Slack", "type": "main", "index": 0 }]]
+    },
+    "Deal Status: DELAYED - Slack": {
+      "main": [[{ "node": "Deal Status: Log", "type": "main", "index": 0 }]]
+    },
+    "Deal Status: INVESTOR - Get Investors": {
+      "main": [[{ "node": "Deal Status: INVESTOR - Gmail", "type": "main", "index": 0 }]]
+    },
+    "Deal Status: INVESTOR - Gmail": {
+      "main": [[{ "node": "Deal Status: Log", "type": "main", "index": 0 }]]
+    },
+    "Deal Status: Log": {
+      "main": [[{ "node": "Deal Status: Respond", "type": "main", "index": 0 }]]
+    },
+
+    "Capital Gap: Webhook": {
+      "main": [[{ "node": "Capital Gap: Get Available", "type": "main", "index": 0 }]]
+    },
+    "Capital Gap: Get Available": {
+      "main": [[{ "node": "Capital Gap: Get Investors", "type": "main", "index": 0 }]]
+    },
+    "Capital Gap: Get Investors": {
+      "main": [[{ "node": "Capital Gap: AI Brief", "type": "main", "index": 0 }]]
+    },
+    "Capital Gap: AI Brief": {
+      "main": [[{ "node": "Capital Gap: AI Fallback", "type": "main", "index": 0 }]]
+    },
+    "Capital Gap: AI Fallback": {
+      "main": [[{ "node": "Capital Gap: Slack", "type": "main", "index": 0 }]]
+    },
+    "Capital Gap: Slack": {
+      "main": [[{ "node": "Capital Gap: Gmail", "type": "main", "index": 0 }]]
+    },
+    "Capital Gap: Gmail": {
+      "main": [[{ "node": "Capital Gap: Log", "type": "main", "index": 0 }]]
+    },
+    "Capital Gap: Log": {
+      "main": [[{ "node": "Capital Gap: Respond", "type": "main", "index": 0 }]]
+    },
+
+    "Draw Request: Webhook": {
+      "main": [[{ "node": "Draw Request: Validate", "type": "main", "index": 0 }]]
+    },
+    "Draw Request: Validate": {
+      "main": [[{ "node": "Draw Request: Get Deal", "type": "main", "index": 0 }]]
+    },
+    "Draw Request: Get Deal": {
+      "main": [[{ "node": "Draw Request: Router", "type": "main", "index": 0 }]]
+    },
+    "Draw Request: Router": {
+      "main": [
+        [{ "node": "Draw Request: APPROVED - Gmail", "type": "main", "index": 0 }],
+        [{ "node": "Draw Request: FLAGGED - Slack",  "type": "main", "index": 0 }]
+      ]
+    },
+    "Draw Request: APPROVED - Gmail": {
+      "main": [[{ "node": "Draw Request: APPROVED - Slack", "type": "main", "index": 0 }]]
+    },
+    "Draw Request: APPROVED - Slack": {
+      "main": [[{ "node": "Draw Request: Log", "type": "main", "index": 0 }]]
+    },
+    "Draw Request: FLAGGED - Slack": {
+      "main": [[{ "node": "Draw Request: Log", "type": "main", "index": 0 }]]
+    },
+    "Draw Request: Log": {
+      "main": [[{ "node": "Draw Request: Respond", "type": "main", "index": 0 }]]
+    },
+
+    "Project Delay: Webhook": {
+      "main": [[{ "node": "Project Delay: Get Deal", "type": "main", "index": 0 }]]
+    },
+    "Project Delay: Get Deal": {
+      "main": [[{ "node": "Project Delay: AI Impact", "type": "main", "index": 0 }]]
+    },
+    "Project Delay: AI Impact": {
+      "main": [[{ "node": "Project Delay: AI Fallback", "type": "main", "index": 0 }]]
+    },
+    "Project Delay: AI Fallback": {
+      "main": [[{ "node": "Project Delay: SMS", "type": "main", "index": 0 }]]
+    },
+    "Project Delay: SMS": {
+      "main": [[{ "node": "Project Delay: Slack", "type": "main", "index": 0 }]]
+    },
+    "Project Delay: Slack": {
+      "main": [[{ "node": "Project Delay: Gmail", "type": "main", "index": 0 }]]
+    },
+    "Project Delay: Gmail": {
+      "main": [[{ "node": "Project Delay: Log", "type": "main", "index": 0 }]]
+    },
+    "Project Delay: Log": {
+      "main": [[{ "node": "Project Delay: Respond", "type": "main", "index": 0 }]]
+    },
+
+    "Investor Package: Webhook": {
+      "main": [[{ "node": "Investor Package: Get Investors", "type": "main", "index": 0 }]]
+    },
+    "Investor Package: Get Investors": {
+      "main": [[{ "node": "Investor Package: AI Outreach", "type": "main", "index": 0 }]]
+    },
+    "Investor Package: AI Outreach": {
+      "main": [[{ "node": "Investor Package: AI Fallback", "type": "main", "index": 0 }]]
+    },
+    "Investor Package: AI Fallback": {
+      "main": [[{ "node": "Investor Package: Gmail", "type": "main", "index": 0 }]]
+    },
+    "Investor Package: Gmail": {
+      "main": [[{ "node": "Investor Package: Slack", "type": "main", "index": 0 }]]
+    },
+    "Investor Package: Slack": {
+      "main": [[{ "node": "Investor Package: Log", "type": "main", "index": 0 }]]
+    },
+    "Investor Package: Log": {
+      "main": [[{ "node": "Investor Package: Respond", "type": "main", "index": 0 }]]
+    }
+  },
+
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/New_York",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": false
+  },
+  "pinData": {}
+}

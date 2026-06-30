@@ -1,0 +1,55 @@
+{
+  "name": "15 - Project Intake",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Project Intake Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "project-intake", "httpMethod": "POST", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "create-project",
+      "name": "Create Project in DB",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/projects",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ property_id: $json.property_id, status: 'Planning', start_date: $json.start_date, target_completion: $json.target_completion, budget: $json.budget }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "notify",
+      "name": "Notify Project Team",
+      "type": "n8n-nodes-base.slack",
+      "position": [680, 300],
+      "parameters": {
+        "channel": "#operations",
+        "text": "=🔨 New Project Intake\nProperty: {{ $json.property_id }}\nBudget: ${{ $json.budget?.toLocaleString() }}\nStart: {{ $json.start_date }} | Target: {{ $json.target_completion }}\nProject ID: {{ $('Create Project in DB').first().json[0]?.project_id }}",
+        "otherOptions": {}
+      },
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Project Intake Webhook": { "main": [[{ "node": "Create Project in DB", "type": "main", "index": 0 }]] },
+    "Create Project in DB": { "main": [[{ "node": "Notify Project Team", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Operations Engine", "Project Intake"]
+}

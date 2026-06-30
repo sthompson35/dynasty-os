@@ -1,0 +1,92 @@
+{
+  "name": "01 - Lead Intake (Seller)",
+  "nodes": [
+    {
+      "id": "webhook-seller",
+      "name": "Seller Intake Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": {
+        "path": "seller-intake",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "validate-seller",
+      "name": "Validate Seller Data",
+      "type": "n8n-nodes-base.code",
+      "position": [460, 300],
+      "parameters": {
+        "jsCode": "const body = $input.first().json;\nconst required = ['name','phone','address'];\nconst missing = required.filter(f => !body[f]);\nif (missing.length) throw new Error('Missing fields: ' + missing.join(', '));\nreturn [{ json: { ...body, lead_type: 'Seller', source: body.source || 'Web Form', status: 'New' } }];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "create-lead",
+      "name": "Create Lead in Dynasty API",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/leads",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
+        "sendBody": true,
+        "bodyParameters": { "parameters": [] },
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "notify-slack",
+      "name": "Notify Team (Slack)",
+      "type": "n8n-nodes-base.slack",
+      "position": [900, 300],
+      "parameters": {
+        "channel": "#lead-alerts",
+        "text": "=🏠 New Seller Lead: {{ $json.body.name }} — {{ $json.body.address }} | Source: {{ $json.body.source }}",
+        "otherOptions": {}
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "trigger-scoring",
+      "name": "Trigger Lead Scoring",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1120, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/engines/lead-score",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ motivation: $('Create Lead in Dynasty API').first().json.metadata?.motivation, vacant: $('Create Lead in Dynasty API').first().json.metadata?.vacant ?? false, tax_delinquent: $('Create Lead in Dynasty API').first().json.metadata?.tax_delinquent ?? false }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [1340, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, lead_id: $('Create Lead in Dynasty API').first().json.lead_id }) }}"
+      },
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Seller Intake Webhook": { "main": [[{ "node": "Validate Seller Data", "type": "main", "index": 0 }]] },
+    "Validate Seller Data": { "main": [[{ "node": "Create Lead in Dynasty API", "type": "main", "index": 0 }]] },
+    "Create Lead in Dynasty API": { "main": [[{ "node": "Notify Team (Slack)", "type": "main", "index": 0 }]] },
+    "Notify Team (Slack)": { "main": [[{ "node": "Trigger Lead Scoring", "type": "main", "index": 0 }]] },
+    "Trigger Lead Scoring": { "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Lead Engine", "Seller"]
+}

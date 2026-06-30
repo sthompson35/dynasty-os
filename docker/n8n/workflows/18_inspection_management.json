@@ -1,0 +1,108 @@
+{
+  "name": "18 - Inspection Management",
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Inspection Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "inspection-mgmt", "httpMethod": "POST", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "log-inspection",
+      "name": "Log Inspection Result",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/inspections",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ project_id: $json.project_id, category: $json.category, result: $json.result, inspector: $json.inspector, notes: $json.notes }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "check-result",
+      "name": "Fail or Pass?",
+      "type": "n8n-nodes-base.if",
+      "position": [680, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [{ "leftValue": "={{ $json.result }}", "rightValue": "Fail", "operator": { "type": "string", "operation": "equals" } }]
+        }
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "flag-blocked",
+      "name": "Flag Project Blocked",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [900, 180],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/project_tasks?project_id=eq.{{ $json.project_id }}&category=eq.{{ $json.category }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "jsonBody": "{\"status\": \"Blocked\"}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "alert-fail",
+      "name": "Alert Inspection Failure",
+      "type": "n8n-nodes-base.slack",
+      "position": [1120, 180],
+      "parameters": {
+        "channel": "#operations",
+        "text": "=🚨 Inspection FAILED\nProject: {{ $('Inspection Webhook').first().json.project_id }}\nCategory: {{ $json.category }}\nInspector: {{ $json.inspector }}\nNotes: {{ $json.notes }}",
+        "otherOptions": {}
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "advance-project",
+      "name": "Advance Project Stage",
+      "type": "n8n-nodes-base.slack",
+      "position": [900, 420],
+      "parameters": {
+        "channel": "#operations",
+        "text": "=✅ Inspection PASSED\nProject: {{ $('Inspection Webhook').first().json.project_id }}\nCategory: {{ $json.category }}\nInspector: {{ $json.inspector }}",
+        "otherOptions": {}
+      },
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Inspection Webhook": { "main": [[{ "node": "Log Inspection Result", "type": "main", "index": 0 }]] },
+    "Log Inspection Result": { "main": [[{ "node": "Fail or Pass?", "type": "main", "index": 0 }]] },
+    "Fail or Pass?": {
+      "main": [
+        [{ "node": "Flag Project Blocked", "type": "main", "index": 0 }],
+        [{ "node": "Advance Project Stage", "type": "main", "index": 0 }]
+      ]
+    },
+    "Flag Project Blocked": { "main": [[{ "node": "Alert Inspection Failure", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Operations Engine", "Inspections"]
+}

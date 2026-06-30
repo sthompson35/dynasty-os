@@ -1,0 +1,72 @@
+{
+  "name": "22 - Capital Recovery",
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Capital Recovery Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "capital-recovery", "httpMethod": "POST", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "fetch-commitments",
+      "name": "Fetch Deal Commitments",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/capital/commitments?deal_id={{ $json.deal_id }}&status=Funded",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "compute-distributions",
+      "name": "Compute Investor Distributions",
+      "type": "n8n-nodes-base.code",
+      "position": [680, 300],
+      "parameters": {
+        "jsCode": "const closing = $('Capital Recovery Webhook').first().json;\nconst commitments = $('Fetch Deal Commitments').first().json.commitments || [];\nconst totalCommitted = commitments.reduce((s, c) => s + (c.amount || 0), 0);\nconst distributions = commitments.map(c => {\n  const share = totalCommitted > 0 ? c.amount / totalCommitted : 0;\n  const preferredReturn = c.amount * (c.investors?.preferred_return || 0.08);\n  const profitShare = Math.max(0, closing.net_profit - (totalCommitted * 0.08)) * share * 0.50;\n  const total = c.amount + preferredReturn + profitShare;\n  return {\n    investor_id: c.investor_id,\n    deal_id: closing.deal_id || closing.property_id,\n    amount: Math.round(total * 100) / 100,\n    distribution_date: closing.close_date,\n    type: 'Return of Capital',\n    status: 'Pending'\n  };\n});\nreturn distributions.map(d => ({ json: d }));"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "create-distributions",
+      "name": "Create Distribution Records",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [900, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/capital/distributions",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "notify-investor",
+      "name": "Notify Investor — Capital Returned",
+      "type": "n8n-nodes-base.gmail",
+      "position": [1120, 300],
+      "parameters": {
+        "operation": "send",
+        "to": "={{ $json.contact_info?.email }}",
+        "subject": "=Dynasty Investments — Capital Return Distribution Notice",
+        "message": "=Dear Investor,\n\nYour capital distribution is ready for processing.\n\n💰 Distribution: ${{ $json.amount?.toLocaleString() }}\n📅 Date: {{ $json.distribution_date }}\n📋 Type: {{ $json.type }}\n\nFunds will be transferred via your preferred payment method within 3–5 business days.\n\nThank you for your partnership.\n\n— Dynasty Property Investments\n{{ $env.COMPANY_PHONE }}",
+        "options": {}
+      },
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Capital Recovery Webhook": { "main": [[{ "node": "Fetch Deal Commitments", "type": "main", "index": 0 }]] },
+    "Fetch Deal Commitments": { "main": [[{ "node": "Compute Investor Distributions", "type": "main", "index": 0 }]] },
+    "Compute Investor Distributions": { "main": [[{ "node": "Create Distribution Records", "type": "main", "index": 0 }]] },
+    "Create Distribution Records": { "main": [[{ "node": "Notify Investor — Capital Returned", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Capital Engine", "Capital Recovery"]
+}

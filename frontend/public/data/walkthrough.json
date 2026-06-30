@@ -1,0 +1,136 @@
+{
+  "property_id": "USDA_1BEDROOM_001",
+  "model_url": "/models/USDA_1BEDROOM_001.glb",
+  "coordinate_system": "blender_feet_z_up",
+  "eye_height_ft": 5.5,
+  "stops": [
+    {
+      "stop_index": 0,
+      "stop_code": "FRONT_WALK",
+      "name": "Front Walk",
+      "room_code": "EXTERIOR",
+      "position_ft": [
+        -4,
+        -28,
+        5.5
+      ],
+      "look_at_ft": [
+        -4,
+        -21,
+        3.5
+      ]
+    },
+    {
+      "stop_index": 1,
+      "stop_code": "ENTRY",
+      "name": "Front Entry",
+      "room_code": "LIVING",
+      "position_ft": [
+        -4,
+        -19,
+        5.5
+      ],
+      "look_at_ft": [
+        -7,
+        -10,
+        4
+      ]
+    },
+    {
+      "stop_index": 2,
+      "stop_code": "LIVING",
+      "name": "Living Room",
+      "room_code": "LIVING",
+      "position_ft": [
+        -7,
+        -10,
+        5.5
+      ],
+      "look_at_ft": [
+        8,
+        -10,
+        4
+      ]
+    },
+    {
+      "stop_index": 3,
+      "stop_code": "KITCHEN",
+      "name": "Kitchen",
+      "room_code": "KITCHEN",
+      "position_ft": [
+        8,
+        -10,
+        5.5
+      ],
+      "look_at_ft": [
+        -7,
+        -10,
+        4
+      ]
+    },
+    {
+      "stop_index": 4,
+      "stop_code": "BEDROOM",
+      "name": "Bedroom",
+      "room_code": "BEDROOM",
+      "position_ft": [
+        -8,
+        9,
+        5.5
+      ],
+      "look_at_ft": [
+        -16,
+        8,
+        5
+      ]
+    },
+    {
+      "stop_index": 5,
+      "stop_code": "BATH",
+      "name": "Bathroom",
+      "room_code": "BATH",
+      "position_ft": [
+        8,
+        8,
+        5.5
+      ],
+      "look_at_ft": [
+        16,
+        9,
+        4.5
+      ]
+    },
+    {
+      "stop_index": 6,
+      "stop_code": "UTILITY",
+      "name": "Utility Room",
+      "room_code": "UTILITY",
+      "position_ft": [
+        10,
+        17,
+        5.5
+      ],
+      "look_at_ft": [
+        11,
+        21,
+        4
+      ]
+    },
+    {
+      "stop_index": 7,
+      "stop_code": "PATIO",
+      "name": "Rear Patio Door",
+      "room_code": "LIVING",
+      "position_ft": [
+        -4,
+        18,
+        5.5
+      ],
+      "look_at_ft": [
+        0,
+        35,
+        2
+      ]
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "name": "04 - Buyer Pipeline",
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Buyer Intake Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "buyer-intake", "httpMethod": "POST", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "classify-buyer",
+      "name": "Classify Buyer Type",
+      "type": "n8n-nodes-base.code",
+      "position": [460, 300],
+      "parameters": {
+        "jsCode": "const body = $input.first().json;\nconst types = { 'cash': 'Cash Buyer', 'landlord': 'Landlord', 'developer': 'Developer', 'builder': 'Builder', 'flipper': 'Flipper' };\nconst key = (body.buyer_type || '').toLowerCase();\nreturn [{ json: { ...body, buyer_type: types[key] || 'Cash Buyer', lead_type: 'Buyer', source: body.source || 'Web Form', status: 'New' } }];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "create-lead",
+      "name": "Create Buyer Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/leads",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "add-to-buyer-list",
+      "name": "Add to Buyer Registry",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [900, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/disposition/buyers",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ buyer_name: $json.name, markets: $json.markets || ['Park Hills', 'Farmington', 'Festus'], buyer_type: $json.buyer_type, funding_capacity: $json.funding_capacity, close_speed_days: $json.close_speed_days || 14 }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "send-welcome",
+      "name": "Send Buyer Welcome Email",
+      "type": "n8n-nodes-base.gmail",
+      "position": [1120, 300],
+      "parameters": {
+        "operation": "send",
+        "to": "={{ $json.email }}",
+        "subject": "Welcome to Dynasty Investments Buyer Network",
+        "message": "=Hi {{ $json.name }},\n\nYou're now on our exclusive buyer list. We'll contact you first when distressed properties matching your criteria hit our pipeline.\n\nYour criteria:\n- Markets: {{ ($json.markets || ['Park Hills']).join(', ') }}\n- Type: {{ $json.buyer_type }}\n- Budget: Up to ${{ $json.funding_capacity?.toLocaleString() || 'TBD' }}\n\nExpect deals to land in your inbox.\n\n— Dynasty Investments",
+        "options": {}
+      },
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Buyer Intake Webhook": { "main": [[{ "node": "Classify Buyer Type", "type": "main", "index": 0 }]] },
+    "Classify Buyer Type": { "main": [[{ "node": "Create Buyer Lead", "type": "main", "index": 0 }]] },
+    "Create Buyer Lead": { "main": [[{ "node": "Add to Buyer Registry", "type": "main", "index": 0 }]] },
+    "Add to Buyer Registry": { "main": [[{ "node": "Send Buyer Welcome Email", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Lead Engine", "Buyer Pipeline"]
+}

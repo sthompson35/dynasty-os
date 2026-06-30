@@ -1,0 +1,45 @@
+{
+  "name": "09 - MAO Engine",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "MAO Request",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "mao-engine", "httpMethod": "POST", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "calculate-mao",
+      "name": "Calculate MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/deal/mao",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ arv: $json.arv, repair_costs: $json.repair_costs, desired_profit: $json.desired_profit || 0, rule: $json.rule || '70' }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "respond",
+      "name": "Return MAO",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [680, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "MAO Request": { "main": [[{ "node": "Calculate MAO", "type": "main", "index": 0 }]] },
+    "Calculate MAO": { "main": [[{ "node": "Return MAO", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Deal Engine", "MAO"]
+}

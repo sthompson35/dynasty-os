@@ -1,0 +1,107 @@
+{
+  "name": "23 - Daily Executive Brief",
+  "nodes": [
+    {
+      "id": "schedule",
+      "name": "Daily 6 AM Brief",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [240, 300],
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 6 * * 1-5" }] }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "fetch-leads",
+      "name": "Fetch Lead Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 180],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/leads/stats",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "fetch-deals",
+      "name": "Fetch Deal Pipeline",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/deal?limit=100",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "fetch-capital",
+      "name": "Fetch Capital Position",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 420],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/capital/available",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "fetch-profit",
+      "name": "Fetch Profit YTD",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 540],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/disposition/profit?year={{ new Date().getFullYear() }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "compile-brief",
+      "name": "Compile Executive Brief",
+      "type": "n8n-nodes-base.code",
+      "position": [680, 360],
+      "parameters": {
+        "jsCode": "const leads = $('Fetch Lead Stats').first().json;\nconst deals = $('Fetch Deal Pipeline').first().json;\nconst capital = $('Fetch Capital Position').first().json;\nconst profit = $('Fetch Profit YTD').first().json;\nconst today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });\nconst activeDeals = (deals.deals || []).filter(d => ['PENDING','GO','GO_WITH_CONDITIONS'].includes(d.status)).length;\nconst briefText = `📊 DYNASTY OS — DAILY EXECUTIVE BRIEF\\n${today}\\n\\n` +\n  `🎯 LEAD ENGINE\\n` +\n  `• Total Leads: ${leads.total}\\n` +\n  `• Grade A: ${leads.by_grade?.A || 0} | B: ${leads.by_grade?.B || 0} | C: ${leads.by_grade?.C || 0}\\n` +\n  `• New Today: ${leads.by_status?.New || 0} | Hot: ${leads.by_status?.Hot || 0}\\n\\n` +\n  `📋 DEAL ENGINE\\n` +\n  `• Active Deals: ${activeDeals}\\n` +\n  `• GO Decisions: ${deals.deals?.filter(d => d.status === 'GO').length || 0}\\n\\n` +\n  `💰 CAPITAL POSITION\\n` +\n  `• Available: $${(capital.total_available || 0).toLocaleString()}\\n` +\n  `• Investors Active: ${capital.investor_count}\\n\\n` +\n  `📈 DISPOSITION (YTD)\\n` +\n  `• Deals Closed: ${profit.closed_deals}\\n` +\n  `• Net Profit: $${(profit.total_net_profit || 0).toLocaleString()}\\n` +\n  `• Avg Profit/Deal: $${(profit.avg_profit_per_deal || 0).toLocaleString()}\\n\\n` +\n  `— Dynasty OS AutoBrief v1.0`;\nreturn [{ json: { brief: briefText, today } }];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "send-brief-slack",
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.slack",
+      "position": [900, 300],
+      "parameters": {
+        "channel": "#command-center",
+        "text": "={{ $json.brief }}",
+        "otherOptions": {}
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "send-brief-email",
+      "name": "Email Executive Brief",
+      "type": "n8n-nodes-base.gmail",
+      "position": [900, 460],
+      "parameters": {
+        "operation": "send",
+        "to": "={{ $env.EXEC_EMAIL }}",
+        "subject": "=Dynasty OS — Daily Brief {{ $json.today }}",
+        "message": "={{ $json.brief }}",
+        "options": {}
+      },
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Daily 6 AM Brief": { "main": [[{ "node": "Fetch Lead Stats", "type": "main", "index": 0 }], [{ "node": "Fetch Deal Pipeline", "type": "main", "index": 0 }], [{ "node": "Fetch Capital Position", "type": "main", "index": 0 }], [{ "node": "Fetch Profit YTD", "type": "main", "index": 0 }]] },
+    "Fetch Profit YTD": { "main": [[{ "node": "Compile Executive Brief", "type": "main", "index": 0 }]] },
+    "Compile Executive Brief": { "main": [[{ "node": "Post to Slack", "type": "main", "index": 0 }], [{ "node": "Email Executive Brief", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Command Center", "Executive Brief"]
+}

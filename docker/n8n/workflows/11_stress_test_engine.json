@@ -1,0 +1,80 @@
+{
+  "name": "11 - Stress Test Engine",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Stress Test Request",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "stress-test", "httpMethod": "POST", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "run-stress",
+      "name": "Run Stress Test",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/deal/stress-test",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "check-pass",
+      "name": "Passes Stress Test?",
+      "type": "n8n-nodes-base.if",
+      "position": [680, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [{ "leftValue": "={{ $json.passes_all }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }]
+        }
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "pass-action",
+      "name": "Advance to Exit Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [900, 180],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_URL }}/exit-analysis",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify($('Stress Test Request').first().json) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "fail-action",
+      "name": "Flag for Renegotiation",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [900, 420],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/deal/{{ $('Stress Test Request').first().json.deal_id }}",
+        "sendBody": true,
+        "jsonBody": "{\"status\": \"RENEGOTIATE\"}",
+        "options": {}
+      },
+      "typeVersion": 4
+    }
+  ],
+  "connections": {
+    "Stress Test Request": { "main": [[{ "node": "Run Stress Test", "type": "main", "index": 0 }]] },
+    "Run Stress Test": { "main": [[{ "node": "Passes Stress Test?", "type": "main", "index": 0 }]] },
+    "Passes Stress Test?": {
+      "main": [
+        [{ "node": "Advance to Exit Analysis", "type": "main", "index": 0 }],
+        [{ "node": "Flag for Renegotiation", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Deal Engine", "Stress Test"]
+}

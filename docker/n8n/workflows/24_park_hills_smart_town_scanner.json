@@ -1,0 +1,126 @@
+{
+  "name": "24 - Park Hills Smart Town Scanner",
+  "nodes": [
+    {
+      "id": "schedule",
+      "name": "Weekly Scan — Monday 7 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [240, 300],
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 7 * * 1" }] }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "pull-tax-delinquent",
+      "name": "Pull Tax Delinquent Records",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 180],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/property/tax?years_delinquent_gte=2&status=Active&limit=200",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "pull-vacant",
+      "name": "Pull Vacant Properties",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/property/vacancy?city=Park%20Hills&skip_traced=false&limit=200",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "pull-absentee",
+      "name": "Pull Absentee Owners",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 420],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/property_ownership?absentee=eq.true&skip_trace_status=eq.Not%20Started&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "generate-leads",
+      "name": "Generate Leads from Scan",
+      "type": "n8n-nodes-base.code",
+      "position": [680, 300],
+      "parameters": {
+        "jsCode": "const taxRows = $('Pull Tax Delinquent Records').first().json.tax_delinquent || [];\nconst vacantRows = $('Pull Vacant Properties').first().json.vacant_properties || [];\nconst absenteeRows = $('Pull Absentee Owners').first().json || [];\n\nconst leadsToCreate = [];\n\nfor (const t of taxRows.slice(0, 20)) {\n  leadsToCreate.push({ lead_type: 'Seller', source: 'Public Records', status: 'New', notes: `Tax delinquent ${t.years_delinquent} yrs — $${t.amount_owed} owed`, metadata: { address: t.address, tax_delinquent: true, amount_owed: t.amount_owed } });\n}\n\nfor (const v of vacantRows.slice(0, 20)) {\n  leadsToCreate.push({ lead_type: 'Seller', source: 'Drive-By', status: 'New', notes: `Vacant ${v.vacancy_type} — ${v.years_vacant} yrs`, metadata: { address: v.address, vacant: true, vacancy_type: v.vacancy_type } });\n}\n\nfor (const a of absenteeRows.slice(0, 10)) {\n  leadsToCreate.push({ lead_type: 'Seller', source: 'Public Records', status: 'New', notes: `Absentee owner — ${a.owner_type}`, metadata: { address: a.address, absentee_owner: true } });\n}\n\nreturn leadsToCreate.map(l => ({ json: l }));"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "create-leads-batch",
+      "name": "Create Leads",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [900, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/leads",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "log-scan",
+      "name": "Log Scan Result",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1120, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/smart_town_scans",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ scan_type: 'Full Market Scan', properties_found: $('Pull Tax Delinquent Records').first().json.count + $('Pull Vacant Properties').first().json.count, leads_generated: $('Generate Leads from Scan').first().json.length || 50, radius_miles: 10, triggered_by: 'n8n Schedule' }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "brief-slack",
+      "name": "Post Scan Summary",
+      "type": "n8n-nodes-base.slack",
+      "position": [1340, 300],
+      "parameters": {
+        "channel": "#command-center",
+        "text": "=🏘️ Park Hills Smart Town Scan Complete\n📍 Tax Delinquent: {{ $('Pull Tax Delinquent Records').first().json.count }}\n🏚️ Vacant Properties: {{ $('Pull Vacant Properties').first().json.count }}\n👤 Absentee Owners: {{ $('Pull Absentee Owners').first().json.length }}\n🎯 Leads Generated: ~50\n\nRadius: 10mi | Center: 502 Buckley St, Park Hills, MO",
+        "otherOptions": {}
+      },
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Weekly Scan — Monday 7 AM": { "main": [[{ "node": "Pull Tax Delinquent Records", "type": "main", "index": 0 }], [{ "node": "Pull Vacant Properties", "type": "main", "index": 0 }], [{ "node": "Pull Absentee Owners", "type": "main", "index": 0 }]] },
+    "Pull Absentee Owners": { "main": [[{ "node": "Generate Leads from Scan", "type": "main", "index": 0 }]] },
+    "Generate Leads from Scan": { "main": [[{ "node": "Create Leads", "type": "main", "index": 0 }]] },
+    "Create Leads": { "main": [[{ "node": "Log Scan Result", "type": "main", "index": 0 }]] },
+    "Log Scan Result": { "main": [[{ "node": "Post Scan Summary", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Smart Town", "Park Hills", "Lead Engine"]
+}

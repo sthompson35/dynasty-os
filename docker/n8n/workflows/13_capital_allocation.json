@@ -1,0 +1,72 @@
+{
+  "name": "13 - Capital Allocation",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Capital Allocation Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "capital-allocation", "httpMethod": "POST", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "fetch-available",
+      "name": "Fetch Available Capital",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/capital/available",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "fetch-deals",
+      "name": "Fetch GO Deals",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 460],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/deal?status=GO",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "run-allocation",
+      "name": "Run Capital Allocation Engine",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 380],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/engines/capital-allocation",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify($('Fetch GO Deals').first().json.deals?.map(d => ({ deal_id: d.deal_id, roi: d.risk_scores?.[0]?.total_score ? (100 - d.risk_scores[0].total_score) / 100 : 0.20, risk_score: d.risk_scores?.[0]?.total_score || 30, timeline_months: 6, capital_required: d.asking_price || 50000, strategic_value: 1.0 })) || []) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "notify-results",
+      "name": "Notify Allocation Results",
+      "type": "n8n-nodes-base.slack",
+      "position": [900, 380],
+      "parameters": {
+        "channel": "#capital-desk",
+        "text": "=💰 Capital Allocation Complete\nAvailable: ${{ $('Fetch Available Capital').first().json.total_available?.toLocaleString() }}\nDeals Evaluated: {{ $('Run Capital Allocation Engine').first().json.length }}\nDeals Funded: {{ $('Run Capital Allocation Engine').first().json.filter(d => d.recommended).length }}",
+        "otherOptions": {}
+      },
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Capital Allocation Trigger": { "main": [[{ "node": "Fetch Available Capital", "type": "main", "index": 0 }], [{ "node": "Fetch GO Deals", "type": "main", "index": 0 }]] },
+    "Fetch Available Capital": { "main": [[{ "node": "Run Capital Allocation Engine", "type": "main", "index": 0 }]] },
+    "Fetch GO Deals": { "main": [[{ "node": "Run Capital Allocation Engine", "type": "main", "index": 0 }]] },
+    "Run Capital Allocation Engine": { "main": [[{ "node": "Notify Allocation Results", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Capital Engine", "Allocation"]
+}

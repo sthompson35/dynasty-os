@@ -1,0 +1,11 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+  "python.terminal.useEnvFile": true,
+  "editor.formatOnSave": true,
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.next": true
+  },
+  "CodeGPT.apiKey": "Anthropic",
+  "chat.agent.networkFilter": true
+}

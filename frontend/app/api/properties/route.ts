@@ -1,0 +1,69 @@
+import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/db'
+import { buildPropertyMutationData, serializeProperty } from '@/lib/property-utils'
+
+export const dynamic = 'force-dynamic'
+
+async function readBody(request: Request): Promise<Record<string, unknown>> {
+  try {
+    return (await request.json()) as Record<string, unknown>
+  } catch (error: unknown) {
+    console.error('Unable to read property request body', error)
+    return {}
+  }
+}
+
+export async function GET() {
+  const session = await getServerSession(authOptions)
+  const userId = session?.user?.id ?? ''
+
+  if (!userId) {
+    return NextResponse.json({ error: 'Authentication required.' }, { status: 401 })
+  }
+
+  try {
+    const properties = await prisma.property.findMany({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' },
+    })
+
+    return NextResponse.json({
+      properties: properties?.map?.((property: unknown) => serializeProperty(property)) ?? [],
+    })
+  } catch (error: unknown) {
+    console.error('Unable to load properties', error)
+    return NextResponse.json({ error: 'Unable to load properties.' }, { status: 500 })
+  }
+}
+
+export async function POST(request: Request) {
+  const session = await getServerSession(authOptions)
+  const userId = session?.user?.id ?? ''
+
+  if (!userId) {
+    return NextResponse.json({ error: 'Authentication required.' }, { status: 401 })
+  }
+
+  const body = await readBody(request)
+  const data = buildPropertyMutationData(body)
+
+  if (!data?.address || !data?.city || !data?.state) {
+    return NextResponse.json({ error: 'Address, city, and state are required.' }, { status: 400 })
+  }
+
+  try {
+    const property = await prisma.property.create({
+      data: {
+        ...data,
+        userId,
+      },
+    })
+
+    return NextResponse.json({ property: serializeProperty(property) }, { status: 201 })
+  } catch (error: unknown) {
+    console.error('Unable to create property', error)
+    return NextResponse.json({ error: 'Unable to create property.' }, { status: 500 })
+  }
+}

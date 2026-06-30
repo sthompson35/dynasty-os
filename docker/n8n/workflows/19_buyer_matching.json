@@ -1,0 +1,57 @@
+{
+  "name": "19 - Buyer Matching",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "New Property Ready Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "buyer-matching", "httpMethod": "POST", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "fetch-buyers",
+      "name": "Fetch Buyers Registry",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/disposition/buyers?limit=200",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "match-buyers",
+      "name": "Match Buyers to Property",
+      "type": "n8n-nodes-base.code",
+      "position": [680, 300],
+      "parameters": {
+        "jsCode": "const property = $('New Property Ready Webhook').first().json;\nconst buyers = $('Fetch Buyers Registry').first().json.buyers || [];\nconst matched = buyers.filter(b => {\n  const markets = b.markets || [];\n  const criteria = b.criteria || {};\n  const marketMatch = markets.length === 0 || markets.some(m => (property.city || '').toLowerCase().includes(m.toLowerCase()));\n  const priceMatch = !criteria.max_price || property.asking_price <= criteria.max_price;\n  const bedsMatch = !criteria.min_beds || property.beds >= criteria.min_beds;\n  return marketMatch && priceMatch && bedsMatch;\n});\nconst sorted = matched.sort((a, b) => (b.buyer_score || 0) - (a.buyer_score || 0)).slice(0, 10);\nreturn sorted.map(b => ({ json: { ...b, property } }));"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "notify-buyers",
+      "name": "Notify Matched Buyers",
+      "type": "n8n-nodes-base.gmail",
+      "position": [900, 300],
+      "parameters": {
+        "operation": "send",
+        "to": "={{ $json.criteria?.email || $json.contact?.email }}",
+        "subject": "=🏠 New Property Alert — {{ $json.property.address }}",
+        "message": "=Hi {{ $json.buyer_name }},\n\nA property matching your criteria just hit our inventory:\n\n📍 {{ $json.property.address }}, {{ $json.property.city }}, {{ $json.property.state }}\n🛏 {{ $json.property.beds }} bed / {{ $json.property.baths }} bath | {{ $json.property.sqft?.toLocaleString() }} sqft\n💰 Asking: ${{ $json.property.asking_price?.toLocaleString() }}\n🔨 ARV: ${{ $json.property.arv?.toLocaleString() }}\n\nThis is first-look access for our buyer network. Respond within 24 hours to secure a showing.\n\nCall/Text: {{ $env.COMPANY_PHONE }}\n\n— Dynasty Property Investments",
+        "options": {}
+      },
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "New Property Ready Webhook": { "main": [[{ "node": "Fetch Buyers Registry", "type": "main", "index": 0 }]] },
+    "Fetch Buyers Registry": { "main": [[{ "node": "Match Buyers to Property", "type": "main", "index": 0 }]] },
+    "Match Buyers to Property": { "main": [[{ "node": "Notify Matched Buyers", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Disposition Engine", "Buyer Matching"]
+}

@@ -1,0 +1,113 @@
+{
+  "name": "25 - Dynasty Command Center",
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Command Center Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "command-center", "httpMethod": "POST", "responseMode": "responseNode", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "route-command",
+      "name": "Route Command",
+      "type": "n8n-nodes-base.switch",
+      "position": [460, 300],
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.command }}",
+        "rules": {
+          "rules": [
+            { "value2": "brief", "output": 0 },
+            { "value2": "scan", "output": 1 },
+            { "value2": "allocate", "output": 2 },
+            { "value2": "status", "output": 3 }
+          ]
+        }
+      },
+      "typeVersion": 3
+    },
+    {
+      "id": "trigger-brief",
+      "name": "Trigger Daily Brief",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 120],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_URL }}/command-center-brief",
+        "sendBody": true,
+        "jsonBody": "{}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "trigger-scan",
+      "name": "Trigger Smart Town Scan",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 240],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_URL }}/smart-town-scan",
+        "sendBody": true,
+        "jsonBody": "{{ JSON.stringify({ manual: true, triggered_by: $json.user }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "trigger-allocate",
+      "name": "Trigger Capital Allocation",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 360],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_URL }}/capital-allocation",
+        "sendBody": true,
+        "jsonBody": "{}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "full-status",
+      "name": "Fetch Full Portfolio Status",
+      "type": "n8n-nodes-base.code",
+      "position": [680, 480],
+      "parameters": {
+        "jsCode": "return [{ json: { message: 'Portfolio status fetch queued', timestamp: new Date().toISOString(), engines: ['Lead Engine', 'Deal Engine', 'Capital Engine', 'Operations Engine', 'Disposition Engine', 'InvestorOS', 'Smart Town Scanner'], status: 'OPERATIONAL' } }];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "respond",
+      "name": "Command Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [900, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ command: $('Command Center Webhook').first().json.command, accepted: true, timestamp: new Date().toISOString() }) }}"
+      },
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Command Center Webhook": { "main": [[{ "node": "Route Command", "type": "main", "index": 0 }]] },
+    "Route Command": {
+      "main": [
+        [{ "node": "Trigger Daily Brief", "type": "main", "index": 0 }],
+        [{ "node": "Trigger Smart Town Scan", "type": "main", "index": 0 }],
+        [{ "node": "Trigger Capital Allocation", "type": "main", "index": 0 }],
+        [{ "node": "Fetch Full Portfolio Status", "type": "main", "index": 0 }]
+      ]
+    },
+    "Trigger Daily Brief": { "main": [[{ "node": "Command Response", "type": "main", "index": 0 }]] },
+    "Trigger Smart Town Scan": { "main": [[{ "node": "Command Response", "type": "main", "index": 0 }]] },
+    "Trigger Capital Allocation": { "main": [[{ "node": "Command Response", "type": "main", "index": 0 }]] },
+    "Fetch Full Portfolio Status": { "main": [[{ "node": "Command Response", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Command Center", "Orchestration"]
+}

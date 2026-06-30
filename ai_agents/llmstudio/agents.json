@@ -1,0 +1,79 @@
+{
+  "version": "1.0.0",
+  "default_provider": "llmstudio",
+  "default_model": "qwen3-coder:30b-a3b-instruct-q4_K_M",
+  "agents": [
+    {
+      "id": "orchestrator",
+      "name": "PropertyOS Orchestrator",
+      "domain": "Cross-agent planning and execution",
+      "source_folder": "ai_agents/orchestrator",
+      "system_prompt_file": "ai_agents/orchestrator/SYSTEM_PROMPT.md",
+      "temperature": 0.2,
+      "max_tokens": 4096
+    },
+    {
+      "id": "investor",
+      "name": "Investor Agent",
+      "domain": "Deal analysis and buy-box scoring",
+      "source_folder": "ai_agents/investor",
+      "system_prompt_file": "ai_agents/investor/SYSTEM_PROMPT.md",
+      "temperature": 0.25,
+      "max_tokens": 4096
+    },
+    {
+      "id": "lender",
+      "name": "Lender Agent",
+      "domain": "Loan packaging and debt coverage checks",
+      "source_folder": "ai_agents/lender",
+      "system_prompt_file": "ai_agents/lender/SYSTEM_PROMPT.md",
+      "temperature": 0.2,
+      "max_tokens": 3072
+    },
+    {
+      "id": "appraiser",
+      "name": "Appraiser Agent",
+      "domain": "ARV and valuation rationale",
+      "source_folder": "ai_agents/appraiser",
+      "system_prompt_file": "ai_agents/appraiser/SYSTEM_PROMPT.md",
+      "temperature": 0.15,
+      "max_tokens": 3072
+    },
+    {
+      "id": "contractor",
+      "name": "Contractor Agent",
+      "domain": "Scope, line-item costing, and sequencing",
+      "source_folder": "ai_agents/contractor",
+      "system_prompt_file": "ai_agents/contractor/SYSTEM_PROMPT.md",
+      "temperature": 0.2,
+      "max_tokens": 4096
+    },
+    {
+      "id": "architect",
+      "name": "Architect Agent",
+      "domain": "Layout planning and build constraints",
+      "source_folder": "ai_agents/architect",
+      "system_prompt_file": "ai_agents/architect/SYSTEM_PROMPT.md",
+      "temperature": 0.2,
+      "max_tokens": 4096
+    },
+    {
+      "id": "property_manager",
+      "name": "Property Manager Agent",
+      "domain": "Rentability and operations playbooks",
+      "source_folder": "ai_agents/property_manager",
+      "system_prompt_file": "ai_agents/property_manager/SYSTEM_PROMPT.md",
+      "temperature": 0.25,
+      "max_tokens": 3072
+    },
+    {
+      "id": "accounting",
+      "name": "Accounting Agent",
+      "domain": "COA mapping, job costing, and reporting",
+      "source_folder": "ai_agents/accounting",
+      "system_prompt_file": "ai_agents/accounting/SYSTEM_PROMPT.md",
+      "temperature": 0.1,
+      "max_tokens": 3072
+    }
+  ]
+}

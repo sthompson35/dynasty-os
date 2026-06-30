@@ -1,0 +1,104 @@
+{
+  "name": "03 - Seller Pipeline",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Seller Routed Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "seller-pipeline", "httpMethod": "POST", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "send-sms-1",
+      "name": "SMS — Day 1 Intro",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TWILIO_API_URL }}/2010-04-01/Accounts/{{ $env.TWILIO_SID }}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "To", "value": "={{ $json.phone }}" },
+            { "name": "From", "value": "={{ $env.TWILIO_FROM }}" },
+            { "name": "Body", "value": "=Hi {{ $json.name }}, I saw your property at {{ $json.address }}. We buy houses as-is for cash. Interested? Reply YES. — Dynasty Investments" }
+          ]
+        },
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "wait-3d",
+      "name": "Wait 3 Days",
+      "type": "n8n-nodes-base.wait",
+      "position": [680, 300],
+      "parameters": { "unit": "days", "amount": 3 },
+      "typeVersion": 1
+    },
+    {
+      "id": "send-email-2",
+      "name": "Email — Day 3 Follow-Up",
+      "type": "n8n-nodes-base.gmail",
+      "position": [900, 300],
+      "parameters": {
+        "operation": "send",
+        "to": "={{ $json.email }}",
+        "subject": "Still interested in a cash offer for {{ $json.address }}?",
+        "message": "=Hi {{ $json.name }},\n\nFollowing up on {{ $json.address }}. We can close in 14 days, all cash, no repairs, no commissions.\n\nWould you like a free, no-obligation offer?\n\nCall/Text: {{ $env.COMPANY_PHONE }}\n\n— Dynasty Property Investments",
+        "options": {}
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "wait-7d",
+      "name": "Wait 7 Days",
+      "type": "n8n-nodes-base.wait",
+      "position": [1120, 300],
+      "parameters": { "unit": "days", "amount": 7 },
+      "typeVersion": 1
+    },
+    {
+      "id": "send-voicemail",
+      "name": "Voicemail Drop — Day 10",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1340, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/leads/{{ $json.lead_id }}/activity",
+        "sendBody": true,
+        "jsonBody": "{\"activity_type\": \"Voicemail Drop\", \"description\": \"Ringless voicemail sent — Day 10 follow-up\"}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "log-activity",
+      "name": "Log Pipeline Progress",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1560, 300],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/leads/{{ $json.lead_id }}",
+        "sendBody": true,
+        "jsonBody": "{\"pipeline_stage\": \"Seller Outreach\", \"status\": \"Contacted\"}",
+        "options": {}
+      },
+      "typeVersion": 4
+    }
+  ],
+  "connections": {
+    "Seller Routed Trigger": { "main": [[{ "node": "SMS — Day 1 Intro", "type": "main", "index": 0 }]] },
+    "SMS — Day 1 Intro": { "main": [[{ "node": "Wait 3 Days", "type": "main", "index": 0 }]] },
+    "Wait 3 Days": { "main": [[{ "node": "Email — Day 3 Follow-Up", "type": "main", "index": 0 }]] },
+    "Email — Day 3 Follow-Up": { "main": [[{ "node": "Wait 7 Days", "type": "main", "index": 0 }]] },
+    "Wait 7 Days": { "main": [[{ "node": "Voicemail Drop — Day 10", "type": "main", "index": 0 }]] },
+    "Voicemail Drop — Day 10": { "main": [[{ "node": "Log Pipeline Progress", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Lead Engine", "Seller Pipeline"]
+}

@@ -1,0 +1,76 @@
+{
+  "name": "20 - Property Marketing",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Launch Marketing Campaign",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "property-marketing", "httpMethod": "POST", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "create-campaign",
+      "name": "Create Marketing Record",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/property_marketing",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ property_id: $json.property_id, channels: $json.channels || ['Email', 'SMS', 'Facebook'], assets: $json.assets || {}, campaign_start: new Date().toISOString().split('T')[0], status: 'Active' }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "post-facebook",
+      "name": "Post to Facebook (Marketplace)",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 180],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v19.0/{{ $env.FACEBOOK_PAGE_ID }}/feed",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "message", "value": "=🏠 INVESTMENT PROPERTY AVAILABLE\n{{ $json.address }} — {{ $json.city }}, MO\n{{ $json.beds }} bd / {{ $json.baths }} ba | {{ $json.sqft?.toLocaleString() }} sqft\nAsk: ${{ $json.asking_price?.toLocaleString() }} | ARV: ${{ $json.arv?.toLocaleString() }}\nCash buyers only. Fast close. Call {{ $env.COMPANY_PHONE }}" },
+            { "name": "access_token", "value": "={{ $env.FACEBOOK_ACCESS_TOKEN }}" }
+          ]
+        },
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "trigger-buyer-match",
+      "name": "Trigger Buyer Matching",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 420],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_URL }}/buyer-matching",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    }
+  ],
+  "connections": {
+    "Launch Marketing Campaign": { "main": [[{ "node": "Create Marketing Record", "type": "main", "index": 0 }]] },
+    "Create Marketing Record": { "main": [[{ "node": "Post to Facebook (Marketplace)", "type": "main", "index": 0 }], [{ "node": "Trigger Buyer Matching", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Disposition Engine", "Property Marketing"]
+}

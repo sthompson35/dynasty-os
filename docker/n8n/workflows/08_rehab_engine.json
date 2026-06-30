@@ -1,0 +1,56 @@
+{
+  "name": "08 - Rehab Estimation Engine",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Rehab Estimate Request",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "rehab-engine", "httpMethod": "POST", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "compute",
+      "name": "Compute Rehab Budget",
+      "type": "n8n-nodes-base.code",
+      "position": [460, 300],
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst sqft = d.sqft || 1000;\n\n// Per-sqft cost bands by condition\nconst bands = { cosmetic: 15, light: 28, moderate: 45, heavy: 65, gut: 90 };\nconst condition = (d.condition || 'moderate').toLowerCase();\nconst ppsf = bands[condition] || bands.moderate;\n\n// Line-item estimates\nconst items = [\n  { category: 'Roof', cost: d.roof_needed ? (sqft * 0.15 * 3.50) : 0 },\n  { category: 'HVAC', cost: d.hvac_needed ? 6500 : 0 },\n  { category: 'Electrical', cost: d.electrical_needed ? 4500 : 0 },\n  { category: 'Plumbing', cost: d.plumbing_needed ? 3500 : 0 },\n  { category: 'Flooring', cost: sqft * (d.flooring_ppsf || 4.50) },\n  { category: 'Kitchen', cost: d.kitchen_remodel ? 12000 : 2500 },\n  { category: 'Bathrooms', cost: (d.baths || 1) * (d.full_bath_remodel ? 6500 : 1800) },\n  { category: 'Windows', cost: (d.windows || 0) * 400 },\n  { category: 'Paint (Interior)', cost: sqft * 1.25 },\n  { category: 'Paint (Exterior)', cost: sqft * 0.80 },\n  { category: 'Landscaping', cost: 1500 },\n  { category: 'Permits & Inspections', cost: 2000 },\n  { category: 'Contingency (10%)', cost: 0 }\n];\n\nconst base = items.slice(0, -1).reduce((s, i) => s + i.cost, 0);\nconst contingency = base * 0.10;\nitems[items.length - 1].cost = contingency;\nconst total = base + contingency;\n\nreturn [{ json: { sqft, condition, base_rehab: Math.round(base), contingency: Math.round(contingency), total_rehab: Math.round(total), price_per_sqft: Math.round(total / sqft), line_items: items.filter(i => i.cost > 0) } }];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "update-deal",
+      "name": "Update Deal Repairs",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 300],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/deal/{{ $('Rehab Estimate Request').first().json.deal_id }}",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ repairs: $json.total_rehab }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "respond",
+      "name": "Return Estimate",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [900, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($('Compute Rehab Budget').first().json) }}"
+      },
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Rehab Estimate Request": { "main": [[{ "node": "Compute Rehab Budget", "type": "main", "index": 0 }]] },
+    "Compute Rehab Budget": { "main": [[{ "node": "Update Deal Repairs", "type": "main", "index": 0 }]] },
+    "Update Deal Repairs": { "main": [[{ "node": "Return Estimate", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Deal Engine", "Rehab"]
+}

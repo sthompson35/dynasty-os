@@ -1,0 +1,82 @@
+{
+  "name": "14 - Investor Reporting",
+  "nodes": [
+    {
+      "id": "schedule",
+      "name": "Monthly Report Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [240, 300],
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 8 1 * *" }] }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "fetch-investors",
+      "name": "Fetch Active Investors",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/capital/investors?status=Funded",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "fetch-returns",
+      "name": "Fetch Capital Returns",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/capital/returns",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "fetch-distributions",
+      "name": "Fetch Pending Distributions",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 460],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/capital/distributions?status=Pending",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "send-reports",
+      "name": "Send Investor Reports (Gmail)",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [900, 380],
+      "parameters": { "batchSize": 1, "options": {} },
+      "typeVersion": 3
+    },
+    {
+      "id": "email-investor",
+      "name": "Email Monthly Report",
+      "type": "n8n-nodes-base.gmail",
+      "position": [1120, 380],
+      "parameters": {
+        "operation": "send",
+        "to": "={{ $json.contact_info?.email }}",
+        "subject": "=Dynasty Investments — Monthly Capital Report — {{ new Date().toLocaleDateString('en-US', {month: 'long', year: 'numeric'}) }}",
+        "message": "=Dear {{ $json.investor_name }},\n\nHere is your monthly capital statement:\n\n📊 Portfolio Summary\n- Invested Capital: ${{ $json.invested_capital?.toLocaleString() }}\n- Committed Capital: ${{ $json.committed_capital?.toLocaleString() }}\n- Preferred Return: {{ ($json.preferred_return * 100).toFixed(1) }}%\n\n💰 Overall Portfolio Performance\n- Total Net Profit: ${{ $('Fetch Capital Returns').first().json.total_net_profit?.toLocaleString() }}\n- Avg ROI: {{ ($('Fetch Capital Returns').first().json.avg_roi * 100).toFixed(2) }}%\n- Deals Closed: {{ $('Fetch Capital Returns').first().json.closed_deals }}\n\nFull statements and deal-level reports are available in your investor portal.\n\nThank you for your continued partnership.\n\n— Dynasty Property Investments\n{{ $env.COMPANY_PHONE }}\n{{ $env.INVESTOR_PORTAL_URL }}",
+        "options": {}
+      },
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Monthly Report Schedule": { "main": [[{ "node": "Fetch Active Investors", "type": "main", "index": 0 }]] },
+    "Fetch Active Investors": { "main": [[{ "node": "Fetch Capital Returns", "type": "main", "index": 0 }], [{ "node": "Fetch Pending Distributions", "type": "main", "index": 0 }]] },
+    "Fetch Capital Returns": { "main": [[{ "node": "Send Investor Reports (Gmail)", "type": "main", "index": 0 }]] },
+    "Send Investor Reports (Gmail)": { "main": [[{ "node": "Email Monthly Report", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["InvestorOS", "Reporting"]
+}

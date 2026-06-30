@@ -1,0 +1,64 @@
+{
+  "name": "16 - Project Tracking",
+  "nodes": [
+    {
+      "id": "schedule",
+      "name": "Daily Project Check",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [240, 300],
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 7 * * 1-5" }] }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "fetch-projects",
+      "name": "Fetch Active Projects",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/projects?status=eq.Active&select=*,project_tasks(*),inspections(*)",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "check-variances",
+      "name": "Compute Budget & Schedule Variance",
+      "type": "n8n-nodes-base.code",
+      "position": [680, 300],
+      "parameters": {
+        "jsCode": "const projects = $input.first().json || [];\nconst alerts = [];\nfor (const p of projects) {\n  const budgetVar = p.budget > 0 ? ((p.actual_cost - p.budget) / p.budget) : 0;\n  const today = new Date();\n  const target = new Date(p.target_completion);\n  const daysRemaining = Math.ceil((target - today) / 86400000);\n  const completion = p.completion_percent || 0;\n  const isDelayed = daysRemaining < 0;\n  const overBudget = budgetVar > 0.10;\n  if (isDelayed || overBudget) {\n    alerts.push({ project_id: p.project_id, status: p.status, budget_variance: (budgetVar * 100).toFixed(1) + '%', days_remaining: daysRemaining, completion_pct: completion, over_budget: overBudget, delayed: isDelayed });\n  }\n}\nreturn alerts.length ? alerts.map(a => ({ json: a })) : [{ json: { no_alerts: true } }];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "alert-variances",
+      "name": "Alert on Variances",
+      "type": "n8n-nodes-base.slack",
+      "position": [900, 300],
+      "parameters": {
+        "channel": "#operations",
+        "text": "=📊 Daily Project Status\n🚨 Project {{ $json.project_id }}\n- Budget Variance: {{ $json.budget_variance }}\n- Days Remaining: {{ $json.days_remaining }}\n- Completion: {{ $json.completion_pct }}%\n- Over Budget: {{ $json.over_budget }} | Delayed: {{ $json.delayed }}",
+        "otherOptions": {}
+      },
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Daily Project Check": { "main": [[{ "node": "Fetch Active Projects", "type": "main", "index": 0 }]] },
+    "Fetch Active Projects": { "main": [[{ "node": "Compute Budget & Schedule Variance", "type": "main", "index": 0 }]] },
+    "Compute Budget & Schedule Variance": { "main": [[{ "node": "Alert on Variances", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Operations Engine", "Project Tracking"]
+}

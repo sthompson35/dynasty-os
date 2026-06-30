@@ -1,0 +1,111 @@
+{
+  "name": "17 - Contractor Management",
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Contractor Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "contractor-mgmt", "httpMethod": "POST", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "route-action",
+      "name": "Route Action",
+      "type": "n8n-nodes-base.switch",
+      "position": [460, 300],
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.action }}",
+        "rules": {
+          "rules": [
+            { "value2": "register", "output": 0 },
+            { "value2": "assign", "output": 1 },
+            { "value2": "rate", "output": 2 }
+          ]
+        }
+      },
+      "typeVersion": 3
+    },
+    {
+      "id": "register-contractor",
+      "name": "Register Contractor",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 180],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/contractors",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ trade: $json.trade, rating: $json.rating || 5, availability: $json.availability || 'Available', contact_info: { name: $json.name, phone: $json.phone, email: $json.email }, specializations: $json.specializations || [] }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "assign-task",
+      "name": "Assign to Project Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 300],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/project_tasks?task_id=eq.{{ $json.task_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ assigned_to: $json.contractor_id, status: 'In Progress' }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "rate-contractor",
+      "name": "Update Contractor Rating",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 420],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/contractors?contractor_id=eq.{{ $json.contractor_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ rating: $json.rating, performance: $json.performance_notes }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    }
+  ],
+  "connections": {
+    "Contractor Webhook": { "main": [[{ "node": "Route Action", "type": "main", "index": 0 }]] },
+    "Route Action": {
+      "main": [
+        [{ "node": "Register Contractor", "type": "main", "index": 0 }],
+        [{ "node": "Assign to Project Task", "type": "main", "index": 0 }],
+        [{ "node": "Update Contractor Rating", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Operations Engine", "Contractors"]
+}

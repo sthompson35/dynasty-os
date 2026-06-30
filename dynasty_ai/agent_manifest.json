@@ -1,0 +1,26 @@
+{
+  "name": "dynasty_ai",
+  "primary_agent": "ATLAS",
+  "version": "0.1.0",
+  "mode": "deterministic-first",
+  "engines": [
+    "lead_engine",
+    "intake_engine",
+    "underwriting_engine",
+    "strategy_engine",
+    "deal_engine",
+    "rehab_engine",
+    "capital_engine",
+    "investor_engine",
+    "disposition_engine",
+    "operations_engine",
+    "portfolio_dashboard"
+  ],
+  "buy_box": {
+    "market_focus": ["Missouri"],
+    "minimum_arv": 180000,
+    "minimum_profit": 25000,
+    "minimum_roi": 0.25,
+    "preferred_rehab": ["Light", "Medium"]
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "name": "02 - Lead Scoring Engine",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Lead Created Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "lead-score-trigger", "httpMethod": "POST", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "fetch-lead",
+      "name": "Fetch Lead Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/leads/{{ $json.lead_id }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "compute-score",
+      "name": "Compute Score (API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/engines/lead-score",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ motivation: $json.metadata?.motivation, equity_pct: $json.metadata?.equity_pct, timeline_days: $json.metadata?.timeline_days, asking_vs_arv: $json.metadata?.asking_vs_arv, vacant: $json.metadata?.vacant ?? false, tax_delinquent: $json.metadata?.tax_delinquent ?? false, absentee_owner: $json.metadata?.absentee_owner ?? false }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "persist-score",
+      "name": "Persist Score",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [900, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/leads/{{ $('Lead Created Trigger').first().json.lead_id }}/score",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ motivation_score: 0, equity_score: 0, condition_score: 0, timeline_score: 0, price_expectation_score: $('Compute Score (API)').first().json.score, total_score: $('Compute Score (API)').first().json.score }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "grade-router",
+      "name": "Route by Grade",
+      "type": "n8n-nodes-base.switch",
+      "position": [1120, 300],
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $('Compute Score (API)').first().json.grade }}",
+        "rules": {
+          "rules": [
+            { "value2": "A", "output": 0 },
+            { "value2": "B", "output": 1 },
+            { "value2": "C", "output": 2 },
+            { "value2": "D", "output": 3 }
+          ]
+        }
+      },
+      "typeVersion": 3
+    },
+    {
+      "id": "route-grade-a",
+      "name": "Route A → Seller Pipeline",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1340, 180],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/leads/{{ $('Lead Created Trigger').first().json.lead_id }}/route",
+        "sendBody": true,
+        "jsonBody": "{\"routed_to\": \"Seller Pipeline\", \"reason\": \"Grade A — Priority lead\"}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "route-grade-b",
+      "name": "Route B → Follow-Up Queue",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1340, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/leads/{{ $('Lead Created Trigger').first().json.lead_id }}/route",
+        "sendBody": true,
+        "jsonBody": "{\"routed_to\": \"Follow-Up Queue\", \"reason\": \"Grade B — scheduled follow-up\"}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "route-grade-c",
+      "name": "Route C → Nurture Sequence",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1340, 420],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/leads/{{ $('Lead Created Trigger').first().json.lead_id }}/route",
+        "sendBody": true,
+        "jsonBody": "{\"routed_to\": \"Nurture Sequence\", \"reason\": \"Grade C — drip campaign\"}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "route-grade-d",
+      "name": "Archive Grade D",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1340, 540],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/leads/{{ $('Lead Created Trigger').first().json.lead_id }}",
+        "sendBody": true,
+        "jsonBody": "{\"status\": \"Archived\"}",
+        "options": {}
+      },
+      "typeVersion": 4
+    }
+  ],
+  "connections": {
+    "Lead Created Trigger": { "main": [[{ "node": "Fetch Lead Details", "type": "main", "index": 0 }]] },
+    "Fetch Lead Details": { "main": [[{ "node": "Compute Score (API)", "type": "main", "index": 0 }]] },
+    "Compute Score (API)": { "main": [[{ "node": "Persist Score", "type": "main", "index": 0 }]] },
+    "Persist Score": { "main": [[{ "node": "Route by Grade", "type": "main", "index": 0 }]] },
+    "Route by Grade": {
+      "main": [
+        [{ "node": "Route A → Seller Pipeline", "type": "main", "index": 0 }],
+        [{ "node": "Route B → Follow-Up Queue", "type": "main", "index": 0 }],
+        [{ "node": "Route C → Nurture Sequence", "type": "main", "index": 0 }],
+        [{ "node": "Archive Grade D", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Lead Engine", "Scoring"]
+}

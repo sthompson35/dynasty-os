@@ -1,0 +1,4972 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Dynasty OS API",
+    "description": "API documentation for the **Dynasty OS** application.\n\n**Authentication:** Most endpoints require the `api_key` header. If using Swagger UI, click the **Authorize** button at the top of the page and enter your API key before trying any endpoint.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://dynasty-wealth-core.base44.app/api",
+      "description": "API server"
+    }
+  ],
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "paths": {
+    "/entities/Account": {
+      "get": {
+        "tags": [
+          "Entities - Account"
+        ],
+        "summary": "List Account records",
+        "operationId": "list_Account",
+        "description": "Retrieve a list of Account records with optional filtering, sorting, and pagination.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "JSON query filter, e.g. {\"status\":\"active\"}"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            },
+            "description": "Maximum number of records to return"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "description": "Number of records to skip (pagination)"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Field name to sort by. Prefix with '-' for descending order, e.g. -created_date"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Account"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Entities - Account"
+        ],
+        "summary": "Create a Account record",
+        "operationId": "create_Account",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Account"
+              },
+              "example": {
+                "account_number": 0,
+                "account_name": "Example account_name",
+                "account_type": "Asset",
+                "normal_balance": "Debit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entities - Account"
+        ],
+        "summary": "Delete multiple Account records",
+        "operationId": "delete_many_Account",
+        "description": "**Warning:** Passing an empty `{}` query will delete ALL records in this entity.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Query filter to match records to delete"
+              },
+              "example": {
+                "account_number": 0
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "deleted": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Account/bulk": {
+      "post": {
+        "tags": [
+          "Entities - Account"
+        ],
+        "summary": "Bulk create Account records",
+        "operationId": "bulk_create_Account",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              },
+              "example": [
+                {
+                  "account_number": 0,
+                  "account_name": "Example account_name",
+                  "account_type": "Asset",
+                  "normal_balance": "Debit"
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of created records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Account"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entities - Account"
+        ],
+        "summary": "Bulk update Account records",
+        "operationId": "bulk_update_Account",
+        "description": "Each item must include an 'id' field along with the fields to update.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              },
+              "example": [
+                {
+                  "id": "<record_id>",
+                  "account_number": 0,
+                  "account_name": "Example account_name",
+                  "account_type": "Asset",
+                  "normal_balance": "Debit"
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of updated records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Account"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Account/update-many": {
+      "patch": {
+        "tags": [
+          "Entities - Account"
+        ],
+        "summary": "Update many Account records by query",
+        "operationId": "update_many_Account",
+        "description": "Update multiple records matching a query filter. Supports MongoDB update operators ($set, $inc, $push, $pull).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query",
+                  "data"
+                ],
+                "properties": {
+                  "query": {
+                    "type": "object",
+                    "description": "Query filter to match records"
+                  },
+                  "data": {
+                    "type": "object",
+                    "description": "Update operations to apply"
+                  }
+                }
+              },
+              "example": {
+                "query": {
+                  "account_number": 0
+                },
+                "data": {
+                  "$set": {
+                    "account_number": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "updated": {
+                      "type": "integer"
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Account/{Account_id}": {
+      "get": {
+        "tags": [
+          "Entities - Account"
+        ],
+        "summary": "Get a Account record by ID",
+        "operationId": "get_Account",
+        "parameters": [
+          {
+            "name": "Account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entities - Account"
+        ],
+        "summary": "Update a Account record",
+        "operationId": "update_Account",
+        "parameters": [
+          {
+            "name": "Account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Account"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entities - Account"
+        ],
+        "summary": "Delete a Account record",
+        "operationId": "delete_Account",
+        "description": "Soft-deletes the record. Use the restore endpoint to undo.",
+        "parameters": [
+          {
+            "name": "Account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Account/{Account_id}/restore": {
+      "put": {
+        "tags": [
+          "Entities - Account"
+        ],
+        "summary": "Restore a deleted Account record",
+        "operationId": "restore_Account",
+        "parameters": [
+          {
+            "name": "Account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restored record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/JournalEntry": {
+      "get": {
+        "tags": [
+          "Entities - JournalEntry"
+        ],
+        "summary": "List JournalEntry records",
+        "operationId": "list_JournalEntry",
+        "description": "Retrieve a list of JournalEntry records with optional filtering, sorting, and pagination.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "JSON query filter, e.g. {\"status\":\"active\"}"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            },
+            "description": "Maximum number of records to return"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "description": "Number of records to skip (pagination)"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Field name to sort by. Prefix with '-' for descending order, e.g. -created_date"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JournalEntry"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Entities - JournalEntry"
+        ],
+        "summary": "Create a JournalEntry record",
+        "operationId": "create_JournalEntry",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JournalEntry"
+              },
+              "example": {
+                "date": "Example date",
+                "description": "Example description",
+                "debit_account": 0,
+                "debit_amount": 0,
+                "credit_account": 0,
+                "credit_amount": 0
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalEntry"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entities - JournalEntry"
+        ],
+        "summary": "Delete multiple JournalEntry records",
+        "operationId": "delete_many_JournalEntry",
+        "description": "**Warning:** Passing an empty `{}` query will delete ALL records in this entity.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Query filter to match records to delete"
+              },
+              "example": {
+                "date": "Example date"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "deleted": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/JournalEntry/bulk": {
+      "post": {
+        "tags": [
+          "Entities - JournalEntry"
+        ],
+        "summary": "Bulk create JournalEntry records",
+        "operationId": "bulk_create_JournalEntry",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/JournalEntry"
+                }
+              },
+              "example": [
+                {
+                  "date": "Example date",
+                  "description": "Example description",
+                  "debit_account": 0,
+                  "debit_amount": 0,
+                  "credit_account": 0,
+                  "credit_amount": 0
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of created records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JournalEntry"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entities - JournalEntry"
+        ],
+        "summary": "Bulk update JournalEntry records",
+        "operationId": "bulk_update_JournalEntry",
+        "description": "Each item must include an 'id' field along with the fields to update.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/JournalEntry"
+                }
+              },
+              "example": [
+                {
+                  "id": "<record_id>",
+                  "date": "Example date",
+                  "description": "Example description",
+                  "debit_account": 0,
+                  "debit_amount": 0,
+                  "credit_account": 0,
+                  "credit_amount": 0
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of updated records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JournalEntry"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/JournalEntry/update-many": {
+      "patch": {
+        "tags": [
+          "Entities - JournalEntry"
+        ],
+        "summary": "Update many JournalEntry records by query",
+        "operationId": "update_many_JournalEntry",
+        "description": "Update multiple records matching a query filter. Supports MongoDB update operators ($set, $inc, $push, $pull).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query",
+                  "data"
+                ],
+                "properties": {
+                  "query": {
+                    "type": "object",
+                    "description": "Query filter to match records"
+                  },
+                  "data": {
+                    "type": "object",
+                    "description": "Update operations to apply"
+                  }
+                }
+              },
+              "example": {
+                "query": {
+                  "date": "Example date"
+                },
+                "data": {
+                  "$set": {
+                    "date": "Example date"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "updated": {
+                      "type": "integer"
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/JournalEntry/{JournalEntry_id}": {
+      "get": {
+        "tags": [
+          "Entities - JournalEntry"
+        ],
+        "summary": "Get a JournalEntry record by ID",
+        "operationId": "get_JournalEntry",
+        "parameters": [
+          {
+            "name": "JournalEntry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalEntry"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entities - JournalEntry"
+        ],
+        "summary": "Update a JournalEntry record",
+        "operationId": "update_JournalEntry",
+        "parameters": [
+          {
+            "name": "JournalEntry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JournalEntry"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalEntry"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entities - JournalEntry"
+        ],
+        "summary": "Delete a JournalEntry record",
+        "operationId": "delete_JournalEntry",
+        "description": "Soft-deletes the record. Use the restore endpoint to undo.",
+        "parameters": [
+          {
+            "name": "JournalEntry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/JournalEntry/{JournalEntry_id}/restore": {
+      "put": {
+        "tags": [
+          "Entities - JournalEntry"
+        ],
+        "summary": "Restore a deleted JournalEntry record",
+        "operationId": "restore_JournalEntry",
+        "parameters": [
+          {
+            "name": "JournalEntry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restored record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalEntry"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Property": {
+      "get": {
+        "tags": [
+          "Entities - Property"
+        ],
+        "summary": "List Property records",
+        "operationId": "list_Property",
+        "description": "Retrieve a list of Property records with optional filtering, sorting, and pagination.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "JSON query filter, e.g. {\"status\":\"active\"}"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            },
+            "description": "Maximum number of records to return"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "description": "Number of records to skip (pagination)"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Field name to sort by. Prefix with '-' for descending order, e.g. -created_date"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Property"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Entities - Property"
+        ],
+        "summary": "Create a Property record",
+        "operationId": "create_Property",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Property"
+              },
+              "example": {
+                "address": "Example address",
+                "status": "Active — Rehab"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Property"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entities - Property"
+        ],
+        "summary": "Delete multiple Property records",
+        "operationId": "delete_many_Property",
+        "description": "**Warning:** Passing an empty `{}` query will delete ALL records in this entity.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Query filter to match records to delete"
+              },
+              "example": {
+                "address": "Example address"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "deleted": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Property/bulk": {
+      "post": {
+        "tags": [
+          "Entities - Property"
+        ],
+        "summary": "Bulk create Property records",
+        "operationId": "bulk_create_Property",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Property"
+                }
+              },
+              "example": [
+                {
+                  "address": "Example address",
+                  "status": "Active — Rehab"
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of created records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Property"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entities - Property"
+        ],
+        "summary": "Bulk update Property records",
+        "operationId": "bulk_update_Property",
+        "description": "Each item must include an 'id' field along with the fields to update.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Property"
+                }
+              },
+              "example": [
+                {
+                  "id": "<record_id>",
+                  "address": "Example address",
+                  "status": "Active — Rehab"
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of updated records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Property"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Property/update-many": {
+      "patch": {
+        "tags": [
+          "Entities - Property"
+        ],
+        "summary": "Update many Property records by query",
+        "operationId": "update_many_Property",
+        "description": "Update multiple records matching a query filter. Supports MongoDB update operators ($set, $inc, $push, $pull).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query",
+                  "data"
+                ],
+                "properties": {
+                  "query": {
+                    "type": "object",
+                    "description": "Query filter to match records"
+                  },
+                  "data": {
+                    "type": "object",
+                    "description": "Update operations to apply"
+                  }
+                }
+              },
+              "example": {
+                "query": {
+                  "address": "Example address"
+                },
+                "data": {
+                  "$set": {
+                    "address": "Example address"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "updated": {
+                      "type": "integer"
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Property/{Property_id}": {
+      "get": {
+        "tags": [
+          "Entities - Property"
+        ],
+        "summary": "Get a Property record by ID",
+        "operationId": "get_Property",
+        "parameters": [
+          {
+            "name": "Property_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Property"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entities - Property"
+        ],
+        "summary": "Update a Property record",
+        "operationId": "update_Property",
+        "parameters": [
+          {
+            "name": "Property_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Property"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Property"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entities - Property"
+        ],
+        "summary": "Delete a Property record",
+        "operationId": "delete_Property",
+        "description": "Soft-deletes the record. Use the restore endpoint to undo.",
+        "parameters": [
+          {
+            "name": "Property_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Property/{Property_id}/restore": {
+      "put": {
+        "tags": [
+          "Entities - Property"
+        ],
+        "summary": "Restore a deleted Property record",
+        "operationId": "restore_Property",
+        "parameters": [
+          {
+            "name": "Property_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restored record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Property"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Vendor": {
+      "get": {
+        "tags": [
+          "Entities - Vendor"
+        ],
+        "summary": "List Vendor records",
+        "operationId": "list_Vendor",
+        "description": "Retrieve a list of Vendor records with optional filtering, sorting, and pagination.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "JSON query filter, e.g. {\"status\":\"active\"}"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            },
+            "description": "Maximum number of records to return"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "description": "Number of records to skip (pagination)"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Field name to sort by. Prefix with '-' for descending order, e.g. -created_date"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Vendor"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Entities - Vendor"
+        ],
+        "summary": "Create a Vendor record",
+        "operationId": "create_Vendor",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Vendor"
+              },
+              "example": {
+                "vendor_name": "Example vendor_name"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Vendor"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entities - Vendor"
+        ],
+        "summary": "Delete multiple Vendor records",
+        "operationId": "delete_many_Vendor",
+        "description": "**Warning:** Passing an empty `{}` query will delete ALL records in this entity.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Query filter to match records to delete"
+              },
+              "example": {
+                "vendor_name": "Example vendor_name"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "deleted": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Vendor/bulk": {
+      "post": {
+        "tags": [
+          "Entities - Vendor"
+        ],
+        "summary": "Bulk create Vendor records",
+        "operationId": "bulk_create_Vendor",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Vendor"
+                }
+              },
+              "example": [
+                {
+                  "vendor_name": "Example vendor_name"
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of created records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Vendor"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entities - Vendor"
+        ],
+        "summary": "Bulk update Vendor records",
+        "operationId": "bulk_update_Vendor",
+        "description": "Each item must include an 'id' field along with the fields to update.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Vendor"
+                }
+              },
+              "example": [
+                {
+                  "id": "<record_id>",
+                  "vendor_name": "Example vendor_name"
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of updated records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Vendor"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Vendor/update-many": {
+      "patch": {
+        "tags": [
+          "Entities - Vendor"
+        ],
+        "summary": "Update many Vendor records by query",
+        "operationId": "update_many_Vendor",
+        "description": "Update multiple records matching a query filter. Supports MongoDB update operators ($set, $inc, $push, $pull).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query",
+                  "data"
+                ],
+                "properties": {
+                  "query": {
+                    "type": "object",
+                    "description": "Query filter to match records"
+                  },
+                  "data": {
+                    "type": "object",
+                    "description": "Update operations to apply"
+                  }
+                }
+              },
+              "example": {
+                "query": {
+                  "vendor_name": "Example vendor_name"
+                },
+                "data": {
+                  "$set": {
+                    "vendor_name": "Example vendor_name"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "updated": {
+                      "type": "integer"
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Vendor/{Vendor_id}": {
+      "get": {
+        "tags": [
+          "Entities - Vendor"
+        ],
+        "summary": "Get a Vendor record by ID",
+        "operationId": "get_Vendor",
+        "parameters": [
+          {
+            "name": "Vendor_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Vendor"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entities - Vendor"
+        ],
+        "summary": "Update a Vendor record",
+        "operationId": "update_Vendor",
+        "parameters": [
+          {
+            "name": "Vendor_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Vendor"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Vendor"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entities - Vendor"
+        ],
+        "summary": "Delete a Vendor record",
+        "operationId": "delete_Vendor",
+        "description": "Soft-deletes the record. Use the restore endpoint to undo.",
+        "parameters": [
+          {
+            "name": "Vendor_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Vendor/{Vendor_id}/restore": {
+      "put": {
+        "tags": [
+          "Entities - Vendor"
+        ],
+        "summary": "Restore a deleted Vendor record",
+        "operationId": "restore_Vendor",
+        "parameters": [
+          {
+            "name": "Vendor_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restored record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Vendor"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Bill": {
+      "get": {
+        "tags": [
+          "Entities - Bill"
+        ],
+        "summary": "List Bill records",
+        "operationId": "list_Bill",
+        "description": "Retrieve a list of Bill records with optional filtering, sorting, and pagination.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "JSON query filter, e.g. {\"status\":\"active\"}"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            },
+            "description": "Maximum number of records to return"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "description": "Number of records to skip (pagination)"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Field name to sort by. Prefix with '-' for descending order, e.g. -created_date"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Bill"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Entities - Bill"
+        ],
+        "summary": "Create a Bill record",
+        "operationId": "create_Bill",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Bill"
+              },
+              "example": {
+                "date": "Example date",
+                "vendor_name": "Example vendor_name",
+                "amount": 0
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Bill"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entities - Bill"
+        ],
+        "summary": "Delete multiple Bill records",
+        "operationId": "delete_many_Bill",
+        "description": "**Warning:** Passing an empty `{}` query will delete ALL records in this entity.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Query filter to match records to delete"
+              },
+              "example": {
+                "date": "Example date"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "deleted": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Bill/bulk": {
+      "post": {
+        "tags": [
+          "Entities - Bill"
+        ],
+        "summary": "Bulk create Bill records",
+        "operationId": "bulk_create_Bill",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Bill"
+                }
+              },
+              "example": [
+                {
+                  "date": "Example date",
+                  "vendor_name": "Example vendor_name",
+                  "amount": 0
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of created records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Bill"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entities - Bill"
+        ],
+        "summary": "Bulk update Bill records",
+        "operationId": "bulk_update_Bill",
+        "description": "Each item must include an 'id' field along with the fields to update.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Bill"
+                }
+              },
+              "example": [
+                {
+                  "id": "<record_id>",
+                  "date": "Example date",
+                  "vendor_name": "Example vendor_name",
+                  "amount": 0
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of updated records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Bill"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Bill/update-many": {
+      "patch": {
+        "tags": [
+          "Entities - Bill"
+        ],
+        "summary": "Update many Bill records by query",
+        "operationId": "update_many_Bill",
+        "description": "Update multiple records matching a query filter. Supports MongoDB update operators ($set, $inc, $push, $pull).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query",
+                  "data"
+                ],
+                "properties": {
+                  "query": {
+                    "type": "object",
+                    "description": "Query filter to match records"
+                  },
+                  "data": {
+                    "type": "object",
+                    "description": "Update operations to apply"
+                  }
+                }
+              },
+              "example": {
+                "query": {
+                  "date": "Example date"
+                },
+                "data": {
+                  "$set": {
+                    "date": "Example date"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "updated": {
+                      "type": "integer"
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Bill/{Bill_id}": {
+      "get": {
+        "tags": [
+          "Entities - Bill"
+        ],
+        "summary": "Get a Bill record by ID",
+        "operationId": "get_Bill",
+        "parameters": [
+          {
+            "name": "Bill_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Bill"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entities - Bill"
+        ],
+        "summary": "Update a Bill record",
+        "operationId": "update_Bill",
+        "parameters": [
+          {
+            "name": "Bill_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Bill"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Bill"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entities - Bill"
+        ],
+        "summary": "Delete a Bill record",
+        "operationId": "delete_Bill",
+        "description": "Soft-deletes the record. Use the restore endpoint to undo.",
+        "parameters": [
+          {
+            "name": "Bill_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Bill/{Bill_id}/restore": {
+      "put": {
+        "tags": [
+          "Entities - Bill"
+        ],
+        "summary": "Restore a deleted Bill record",
+        "operationId": "restore_Bill",
+        "parameters": [
+          {
+            "name": "Bill_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restored record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Bill"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Invoice": {
+      "get": {
+        "tags": [
+          "Entities - Invoice"
+        ],
+        "summary": "List Invoice records",
+        "operationId": "list_Invoice",
+        "description": "Retrieve a list of Invoice records with optional filtering, sorting, and pagination.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "JSON query filter, e.g. {\"status\":\"active\"}"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            },
+            "description": "Maximum number of records to return"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "description": "Number of records to skip (pagination)"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Field name to sort by. Prefix with '-' for descending order, e.g. -created_date"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Invoice"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Entities - Invoice"
+        ],
+        "summary": "Create a Invoice record",
+        "operationId": "create_Invoice",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Invoice"
+              },
+              "example": {
+                "date": "Example date",
+                "customer_name": "Example customer_name",
+                "amount": 0
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entities - Invoice"
+        ],
+        "summary": "Delete multiple Invoice records",
+        "operationId": "delete_many_Invoice",
+        "description": "**Warning:** Passing an empty `{}` query will delete ALL records in this entity.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Query filter to match records to delete"
+              },
+              "example": {
+                "date": "Example date"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "deleted": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Invoice/bulk": {
+      "post": {
+        "tags": [
+          "Entities - Invoice"
+        ],
+        "summary": "Bulk create Invoice records",
+        "operationId": "bulk_create_Invoice",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              },
+              "example": [
+                {
+                  "date": "Example date",
+                  "customer_name": "Example customer_name",
+                  "amount": 0
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of created records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Invoice"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entities - Invoice"
+        ],
+        "summary": "Bulk update Invoice records",
+        "operationId": "bulk_update_Invoice",
+        "description": "Each item must include an 'id' field along with the fields to update.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              },
+              "example": [
+                {
+                  "id": "<record_id>",
+                  "date": "Example date",
+                  "customer_name": "Example customer_name",
+                  "amount": 0
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of updated records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Invoice"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Invoice/update-many": {
+      "patch": {
+        "tags": [
+          "Entities - Invoice"
+        ],
+        "summary": "Update many Invoice records by query",
+        "operationId": "update_many_Invoice",
+        "description": "Update multiple records matching a query filter. Supports MongoDB update operators ($set, $inc, $push, $pull).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query",
+                  "data"
+                ],
+                "properties": {
+                  "query": {
+                    "type": "object",
+                    "description": "Query filter to match records"
+                  },
+                  "data": {
+                    "type": "object",
+                    "description": "Update operations to apply"
+                  }
+                }
+              },
+              "example": {
+                "query": {
+                  "date": "Example date"
+                },
+                "data": {
+                  "$set": {
+                    "date": "Example date"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "updated": {
+                      "type": "integer"
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Invoice/{Invoice_id}": {
+      "get": {
+        "tags": [
+          "Entities - Invoice"
+        ],
+        "summary": "Get a Invoice record by ID",
+        "operationId": "get_Invoice",
+        "parameters": [
+          {
+            "name": "Invoice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entities - Invoice"
+        ],
+        "summary": "Update a Invoice record",
+        "operationId": "update_Invoice",
+        "parameters": [
+          {
+            "name": "Invoice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Invoice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entities - Invoice"
+        ],
+        "summary": "Delete a Invoice record",
+        "operationId": "delete_Invoice",
+        "description": "Soft-deletes the record. Use the restore endpoint to undo.",
+        "parameters": [
+          {
+            "name": "Invoice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/Invoice/{Invoice_id}/restore": {
+      "put": {
+        "tags": [
+          "Entities - Invoice"
+        ],
+        "summary": "Restore a deleted Invoice record",
+        "operationId": "restore_Invoice",
+        "parameters": [
+          {
+            "name": "Invoice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restored record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/RehabWorkOrder": {
+      "get": {
+        "tags": [
+          "Entities - RehabWorkOrder"
+        ],
+        "summary": "List RehabWorkOrder records",
+        "operationId": "list_RehabWorkOrder",
+        "description": "Retrieve a list of RehabWorkOrder records with optional filtering, sorting, and pagination.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "JSON query filter, e.g. {\"status\":\"active\"}"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            },
+            "description": "Maximum number of records to return"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "description": "Number of records to skip (pagination)"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Field name to sort by. Prefix with '-' for descending order, e.g. -created_date"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RehabWorkOrder"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Entities - RehabWorkOrder"
+        ],
+        "summary": "Create a RehabWorkOrder record",
+        "operationId": "create_RehabWorkOrder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RehabWorkOrder"
+              },
+              "example": {
+                "property": "Example property",
+                "category": "Demo & Site Prep",
+                "budget": 0
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RehabWorkOrder"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entities - RehabWorkOrder"
+        ],
+        "summary": "Delete multiple RehabWorkOrder records",
+        "operationId": "delete_many_RehabWorkOrder",
+        "description": "**Warning:** Passing an empty `{}` query will delete ALL records in this entity.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Query filter to match records to delete"
+              },
+              "example": {
+                "property": "Example property"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "deleted": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/RehabWorkOrder/bulk": {
+      "post": {
+        "tags": [
+          "Entities - RehabWorkOrder"
+        ],
+        "summary": "Bulk create RehabWorkOrder records",
+        "operationId": "bulk_create_RehabWorkOrder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RehabWorkOrder"
+                }
+              },
+              "example": [
+                {
+                  "property": "Example property",
+                  "category": "Demo & Site Prep",
+                  "budget": 0
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of created records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RehabWorkOrder"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entities - RehabWorkOrder"
+        ],
+        "summary": "Bulk update RehabWorkOrder records",
+        "operationId": "bulk_update_RehabWorkOrder",
+        "description": "Each item must include an 'id' field along with the fields to update.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RehabWorkOrder"
+                }
+              },
+              "example": [
+                {
+                  "id": "<record_id>",
+                  "property": "Example property",
+                  "category": "Demo & Site Prep",
+                  "budget": 0
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of updated records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RehabWorkOrder"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/RehabWorkOrder/update-many": {
+      "patch": {
+        "tags": [
+          "Entities - RehabWorkOrder"
+        ],
+        "summary": "Update many RehabWorkOrder records by query",
+        "operationId": "update_many_RehabWorkOrder",
+        "description": "Update multiple records matching a query filter. Supports MongoDB update operators ($set, $inc, $push, $pull).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query",
+                  "data"
+                ],
+                "properties": {
+                  "query": {
+                    "type": "object",
+                    "description": "Query filter to match records"
+                  },
+                  "data": {
+                    "type": "object",
+                    "description": "Update operations to apply"
+                  }
+                }
+              },
+              "example": {
+                "query": {
+                  "property": "Example property"
+                },
+                "data": {
+                  "$set": {
+                    "property": "Example property"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "updated": {
+                      "type": "integer"
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/RehabWorkOrder/{RehabWorkOrder_id}": {
+      "get": {
+        "tags": [
+          "Entities - RehabWorkOrder"
+        ],
+        "summary": "Get a RehabWorkOrder record by ID",
+        "operationId": "get_RehabWorkOrder",
+        "parameters": [
+          {
+            "name": "RehabWorkOrder_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RehabWorkOrder"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entities - RehabWorkOrder"
+        ],
+        "summary": "Update a RehabWorkOrder record",
+        "operationId": "update_RehabWorkOrder",
+        "parameters": [
+          {
+            "name": "RehabWorkOrder_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RehabWorkOrder"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RehabWorkOrder"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entities - RehabWorkOrder"
+        ],
+        "summary": "Delete a RehabWorkOrder record",
+        "operationId": "delete_RehabWorkOrder",
+        "description": "Soft-deletes the record. Use the restore endpoint to undo.",
+        "parameters": [
+          {
+            "name": "RehabWorkOrder_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/RehabWorkOrder/{RehabWorkOrder_id}/restore": {
+      "put": {
+        "tags": [
+          "Entities - RehabWorkOrder"
+        ],
+        "summary": "Restore a deleted RehabWorkOrder record",
+        "operationId": "restore_RehabWorkOrder",
+        "parameters": [
+          {
+            "name": "RehabWorkOrder_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restored record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RehabWorkOrder"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/BusinessEntity": {
+      "get": {
+        "tags": [
+          "Entities - BusinessEntity"
+        ],
+        "summary": "List BusinessEntity records",
+        "operationId": "list_BusinessEntity",
+        "description": "Retrieve a list of BusinessEntity records with optional filtering, sorting, and pagination.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "JSON query filter, e.g. {\"status\":\"active\"}"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            },
+            "description": "Maximum number of records to return"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "description": "Number of records to skip (pagination)"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Field name to sort by. Prefix with '-' for descending order, e.g. -created_date"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BusinessEntity"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Entities - BusinessEntity"
+        ],
+        "summary": "Create a BusinessEntity record",
+        "operationId": "create_BusinessEntity",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessEntity"
+              },
+              "example": {
+                "entity_name": "Example entity_name",
+                "entity_type": "Operating LLC"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessEntity"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entities - BusinessEntity"
+        ],
+        "summary": "Delete multiple BusinessEntity records",
+        "operationId": "delete_many_BusinessEntity",
+        "description": "**Warning:** Passing an empty `{}` query will delete ALL records in this entity.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Query filter to match records to delete"
+              },
+              "example": {
+                "entity_name": "Example entity_name"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "deleted": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/BusinessEntity/bulk": {
+      "post": {
+        "tags": [
+          "Entities - BusinessEntity"
+        ],
+        "summary": "Bulk create BusinessEntity records",
+        "operationId": "bulk_create_BusinessEntity",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/BusinessEntity"
+                }
+              },
+              "example": [
+                {
+                  "entity_name": "Example entity_name",
+                  "entity_type": "Operating LLC"
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of created records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BusinessEntity"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entities - BusinessEntity"
+        ],
+        "summary": "Bulk update BusinessEntity records",
+        "operationId": "bulk_update_BusinessEntity",
+        "description": "Each item must include an 'id' field along with the fields to update.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/BusinessEntity"
+                }
+              },
+              "example": [
+                {
+                  "id": "<record_id>",
+                  "entity_name": "Example entity_name",
+                  "entity_type": "Operating LLC"
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of updated records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BusinessEntity"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/BusinessEntity/update-many": {
+      "patch": {
+        "tags": [
+          "Entities - BusinessEntity"
+        ],
+        "summary": "Update many BusinessEntity records by query",
+        "operationId": "update_many_BusinessEntity",
+        "description": "Update multiple records matching a query filter. Supports MongoDB update operators ($set, $inc, $push, $pull).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query",
+                  "data"
+                ],
+                "properties": {
+                  "query": {
+                    "type": "object",
+                    "description": "Query filter to match records"
+                  },
+                  "data": {
+                    "type": "object",
+                    "description": "Update operations to apply"
+                  }
+                }
+              },
+              "example": {
+                "query": {
+                  "entity_name": "Example entity_name"
+                },
+                "data": {
+                  "$set": {
+                    "entity_name": "Example entity_name"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "updated": {
+                      "type": "integer"
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/BusinessEntity/{BusinessEntity_id}": {
+      "get": {
+        "tags": [
+          "Entities - BusinessEntity"
+        ],
+        "summary": "Get a BusinessEntity record by ID",
+        "operationId": "get_BusinessEntity",
+        "parameters": [
+          {
+            "name": "BusinessEntity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessEntity"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entities - BusinessEntity"
+        ],
+        "summary": "Update a BusinessEntity record",
+        "operationId": "update_BusinessEntity",
+        "parameters": [
+          {
+            "name": "BusinessEntity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessEntity"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessEntity"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entities - BusinessEntity"
+        ],
+        "summary": "Delete a BusinessEntity record",
+        "operationId": "delete_BusinessEntity",
+        "description": "Soft-deletes the record. Use the restore endpoint to undo.",
+        "parameters": [
+          {
+            "name": "BusinessEntity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/BusinessEntity/{BusinessEntity_id}/restore": {
+      "put": {
+        "tags": [
+          "Entities - BusinessEntity"
+        ],
+        "summary": "Restore a deleted BusinessEntity record",
+        "operationId": "restore_BusinessEntity",
+        "parameters": [
+          {
+            "name": "BusinessEntity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restored record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessEntity"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/BankTransaction": {
+      "get": {
+        "tags": [
+          "Entities - BankTransaction"
+        ],
+        "summary": "List BankTransaction records",
+        "operationId": "list_BankTransaction",
+        "description": "Retrieve a list of BankTransaction records with optional filtering, sorting, and pagination.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "JSON query filter, e.g. {\"status\":\"active\"}"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            },
+            "description": "Maximum number of records to return"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "description": "Number of records to skip (pagination)"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Field name to sort by. Prefix with '-' for descending order, e.g. -created_date"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BankTransaction"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Entities - BankTransaction"
+        ],
+        "summary": "Create a BankTransaction record",
+        "operationId": "create_BankTransaction",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankTransaction"
+              },
+              "example": {
+                "date": "Example date",
+                "description": "Example description",
+                "amount": 0,
+                "trans_type": "Deposit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankTransaction"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entities - BankTransaction"
+        ],
+        "summary": "Delete multiple BankTransaction records",
+        "operationId": "delete_many_BankTransaction",
+        "description": "**Warning:** Passing an empty `{}` query will delete ALL records in this entity.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Query filter to match records to delete"
+              },
+              "example": {
+                "date": "Example date"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "deleted": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/BankTransaction/bulk": {
+      "post": {
+        "tags": [
+          "Entities - BankTransaction"
+        ],
+        "summary": "Bulk create BankTransaction records",
+        "operationId": "bulk_create_BankTransaction",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/BankTransaction"
+                }
+              },
+              "example": [
+                {
+                  "date": "Example date",
+                  "description": "Example description",
+                  "amount": 0,
+                  "trans_type": "Deposit"
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of created records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BankTransaction"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entities - BankTransaction"
+        ],
+        "summary": "Bulk update BankTransaction records",
+        "operationId": "bulk_update_BankTransaction",
+        "description": "Each item must include an 'id' field along with the fields to update.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/BankTransaction"
+                }
+              },
+              "example": [
+                {
+                  "id": "<record_id>",
+                  "date": "Example date",
+                  "description": "Example description",
+                  "amount": 0,
+                  "trans_type": "Deposit"
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of updated records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BankTransaction"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/BankTransaction/update-many": {
+      "patch": {
+        "tags": [
+          "Entities - BankTransaction"
+        ],
+        "summary": "Update many BankTransaction records by query",
+        "operationId": "update_many_BankTransaction",
+        "description": "Update multiple records matching a query filter. Supports MongoDB update operators ($set, $inc, $push, $pull).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query",
+                  "data"
+                ],
+                "properties": {
+                  "query": {
+                    "type": "object",
+                    "description": "Query filter to match records"
+                  },
+                  "data": {
+                    "type": "object",
+                    "description": "Update operations to apply"
+                  }
+                }
+              },
+              "example": {
+                "query": {
+                  "date": "Example date"
+                },
+                "data": {
+                  "$set": {
+                    "date": "Example date"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "updated": {
+                      "type": "integer"
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/BankTransaction/{BankTransaction_id}": {
+      "get": {
+        "tags": [
+          "Entities - BankTransaction"
+        ],
+        "summary": "Get a BankTransaction record by ID",
+        "operationId": "get_BankTransaction",
+        "parameters": [
+          {
+            "name": "BankTransaction_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankTransaction"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entities - BankTransaction"
+        ],
+        "summary": "Update a BankTransaction record",
+        "operationId": "update_BankTransaction",
+        "parameters": [
+          {
+            "name": "BankTransaction_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankTransaction"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankTransaction"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entities - BankTransaction"
+        ],
+        "summary": "Delete a BankTransaction record",
+        "operationId": "delete_BankTransaction",
+        "description": "Soft-deletes the record. Use the restore endpoint to undo.",
+        "parameters": [
+          {
+            "name": "BankTransaction_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/BankTransaction/{BankTransaction_id}/restore": {
+      "put": {
+        "tags": [
+          "Entities - BankTransaction"
+        ],
+        "summary": "Restore a deleted BankTransaction record",
+        "operationId": "restore_BankTransaction",
+        "parameters": [
+          {
+            "name": "BankTransaction_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restored record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankTransaction"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/User": {
+      "get": {
+        "tags": [
+          "Entities - User"
+        ],
+        "summary": "List User records",
+        "operationId": "list_User",
+        "description": "Retrieve a list of User records with optional filtering, sorting, and pagination.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "JSON query filter, e.g. {\"status\":\"active\"}"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            },
+            "description": "Maximum number of records to return"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "description": "Number of records to skip (pagination)"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Field name to sort by. Prefix with '-' for descending order, e.g. -created_date"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/User"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Entities - User"
+        ],
+        "summary": "Create a User record",
+        "operationId": "create_User",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/User"
+              },
+              "example": {
+                "email": "Example email",
+                "full_name": "Example full_name",
+                "role": "admin"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entities/User/{User_id}": {
+      "get": {
+        "tags": [
+          "Entities - User"
+        ],
+        "summary": "Get a User record by ID",
+        "operationId": "get_User",
+        "parameters": [
+          {
+            "name": "User_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entities - User"
+        ],
+        "summary": "Update a User record",
+        "operationId": "update_User",
+        "parameters": [
+          {
+            "name": "User_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/User"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entities - User"
+        ],
+        "summary": "Delete a User record",
+        "operationId": "delete_User",
+        "description": "Soft-deletes the record. Use the restore endpoint to undo.",
+        "parameters": [
+          {
+            "name": "User_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Record ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "api_key",
+        "description": "Your API key. Obtain it from your user profile or via `User.me()` in the app SDK."
+      }
+    },
+    "schemas": {
+      "Account": {
+        "type": "object",
+        "properties": {
+          "account_number": {
+            "type": "number",
+            "description": "Account number (e.g. 1000, 4000)"
+          },
+          "account_name": {
+            "type": "string",
+            "description": "Name of the account"
+          },
+          "account_type": {
+            "type": "string",
+            "enum": [
+              "Asset",
+              "Liability",
+              "Equity",
+              "Revenue",
+              "COGS",
+              "Expense"
+            ],
+            "description": "Account classification"
+          },
+          "sub_type": {
+            "type": "string",
+            "description": "Sub-classification (e.g. Current Asset, Fixed Asset)"
+          },
+          "normal_balance": {
+            "type": "string",
+            "enum": [
+              "Debit",
+              "Credit"
+            ],
+            "description": "Normal balance direction"
+          },
+          "description": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean",
+            "default": true
+          },
+          "entity_scope": {
+            "type": "string",
+            "description": "Which entity this account belongs to",
+            "default": "All"
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique record identifier"
+          },
+          "created_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record creation timestamp"
+          },
+          "updated_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record last update timestamp"
+          },
+          "created_by_id": {
+            "type": "string",
+            "description": "ID of the user who created the record"
+          }
+        },
+        "required": [
+          "account_number",
+          "account_name",
+          "account_type",
+          "normal_balance"
+        ],
+        "description": "Account entity"
+      },
+      "JournalEntry": {
+        "type": "object",
+        "properties": {
+          "je_number": {
+            "type": "string",
+            "description": "Journal Entry ID (e.g. JE001)"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": "string"
+          },
+          "debit_account": {
+            "type": "number",
+            "description": "Debit account number"
+          },
+          "debit_account_name": {
+            "type": "string"
+          },
+          "debit_amount": {
+            "type": "number"
+          },
+          "credit_account": {
+            "type": "number",
+            "description": "Credit account number"
+          },
+          "credit_account_name": {
+            "type": "string"
+          },
+          "credit_amount": {
+            "type": "number"
+          },
+          "entity": {
+            "type": "string",
+            "description": "Business entity (e.g. STLLC)"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "is_posted": {
+            "type": "boolean",
+            "default": true
+          },
+          "notes": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique record identifier"
+          },
+          "created_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record creation timestamp"
+          },
+          "updated_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record last update timestamp"
+          },
+          "created_by_id": {
+            "type": "string",
+            "description": "ID of the user who created the record"
+          }
+        },
+        "required": [
+          "date",
+          "description",
+          "debit_account",
+          "debit_amount",
+          "credit_account",
+          "credit_amount"
+        ],
+        "description": "JournalEntry entity"
+      },
+      "Property": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "zip": {
+            "type": "string"
+          },
+          "property_type": {
+            "type": "string",
+            "enum": [
+              "Single Family",
+              "Multi Family",
+              "Commercial",
+              "Land",
+              "Mixed Use"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Active — Rehab",
+              "Active — Rental",
+              "Under Contract",
+              "Listed",
+              "Sold",
+              "Vacant",
+              "Pipeline"
+            ]
+          },
+          "purchase_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "purchase_price": {
+            "type": "number"
+          },
+          "land_value": {
+            "type": "number"
+          },
+          "building_value": {
+            "type": "number"
+          },
+          "closing_costs": {
+            "type": "number"
+          },
+          "arv": {
+            "type": "number",
+            "description": "After Repair Value"
+          },
+          "rehab_budget": {
+            "type": "number"
+          },
+          "rehab_actual": {
+            "type": "number"
+          },
+          "loan_balance": {
+            "type": "number"
+          },
+          "loan_type": {
+            "type": "string"
+          },
+          "monthly_payment": {
+            "type": "number"
+          },
+          "monthly_rent": {
+            "type": "number"
+          },
+          "noi": {
+            "type": "number",
+            "description": "Net Operating Income"
+          },
+          "dscr": {
+            "type": "number",
+            "description": "Debt Service Coverage Ratio"
+          },
+          "cap_rate": {
+            "type": "number"
+          },
+          "equity": {
+            "type": "number"
+          },
+          "exit_strategy": {
+            "type": "string",
+            "enum": [
+              "BRRR",
+              "Flip",
+              "Wholesale",
+              "Hold",
+              "Development",
+              "Land Flip"
+            ]
+          },
+          "entity": {
+            "type": "string",
+            "description": "Owning LLC"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique record identifier"
+          },
+          "created_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record creation timestamp"
+          },
+          "updated_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record last update timestamp"
+          },
+          "created_by_id": {
+            "type": "string",
+            "description": "ID of the user who created the record"
+          }
+        },
+        "required": [
+          "address",
+          "status"
+        ],
+        "description": "Property entity"
+      },
+      "Vendor": {
+        "type": "object",
+        "properties": {
+          "vendor_name": {
+            "type": "string"
+          },
+          "contact_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "vendor_type": {
+            "type": "string",
+            "enum": [
+              "Contractor",
+              "Software",
+              "Supplier",
+              "Utility",
+              "Insurance",
+              "Legal",
+              "Other"
+            ]
+          },
+          "payment_terms": {
+            "type": "string"
+          },
+          "w9_on_file": {
+            "type": "boolean",
+            "default": false
+          },
+          "requires_1099": {
+            "type": "boolean",
+            "default": false
+          },
+          "outstanding_balance": {
+            "type": "number",
+            "default": 0
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Active",
+              "Inactive"
+            ],
+            "default": "Active"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique record identifier"
+          },
+          "created_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record creation timestamp"
+          },
+          "updated_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record last update timestamp"
+          },
+          "created_by_id": {
+            "type": "string",
+            "description": "ID of the user who created the record"
+          }
+        },
+        "required": [
+          "vendor_name"
+        ],
+        "description": "Vendor entity"
+      },
+      "Bill": {
+        "type": "object",
+        "properties": {
+          "bill_number": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "vendor_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Unpaid",
+              "Paid",
+              "Partial",
+              "Overdue"
+            ],
+            "default": "Unpaid"
+          },
+          "gl_account": {
+            "type": "number"
+          },
+          "property": {
+            "type": "string"
+          },
+          "entity": {
+            "type": "string"
+          },
+          "approved_by": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique record identifier"
+          },
+          "created_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record creation timestamp"
+          },
+          "updated_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record last update timestamp"
+          },
+          "created_by_id": {
+            "type": "string",
+            "description": "ID of the user who created the record"
+          }
+        },
+        "required": [
+          "vendor_name",
+          "amount",
+          "date"
+        ],
+        "description": "Bill entity"
+      },
+      "Invoice": {
+        "type": "object",
+        "properties": {
+          "invoice_number": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "customer_name": {
+            "type": "string"
+          },
+          "property": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "tax": {
+            "type": "number",
+            "default": 0
+          },
+          "total": {
+            "type": "number"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Pending",
+              "Paid",
+              "Partial",
+              "Overdue",
+              "Cancelled"
+            ],
+            "default": "Pending"
+          },
+          "gl_account": {
+            "type": "number"
+          },
+          "entity": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique record identifier"
+          },
+          "created_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record creation timestamp"
+          },
+          "updated_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record last update timestamp"
+          },
+          "created_by_id": {
+            "type": "string",
+            "description": "ID of the user who created the record"
+          }
+        },
+        "required": [
+          "customer_name",
+          "amount",
+          "date"
+        ],
+        "description": "Invoice entity"
+      },
+      "RehabWorkOrder": {
+        "type": "object",
+        "properties": {
+          "work_order_id": {
+            "type": "string"
+          },
+          "property": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "Demo & Site Prep",
+              "Crawlspace/Foundation",
+              "Basement Addition",
+              "Framing",
+              "Roofing",
+              "Siding",
+              "Windows",
+              "Doors",
+              "Electrical",
+              "Plumbing",
+              "HVAC",
+              "Flooring",
+              "Drywall",
+              "Paint",
+              "Kitchen",
+              "Bath",
+              "Landscaping",
+              "Permits",
+              "Other"
+            ]
+          },
+          "scope_of_work": {
+            "type": "string"
+          },
+          "budget": {
+            "type": "number"
+          },
+          "actual": {
+            "type": "number",
+            "default": 0
+          },
+          "pct_complete": {
+            "type": "number",
+            "default": 0
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Pending",
+              "In Progress",
+              "Complete",
+              "On Hold",
+              "Cancelled"
+            ],
+            "default": "Pending"
+          },
+          "contractor": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique record identifier"
+          },
+          "created_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record creation timestamp"
+          },
+          "updated_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record last update timestamp"
+          },
+          "created_by_id": {
+            "type": "string",
+            "description": "ID of the user who created the record"
+          }
+        },
+        "required": [
+          "property",
+          "category",
+          "budget"
+        ],
+        "description": "RehabWorkOrder entity"
+      },
+      "BusinessEntity": {
+        "type": "object",
+        "properties": {
+          "entity_name": {
+            "type": "string"
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": [
+              "Operating LLC",
+              "Property LLC",
+              "Tech/SaaS LLC",
+              "Brand/Creative LLC",
+              "Development LLC",
+              "Holding LLC"
+            ]
+          },
+          "ein": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "formation_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "primary_contact": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Active",
+              "Inactive",
+              "Dissolved"
+            ],
+            "default": "Active"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique record identifier"
+          },
+          "created_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record creation timestamp"
+          },
+          "updated_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record last update timestamp"
+          },
+          "created_by_id": {
+            "type": "string",
+            "description": "ID of the user who created the record"
+          }
+        },
+        "required": [
+          "entity_name",
+          "entity_type"
+        ],
+        "description": "BusinessEntity entity"
+      },
+      "BankTransaction": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "bank_account": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "trans_type": {
+            "type": "string",
+            "enum": [
+              "Deposit",
+              "Withdrawal",
+              "Transfer"
+            ]
+          },
+          "category": {
+            "type": "string"
+          },
+          "gl_account": {
+            "type": "number"
+          },
+          "is_matched": {
+            "type": "boolean",
+            "default": false
+          },
+          "is_reconciled": {
+            "type": "boolean",
+            "default": false
+          },
+          "reference": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique record identifier"
+          },
+          "created_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record creation timestamp"
+          },
+          "updated_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record last update timestamp"
+          },
+          "created_by_id": {
+            "type": "string",
+            "description": "ID of the user who created the record"
+          }
+        },
+        "required": [
+          "date",
+          "description",
+          "amount",
+          "trans_type"
+        ],
+        "description": "BankTransaction entity"
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "The email of the user"
+          },
+          "full_name": {
+            "type": "string",
+            "description": "The full name of the user"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "user"
+            ],
+            "description": "The role of the user in the app"
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique record identifier"
+          },
+          "created_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record creation timestamp"
+          },
+          "updated_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record last update timestamp"
+          },
+          "created_by_id": {
+            "type": "string",
+            "description": "ID of the user who created the record"
+          }
+        },
+        "required": [
+          "full_name",
+          "email",
+          "role"
+        ],
+        "description": "User entity"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Entities - Account",
+      "description": "CRUD operations for Account records"
+    },
+    {
+      "name": "Entities - JournalEntry",
+      "description": "CRUD operations for JournalEntry records"
+    },
+    {
+      "name": "Entities - Property",
+      "description": "CRUD operations for Property records"
+    },
+    {
+      "name": "Entities - Vendor",
+      "description": "CRUD operations for Vendor records"
+    },
+    {
+      "name": "Entities - Bill",
+      "description": "CRUD operations for Bill records"
+    },
+    {
+      "name": "Entities - Invoice",
+      "description": "CRUD operations for Invoice records"
+    },
+    {
+      "name": "Entities - RehabWorkOrder",
+      "description": "CRUD operations for RehabWorkOrder records"
+    },
+    {
+      "name": "Entities - BusinessEntity",
+      "description": "CRUD operations for BusinessEntity records"
+    },
+    {
+      "name": "Entities - BankTransaction",
+      "description": "CRUD operations for BankTransaction records"
+    },
+    {
+      "name": "Entities - User",
+      "description": "CRUD operations for User records"
+    }
+  ]
+}

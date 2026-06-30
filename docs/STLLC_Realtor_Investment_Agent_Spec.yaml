@@ -1,0 +1,188 @@
+agent_name: STLLC_Realtor_Investment_Agent
+version: 1.0.0
+owner: Shylow Thompson LLC
+market_focus:
+  primary_state: MO
+  primary_markets:
+    - St. Louis area
+    - Desloge
+    - St. Francois County
+    - surrounding Missouri counties
+
+mission: >
+  Find, clean, underwrite, rank, negotiate, document, and track real estate
+  investment opportunities across wholesale, fix-and-flip, BRRRR, buy-and-hold,
+  land flipping, land notes, seller finance, subject-to, lease option, novation,
+  multifamily, and development workflows.
+
+decision_outputs:
+  - GO
+  - NO_GO
+  - RENEGOTIATE
+  - KILL
+  - MORE_DD_REQUIRED
+
+default_thresholds:
+  wholesale_min_fee: 15000
+  flip_min_roi: 0.20
+  flip_target_roi: 0.25
+  rental_min_dscr: 1.25
+  rental_target_coc: 0.10
+  land_flip_min_roi: 0.20
+  max_unknown_critical_fields_before_more_dd: 3
+
+bots:
+  web_scout:
+    purpose: Lead sourcing and import
+    production_status: needs_live_integrations
+    input_sources:
+      - PropWire CSV
+      - county assessor CSV
+      - GIS export
+      - manual quick entry
+      - uploaded workbook
+      - permitted listing feed
+    outputs:
+      - raw_leads
+      - source_urls
+      - preliminary_asset_type
+
+  data_clean:
+    purpose: Normalize and enrich leads
+    outputs:
+      - clean_property_record
+      - owner_record
+      - data_confidence_score
+
+  market_intel:
+    purpose: ARV, rent, comp, county, zoning, flood, and demand intelligence
+    outputs:
+      - arv_range
+      - rent_range
+      - comp_pack
+      - market_risk_score
+
+  underwriter:
+    purpose: Run all applicable investment strategies
+    strategies:
+      - wholesale
+      - fix_and_flip
+      - wholetail
+      - brrrr
+      - rental
+      - seller_finance
+      - subject_to
+      - lease_option
+      - novation
+      - multifamily
+      - land_wholesale
+      - land_flip_cash
+      - land_flip_terms
+      - subdivision
+    outputs:
+      - mao
+      - roi
+      - net_profit
+      - cash_required
+      - dscr
+      - coc_return
+      - cap_rate
+      - risk_flags
+
+  risk_engine:
+    purpose: Kill bad deals and route uncertain deals to due diligence
+    hard_stops:
+      - no_road_access_land
+      - not_buildable_when_required
+      - flood_zone_AE_or_VE_unmitigated
+      - title_or_lien_issue_unresolved
+      - negative_noi_without_exit
+      - wholesale_fee_below_minimum
+      - flip_roi_below_floor
+    outputs:
+      - decision
+      - kill_reasons
+      - mitigation_steps
+
+  buyer_match:
+    purpose: Match deals to investor buyers
+    outputs:
+      - top_buyers
+      - buyer_confidence_score
+      - likely_assignment_spread
+
+  outreach:
+    purpose: Compliant seller and buyer communication
+    compliance_gates:
+      - DNC_check
+      - consent_check
+      - TCPA_check
+      - CAN_SPAM_check
+      - fair_housing_check
+      - licensed_language_check
+
+  negotiator:
+    purpose: Offer structure, counteroffer plan, seller psychology, and walk-away logic
+    outputs:
+      - offer_strategy
+      - concession_ladder
+      - seller_script
+      - renegotiation_memo
+
+  deal_desk:
+    purpose: Packet and document generation
+    documents:
+      - offer_summary
+      - investor_packet
+      - lender_packet
+      - rehab_scope
+      - draw_schedule
+      - assignment_packet
+      - seller_finance_term_sheet
+      - subject_to_checklist
+    requires_attorney_review: true
+
+  compliance_qa:
+    purpose: Final review before outreach, contracts, and public-facing claims
+    outputs:
+      - pass_fail
+      - required_edits
+      - attorney_review_required
+
+  portfolio_cfo:
+    purpose: Closed-deal archive, capital stack, ROI, cashflow, and lender/investor reporting
+    outputs:
+      - closed_deal_report
+      - monthly_pl
+      - portfolio_dashboard
+
+canonical_database_tables:
+  - users
+  - properties
+  - owners
+  - leads
+  - deal_intakes
+  - comps
+  - rent_comps
+  - underwriting_results
+  - risk_flags
+  - outreach_events
+  - offers
+  - buyers
+  - documents
+  - rehab_scopes
+  - draw_schedules
+  - closed_deals
+  - bot_runs
+  - audit_logs
+
+mvp_acceptance_tests:
+  - import_property_lead
+  - normalize_address
+  - run_strategy_matrix
+  - generate_decision_status
+  - match_buyer
+  - create_basic_packet
+  - require_compliance_gate_before_outreach
+  - log_bot_run
+  - archive_closed_deal

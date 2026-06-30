@@ -1,0 +1,810 @@
+{
+  "name": "ultimate-dynasty-os",
+  "nodes": [
+    {
+      "id": "note-main",
+      "name": "Dynasty PropertyOS Hub",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        200,
+        80
+      ],
+      "parameters": {
+        "content": "## Dynasty PropertyOS — n8n Automation Hub\n\n**3 Flows:**\n1. **Daily Brief (8am)** — Market snapshot + Stripe → AI briefing → Gmail + Slack\n2. **Chat Agent** — Public AI assistant wired to Dynasty API tools\n3. **Deal Intake Webhook** — POST a deal → flip analysis → email recommendation\n\n⚠️ **API URL**: n8n Cloud can't reach `localhost:8010` directly.\nRun `ngrok http 8010` and paste the public URL into the **Dynasty Config** node.",
+        "height": 220,
+        "width": 680,
+        "color": 4
+      }
+    },
+    {
+      "id": "note-flow1",
+      "name": "Note Flow 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        200,
+        340
+      ],
+      "parameters": {
+        "content": "### Flow 1 — Daily Intelligence Brief\nRuns every morning at 8am (or manually).",
+        "height": 80,
+        "width": 340,
+        "color": 5
+      }
+    },
+    {
+      "id": "note-flow2",
+      "name": "Note Flow 2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        200,
+        1020
+      ],
+      "parameters": {
+        "content": "### Flow 2 — Dynasty Chat Agent\nPublic chat UI. AI has live tools: market snapshot, flip analysis, health check.",
+        "height": 80,
+        "width": 400,
+        "color": 6
+      }
+    },
+    {
+      "id": "note-flow3",
+      "name": "Note Flow 3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        200,
+        1620
+      ],
+      "parameters": {
+        "content": "### Flow 3 — Deal Intake Webhook\nPOST `{ purchase_price, repair_budget, arv }` to the webhook URL.\nReturns GO/NO-GO + AI recommendation. Also emails sdthompson35@gmail.com.",
+        "height": 100,
+        "width": 520,
+        "color": 7
+      }
+    },
+    {
+      "id": "dynasty-config",
+      "name": "Dynasty Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        440
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "dynastyApiUrl",
+              "value": "={{ $env.N8N_DYNASTY_API_URL || 'http://localhost:8010' }}",
+              "type": "string"
+            },
+            {
+              "id": "cfg-2",
+              "name": "adminEmail",
+              "value": "sdthompson35@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "cfg-3",
+              "name": "portfolioName",
+              "value": "Dynasty PropertyOS",
+              "type": "string"
+            },
+            {
+              "id": "cfg-4",
+              "name": "slackChannel",
+              "value": "C099Q1PUS3G",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "daily-trigger",
+      "name": "Dynasty Daily Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        440
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        560
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "fetch-market-snapshot",
+      "name": "Fetch Market Snapshot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        800,
+        360
+      ],
+      "parameters": {
+        "url": "={{ $('Dynasty Config').first().json.dynastyApiUrl }}/api/investor/market-snapshot",
+        "method": "GET",
+        "options": {}
+      }
+    },
+    {
+      "id": "fetch-stripe-balance",
+      "name": "Check Stripe Balance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        800,
+        520
+      ],
+      "parameters": {
+        "url": "https://api.stripe.com/v1/balance",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "stripeApi",
+        "options": {}
+      },
+      "credentials": {
+        "stripeApi": {
+          "id": "PN1Yhu7hhndNuJOD",
+          "name": "Stripe account"
+        }
+      }
+    },
+    {
+      "id": "merge-api-data",
+      "name": "Merge API Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1040,
+        440
+      ],
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition"
+      }
+    },
+    {
+      "id": "daily-briefing-agent",
+      "name": "Dynasty Briefing Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1280,
+        440
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Dynasty PropertyOS daily intelligence agent.\n\nMarket Snapshot: {{ JSON.stringify($json) }}\nDate: {{ $now.toFormat('EEEE, MMMM dd yyyy') }}\n\nGenerate a concise daily briefing:\n1. **Market Status**: GO or NO-GO with key numbers (purchase price, ARV, ROI, profit, days to exit)\n2. **Financial Position**: Stripe balance summary\n3. **Top 3 Action Items** for today based on the data\n\nKeep under 250 words. Direct and data-driven. No filler.",
+        "options": {
+          "systemMessage": "You are the Dynasty PropertyOS daily intelligence agent. Produce sharp, data-driven briefings for a real estate investor. Numbers first, commentary second."
+        }
+      }
+    },
+    {
+      "id": "daily-openai-model",
+      "name": "OpenAI Model - Daily Brief",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1280,
+        620
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "RYK6dJ64oGG4On28",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "id": "format-daily-report",
+      "name": "Format Daily Report",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1520,
+        440
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "rpt-1",
+              "name": "subject",
+              "value": "=Dynasty PropertyOS Daily Brief — {{ $now.toFormat('MMM dd yyyy') }}",
+              "type": "string"
+            },
+            {
+              "id": "rpt-2",
+              "name": "body",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "send-daily-email",
+      "name": "Send Daily Brief — Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1760,
+        360
+      ],
+      "parameters": {
+        "sendTo": "sdthompson35@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "eFaQYgT42pcKU2U5",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "id": "dynasty-slack-alert",
+      "name": "Dynasty Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1760,
+        520
+      ],
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C099Q1PUS3G",
+          "mode": "list",
+          "cachedResultName": "all-shylow-thompsonllc"
+        },
+        "text": "=📊 *Dynasty PropertyOS Daily Brief* — {{ $now.toFormat('MMM dd yyyy') }}\n\n{{ $('Format Daily Report').first().json.body }}",
+        "otherOptions": {}
+      },
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "MMu7Mu5l6zSSUZmh",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "id": "chat-trigger",
+      "name": "Dynasty Chat",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        200,
+        1120
+      ],
+      "parameters": {
+        "public": true,
+        "options": {}
+      },
+      "webhookId": "eb99c858-ecfc-429b-81ee-8f57e932681f"
+    },
+    {
+      "id": "dynasty-chat-agent",
+      "name": "Dynasty PropertyOS Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        520,
+        1120
+      ],
+      "parameters": {
+        "options": {
+          "systemMessage": "=You are the Dynasty PropertyOS AI assistant — a real estate investment intelligence system.\n\nYou help with:\n- Live market analysis (use the Market Snapshot tool for current data)\n- Flip deal underwriting (use the Flip Analysis tool — needs purchase_price, repair_budget, arv)\n- DSCR, LTV, and lender scenario analysis\n- Portfolio strategy and deal pipeline insights\n\nAlways use your tools to fetch live data before answering number-based questions.\nBe direct, data-driven, and concise. Today is {{ $now.toFormat('EEEE MMMM dd yyyy') }}."
+        }
+      }
+    },
+    {
+      "id": "chat-openai-model",
+      "name": "OpenAI Model - Chat",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        520,
+        1300
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "RYK6dJ64oGG4On28",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "id": "chat-memory",
+      "name": "Chat Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        740,
+        1300
+      ],
+      "parameters": {
+        "sessionIdType": "fromInput",
+        "contextWindowLength": 10
+      }
+    },
+    {
+      "id": "tool-market-snapshot",
+      "name": "Tool: Market Snapshot",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        1300
+      ],
+      "parameters": {
+        "toolDescription": "Get the current Dynasty PropertyOS real estate market snapshot. Returns median purchase price, ARV, renovation budget, estimated profit, ROI percentage, average days to exit, and GO/NO-GO investment decision.",
+        "method": "GET",
+        "url": "={{ $('Dynasty Config').first().json.dynastyApiUrl }}/api/investor/market-snapshot",
+        "options": {}
+      }
+    },
+    {
+      "id": "tool-flip-analysis",
+      "name": "Tool: Flip Analysis",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        1180,
+        1300
+      ],
+      "parameters": {
+        "toolDescription": "Run a real estate flip deal analysis. Provide purchase_price, repair_budget, and arv (after repair value). Optionally provide closing_costs, holding_costs, selling_costs. Returns total_cost, profit, roi, and GO/NO-GO decision.",
+        "method": "POST",
+        "url": "={{ $('Dynasty Config').first().json.dynastyApiUrl }}/api/investor/flip-analysis",
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "purchase_price",
+              "value": "={{ $fromAI('purchase_price', 'Purchase price of the property in USD', 'number') }}"
+            },
+            {
+              "name": "repair_budget",
+              "value": "={{ $fromAI('repair_budget', 'Repair and renovation budget in USD', 'number') }}"
+            },
+            {
+              "name": "arv",
+              "value": "={{ $fromAI('arv', 'After repair value of the property in USD', 'number') }}"
+            },
+            {
+              "name": "closing_costs",
+              "value": "={{ $fromAI('closing_costs', 'Closing costs in USD, default 8000', 'number', 8000) }}"
+            },
+            {
+              "name": "holding_costs",
+              "value": "={{ $fromAI('holding_costs', 'Holding costs during renovation in USD, default 9000', 'number', 9000) }}"
+            },
+            {
+              "name": "selling_costs",
+              "value": "={{ $fromAI('selling_costs', 'Selling costs in USD, default 7000', 'number', 7000) }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "tool-api-health",
+      "name": "Tool: API Health",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        1400,
+        1300
+      ],
+      "parameters": {
+        "toolDescription": "Check if the Dynasty PropertyOS API backend is online and healthy.",
+        "method": "GET",
+        "url": "={{ $('Dynasty Config').first().json.dynastyApiUrl }}/health",
+        "options": {}
+      }
+    },
+    {
+      "id": "deal-intake-webhook",
+      "name": "Deal Intake Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        1740
+      ],
+      "parameters": {
+        "path": "dynasty-deal-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "dynasty-deal-intake-2026"
+    },
+    {
+      "id": "run-flip-analysis",
+      "name": "Run Flip Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        480,
+        1740
+      ],
+      "parameters": {
+        "url": "={{ $('Dynasty Config').first().json.dynastyApiUrl }}/api/investor/flip-analysis",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "deal-decision-agent",
+      "name": "Deal Decision Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        760,
+        1740
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze this real estate flip deal:\n\nAPI Result: {{ JSON.stringify($json) }}\n\nProvide:\n1. **Verdict**: GO or NO-GO with confidence level\n2. **Key Numbers**: Profit, ROI, total cost\n3. **Top 3 Risks** for this deal\n4. **Negotiation Strategy**: What to push for if pursuing\n5. **Next Steps**: Exactly what to do today\n\nMax 300 words. Be direct.",
+        "options": {
+          "systemMessage": "You are a Dynasty PropertyOS deal analyst. Evaluate real estate flip deals with sharp, actionable analysis. Prioritize capital protection and realistic ROI expectations."
+        }
+      }
+    },
+    {
+      "id": "deal-openai-model",
+      "name": "OpenAI Model - Deal",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        760,
+        1920
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "RYK6dJ64oGG4On28",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "id": "send-deal-email",
+      "name": "Send Deal Recommendation",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1040,
+        1660
+      ],
+      "parameters": {
+        "sendTo": "sdthompson35@gmail.com",
+        "subject": "=Dynasty Deal Alert: {{ $('Run Flip Analysis').first().json.decision }} — {{ $now.toFormat('MMM dd yyyy HH:mm') }}",
+        "emailType": "text",
+        "message": "=DEAL ANALYSIS REPORT\n====================\n\nVerdict: {{ $('Run Flip Analysis').first().json.decision }}\nProfit: ${{ $('Run Flip Analysis').first().json.profit }}\nROI: {{ ($('Run Flip Analysis').first().json.roi * 100).toFixed(1) }}%\nTotal Cost: ${{ $('Run Flip Analysis').first().json.total_cost }}\n\n---\n\nAI RECOMMENDATION\n=================\n{{ $json.output }}\n\n---\nGenerated by Dynasty PropertyOS n8n Automation\n{{ $now.toFormat('yyyy-MM-dd HH:mm:ss') }}",
+        "options": {}
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "eFaQYgT42pcKU2U5",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1040,
+        1820
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, decision: $('Run Flip Analysis').first().json.decision, roi: $('Run Flip Analysis').first().json.roi, profit: $('Run Flip Analysis').first().json.profit, total_cost: $('Run Flip Analysis').first().json.total_cost, recommendation: $('Deal Decision Agent').first().json.output }) }}"
+      }
+    }
+  ],
+  "connections": {
+    "Dynasty Daily Trigger": {
+      "main": [
+        [
+          {
+            "node": "Dynasty Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Dynasty Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dynasty Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch Market Snapshot",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Stripe Balance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Market Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Merge API Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Stripe Balance": {
+      "main": [
+        [
+          {
+            "node": "Merge API Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge API Data": {
+      "main": [
+        [
+          {
+            "node": "Dynasty Briefing Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dynasty Briefing Agent": {
+      "main": [
+        [
+          {
+            "node": "Format Daily Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model - Daily Brief": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Dynasty Briefing Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Daily Report": {
+      "main": [
+        [
+          {
+            "node": "Send Daily Brief — Gmail",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Dynasty Slack Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dynasty Chat": {
+      "main": [
+        [
+          {
+            "node": "Dynasty PropertyOS Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model - Chat": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Dynasty PropertyOS Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Dynasty PropertyOS Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Market Snapshot": {
+      "ai_tool": [
+        [
+          {
+            "node": "Dynasty PropertyOS Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Flip Analysis": {
+      "ai_tool": [
+        [
+          {
+            "node": "Dynasty PropertyOS Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: API Health": {
+      "ai_tool": [
+        [
+          {
+            "node": "Dynasty PropertyOS Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deal Intake Webhook": {
+      "main": [
+        [
+          {
+            "node": "Run Flip Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Flip Analysis": {
+      "main": [
+        [
+          {
+            "node": "Deal Decision Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model - Deal": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Deal Decision Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deal Decision Agent": {
+      "main": [
+        [
+          {
+            "node": "Send Deal Recommendation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "08bb2f02-162f-4afb-9fd5-87016bdcf5d2",
+  "meta": {
+    "instanceId": "b10a475e3ee03d3707a3489958bc3cad27d6b0f971fa58420cb1a8b8f7a788cc"
+  },
+  "id": "OEGkyufLk21eS6lz",
+  "tags": []
+}

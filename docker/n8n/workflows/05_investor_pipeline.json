@@ -1,0 +1,89 @@
+{
+  "name": "05 - Investor Pipeline",
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Investor Intake Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "investor-intake", "httpMethod": "POST", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "qualify",
+      "name": "Qualify Investor",
+      "type": "n8n-nodes-base.code",
+      "position": [460, 300],
+      "parameters": {
+        "jsCode": "const body = $input.first().json;\nconst type = body.investor_type?.toLowerCase() || '';\nconst investorType = type.includes('accredited') ? 'Accredited Investor' : type.includes('lender') ? 'Private Lender' : type.includes('jv') ? 'JV Partner' : 'Prospect';\nreturn [{ json: { ...body, investment_type: investorType, lead_type: 'Investor', status: 'New', preferred_return: body.preferred_return || 0.08 } }];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "create-lead",
+      "name": "Create Investor Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/leads",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ lead_type: 'Investor', source: $json.source || 'Referral', status: 'New', notes: $json.notes, metadata: { investor_type: $json.investment_type, available_capital: $json.available_capital } }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "create-investor-record",
+      "name": "Create Investor Record",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [900, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/capital/investors",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ investor_name: $json.name, entity: $json.entity, available_capital: $json.available_capital || 0, preferred_return: $json.preferred_return || 0.08, investment_type: $json.investment_type, contact_info: { phone: $json.phone, email: $json.email }, risk_profile: $json.risk_profile || 'Moderate', markets: $json.markets || ['Park Hills', 'St. Francois County'] }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "send-deck",
+      "name": "Send Investor Deck",
+      "type": "n8n-nodes-base.gmail",
+      "position": [1120, 300],
+      "parameters": {
+        "operation": "send",
+        "to": "={{ $json.email }}",
+        "subject": "Dynasty Investments — Private Lending & JV Opportunity Overview",
+        "message": "=Hi {{ $json.name }},\n\nThank you for your interest in partnering with Dynasty Property Investments.\n\nWe specialize in distressed property acquisition, renovation, and disposition in St. Francois County, MO — generating consistent returns for our capital partners.\n\nOpportunity Highlights:\n- Target Returns: 12–18% annualized\n- Typical Hold: 3–9 months\n- Secured by real property\n- Monthly reporting and full transparency\n\nA member of our team will reach out within 24 hours to schedule a call.\n\n— Dynasty Property Investments\n{{ $env.COMPANY_PHONE }}",
+        "options": {}
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "schedule-call",
+      "name": "Log Call Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1340, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/leads/{{ $('Create Investor Lead').first().json.lead_id }}/activity",
+        "sendBody": true,
+        "jsonBody": "{\"activity_type\": \"Task Created\", \"description\": \"Schedule investor qualification call within 24 hours\"}",
+        "options": {}
+      },
+      "typeVersion": 4
+    }
+  ],
+  "connections": {
+    "Investor Intake Webhook": { "main": [[{ "node": "Qualify Investor", "type": "main", "index": 0 }]] },
+    "Qualify Investor": { "main": [[{ "node": "Create Investor Lead", "type": "main", "index": 0 }]] },
+    "Create Investor Lead": { "main": [[{ "node": "Create Investor Record", "type": "main", "index": 0 }]] },
+    "Create Investor Record": { "main": [[{ "node": "Send Investor Deck", "type": "main", "index": 0 }]] },
+    "Send Investor Deck": { "main": [[{ "node": "Log Call Task", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Lead Engine", "Investor Pipeline"]
+}

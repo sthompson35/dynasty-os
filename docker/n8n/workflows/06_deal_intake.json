@@ -1,0 +1,86 @@
+{
+  "name": "06 - Deal Intake",
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Deal Intake Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "deal-intake", "httpMethod": "POST", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "validate",
+      "name": "Validate Deal Data",
+      "type": "n8n-nodes-base.code",
+      "position": [460, 300],
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nif (!d.address && !d.property_id) throw new Error('address or property_id required');\nif (!d.asking_price) throw new Error('asking_price required');\nreturn [{ json: { ...d, status: 'PENDING' } }];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "create-deal",
+      "name": "Create Deal Record",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/deal",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ seller: $json.seller, asking_price: $json.asking_price, arv: $json.arv, repairs: $json.repairs, beds: $json.beds, baths: $json.baths, sqft: $json.sqft, zoning: $json.zoning }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "trigger-arv",
+      "name": "Trigger ARV Engine",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [900, 180],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/deal/arv",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ address: $json.address, sqft: $json.sqft || 0, beds: $json.beds || 0, baths: $json.baths || 0, comps: $json.comps || [] }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "trigger-mao",
+      "name": "Trigger MAO Engine",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [900, 420],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/deal/mao",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ arv: $json.arv || $('Trigger ARV Engine').first().json.arv || 0, repair_costs: $json.repairs || 0, desired_profit: 15000 }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "notify",
+      "name": "Notify Deal Team",
+      "type": "n8n-nodes-base.slack",
+      "position": [1120, 300],
+      "parameters": {
+        "channel": "#deal-desk",
+        "text": "=📋 New Deal Intake: {{ $json.address || 'Unknown Address' }}\nAsking: ${{ $('Create Deal Record').first().json.asking_price?.toLocaleString() }}\nARV: ${{ ($('Trigger ARV Engine').first().json.arv || $json.arv || 0).toLocaleString() }}\nMAO: ${{ $('Trigger MAO Engine').first().json.mao?.toLocaleString() }}\nDeal ID: {{ $('Create Deal Record').first().json.deal_id }}",
+        "otherOptions": {}
+      },
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Deal Intake Webhook": { "main": [[{ "node": "Validate Deal Data", "type": "main", "index": 0 }]] },
+    "Validate Deal Data": { "main": [[{ "node": "Create Deal Record", "type": "main", "index": 0 }]] },
+    "Create Deal Record": { "main": [[{ "node": "Trigger ARV Engine", "type": "main", "index": 0 }], [{ "node": "Trigger MAO Engine", "type": "main", "index": 0 }]] },
+    "Trigger ARV Engine": { "main": [[{ "node": "Notify Deal Team", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Deal Engine", "Intake"]
+}

@@ -1,0 +1,186 @@
+
+██████╗ ██╗   ██╗███╗   ██╗ █████╗ ███████╗████████╗██╗   ██╗
+██╔══██╗╚██╗ ██╔╝████╗  ██║██╔══██╗██╔════╝╚══██╔══╝╚██╗ ██╔╝
+██║  ██║ ╚████╔╝ ██╔██╗ ██║███████║███████╗   ██║    ╚████╔╝
+██║  ██║  ╚██╔╝  ██║╚██╗██║██╔══██║╚════██║   ██║     ╚██╔╝
+██████╔╝   ██║   ██║ ╚████║██║  ██║███████║   ██║      ██║
+╚═════╝    ╚═╝   ╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝   ╚═╝      ╚═╝
+
+ ██████╗ ██████╗  ██████╗ ██████╗ ███████╗██████╗ ████████╗██╗   ██╗ ██████╗ ███████╗
+ ██╔══██╗██╔══██╗██╔═══██╗██╔══██╗██╔════╝██╔══██╗╚══██╔══╝╚██╗ ██╔╝██╔═══██╗██╔════╝
+ ██████╔╝██████╔╝██║   ██║██████╔╝█████╗  ██████╔╝   ██║    ╚████╔╝ ██║   ██║███████╗
+ ██╔═══╝ ██╔══██╗██║   ██║██╔═══╝ ██╔══╝  ██╔══██╗   ██║     ╚██╔╝  ██║   ██║╚════██║
+ ██║     ██║  ██║╚██████╔╝██║     ███████╗██║  ██║   ██║      ██║   ╚██████╔╝███████║
+ ╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═╝   ╚═╝      ╚═╝    ╚═════╝ ╚══════╝
+
+ ─────────────────────────────────────────────────────────────────────────────────────
+  OPERATING SYSTEM  v0.2.0  ·  SHYLOW THOMPSON LLC  ·  EST. 2026  ·  ALL RIGHTS RESERVED
+ ─────────────────────────────────────────────────────────────────────────────────────
+
+================================================================================
+  FOLDER STRUCTURE
+================================================================================
+
+ C:\dynasty_property_os\
+ │
+ ├── docker-compose.yml              ← 7-service stack definition
+ ├── .env                            ← secrets, ports, CORS, DB URLs
+ │
+ ├── frontend/                       ← Next.js 14  ·  port 3005  ·  ACTIVE
+ │   ├── app/
+ │   │   ├── page.tsx                ← KPI dashboard (live API data)
+ │   │   ├── dashboard/page.tsx
+ │   │   ├── properties/[id]/page.tsx
+ │   │   ├── contacts/page.tsx
+ │   │   ├── login/  signup/  share/[token]/
+ │   │   ├── investor/   lender/     appraiser/
+ │   │   ├── contractor/ property-manager/ walkthrough/
+ │   │   └── api/  auth  properties  contacts  shares  uploads
+ │   ├── components/
+ │   │   ├── dynasty/                26 dynasty-specific components
+ │   │   └── ui/                     46 Shadcn / Radix-UI primitives
+ │   ├── lender_portal/LenderPortal.tsx    ← DSCR · LTV · flip underwriting
+ │   ├── investor_portal/InvestorPortal.tsx
+ │   ├── appraiser_portal/AppraiserPortal.tsx
+ │   ├── contractor_portal/ContractorPortal.tsx
+ │   ├── property_manager_portal/PropertyManagerPortal.tsx
+ │   ├── property_viewer/            3D walkthrough (Three.js + GLB)
+ │   ├── lib/  api.ts  auth.ts  db.ts  types.ts  utils.ts
+ │   ├── prisma/schema.prisma        ← 12 models  ·  dynasty schema  ·  multiSchema
+ │   ├── middleware.ts               ← NextAuth route protection
+ │   ├── tailwind.config.ts          ← Dynasty design tokens
+ │   └── package.json  v0.2.0       ← merged deps (next-auth, prisma, shadcn, recharts)
+ │
+ ├── backend/                        ← FastAPI  ·  port 8010  ·  ACTIVE
+ │   └── app/
+ │       ├── main.py                 ← CORS · health · router mounts
+ │       ├── api/investor/           GET /market-snapshot  POST /flip-analysis
+ │       ├── auth/
+ │       ├── middleware/
+ │       ├── repositories/
+ │       └── services/
+ │
+ ├── docker/
+ │   ├── backend/Dockerfile
+ │   ├── frontend/Dockerfile         ← npm install --legacy-peer-deps baked in
+ │   ├── ai_worker/Dockerfile
+ │   ├── blender_worker/Dockerfile
+ │   └── n8n/
+ │
+ ├── ai_agents/                      ← 9 agent system prompts
+ │   ├── investor/SYSTEM_PROMPT.md
+ │   ├── lender/SYSTEM_PROMPT.md
+ │   ├── appraiser/SYSTEM_PROMPT.md
+ │   ├── contractor/SYSTEM_PROMPT.md
+ │   ├── property_manager/SYSTEM_PROMPT.md
+ │   ├── accounting/SYSTEM_PROMPT.md
+ │   ├── architect/SYSTEM_PROMPT.md
+ │   ├── orchestrator/SYSTEM_PROMPT.md
+ │   └── llmstudio/  agents.json  assistants.json  codeploit.json
+ │
+ ├── dynasty_os/                     ← Python business logic layer
+ │   ├── ai_troopers/                adam · atlas · barbara · cina · edison · helix
+ │   ├── engines/
+ │   │   ├── deal_engine/
+ │   │   ├── capital_engine/
+ │   │   ├── lead_engine/
+ │   │   ├── disposition_engine/
+ │   │   └── operations_engine/
+ │   └── command_center/dashboard.py
+ │
+ ├── blender/                        ← 3D property modeling
+ │   ├── property_models/USDA_1BEDROOM_PROTOTYPE/
+ │   ├── exports/USDA_1BEDROOM_001.glb
+ │   └── scripts/dynasty_propertyos_universal_blender.py
+ │
+ ├── database/
+ │   ├── migrations/001_dynasty_propertyos_schema.sql
+ │   └── seeds/seed_usda_1bedroom.sql
+ │
+ ├── supabase/migrations/            001–006  (all 6 engine schemas)
+ │
+ ├── docs/
+ │   ├── PRODUCT_VISION.md
+ │   ├── PROPERTYOS_MASTER_BUILD_PLAN.md
+ │   ├── Dynasty OS-openapi-spec.json
+ │   └── architecture/              30 engine diagrams (PNG)
+ │
+ ├── storage/
+ │   ├── photos/  inspections/  permits/  legal/  plans/
+ │   ├── appraisals/  contractor_bids/  lender_packets/
+ │   └── archives/                  6,524 Propwire leads (Jan 2026)
+ │
+ ├── scripts/
+ │   ├── ai_worker.py
+ │   ├── blender_worker.py
+ │   ├── healthcheck_containers.py
+ │   └── wsl_setup.sh
+ │
+ ├── blockchain/                     contracts · nft_property_passports
+ ├── accounting/                     budgets · invoices · ledgers · reports
+ ├── data/leads/                     Propwire CSV — 6,524 properties
+ │
+ ├── ultimate-dynasty-os-v2.json     ← n8n workflow  ·  IMPORT TO CLOUD
+ │
+ └── _archive/  dynasty_app/  dynasty_property_os_export/   ← not in Docker
+
+
+================================================================================
+  DOCKER SERVICE MAP
+================================================================================
+
+ ┌──────────────────┬──────────┬──────────────────────────────────────────────────┐
+ │ SERVICE          │ PORT     │ DESCRIPTION                                      │
+ ├──────────────────┼──────────┼──────────────────────────────────────────────────┤
+ │ frontend         │ :3005    │ Next.js 14 · App Router · NextAuth · Prisma      │
+ │ api              │ :8010    │ FastAPI · investor endpoints · CORS              │
+ │ postgres         │ :5433    │ PostgreSQL 17 · dynasty schema · n8n public      │
+ │ redis            │ :6379    │ Redis 7 · cache layer                            │
+ │ n8n              │ :5678    │ n8n local  +  cloud: ultimate-dynasty-os.app     │
+ │ ai_worker        │ —        │ Background AI agent loop · LM Studio             │
+ │ blender_worker   │ —        │ 3D model renderer · flag-triggered               │
+ └──────────────────┴──────────┴──────────────────────────────────────────────────┘
+
+
+================================================================================
+  DESIGN SYSTEM TOKENS
+================================================================================
+
+ ┌──────────────────┬──────────────────────────────────────────────────────────────┐
+ │ --dynasty-navy   │ #0B1F3A   Primary background / nav                          │
+ │ --dynasty-gold   │ #C59D3D   Brand accent / headings                           │
+ │ --dynasty-tan    │ #B6A17A   Secondary text / muted                            │
+ │ Font: Body       │ DM Sans + Plus Jakarta Sans                                 │
+ │ Font: Mono       │ JetBrains Mono                                              │
+ └──────────────────┴──────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+  SYSTEM NOTES
+================================================================================
+
+  [ SYS ] PostgreSQL schemas:  public (n8n) · dynasty (PropertyOS — 12 models)
+  [ SYS ] Named volume: frontend_node_modules — prevents host mount wipe
+  [ SYS ] CORS origins: localhost:3000 · localhost:3005 · 127.0.0.1:3000 · 127.0.0.1:3005
+  [ SYS ] Auth: NextAuth v4 · JWT strategy · Prisma adapter · bcrypt password hash
+  [ SYS ] n8n Cloud workflow OEGkyufLk21eS6lz — import ultimate-dynasty-os-v2.json
+
+
+================================================================================
+  OPERATIONS
+================================================================================
+
+   ██████╗ ██████╗ ███████╗██████╗  █████╗ ████████╗██╗ ██████╗ ███╗   ██╗███████╗
+  ██╔═══██╗██╔══██╗██╔════╝██╔══██╗██╔══██╗╚══██╔══╝██║██╔═══██╗████╗  ██║██╔════╝
+  ██║   ██║██████╔╝█████╗  ██████╔╝███████║   ██║   ██║██║   ██║██╔██╗ ██║███████╗
+  ██║   ██║██╔═══╝ ██╔══╝  ██╔══██╗██╔══██║   ██║   ██║██║   ██║██║╚██╗██║╚════██║
+  ╚██████╔╝██║     ███████╗██║  ██║██║  ██║   ██║   ██║╚██████╔╝██║ ╚████║███████║
+   ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝
+
+  ╔═══════════════════════════════════════════════════════════════════════════════╗
+  ║  INVESTOR  ·  LENDER  ·  APPRAISER  ·  CONTRACTOR  ·  PROPERTY MANAGER      ║
+  ║  DEAL ENGINE  ·  CAPITAL ENGINE  ·  LEAD ENGINE  ·  DISPOSITION ENGINE       ║
+  ║  3D DIGITAL TWIN  ·  AI TROOPERS  ·  BLOCKCHAIN PASSPORTS  ·  n8n FLOWS      ║
+  ╚═══════════════════════════════════════════════════════════════════════════════╝
+
+  SHYLOW THOMPSON LLC  ·  sdthompson35@gmail.com

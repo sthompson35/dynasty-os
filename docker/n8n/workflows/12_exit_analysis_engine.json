@@ -1,0 +1,72 @@
+{
+  "name": "12 - Exit Analysis Engine",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Exit Analysis Request",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "exit-analysis", "httpMethod": "POST", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "run-exit",
+      "name": "Run Exit Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/deal/exit-analysis",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "approve-deal",
+      "name": "Auto-Approve if GO",
+      "type": "n8n-nodes-base.code",
+      "position": [680, 300],
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\nconst bestRoi = result.strategies?.[0]?.roi || 0;\nconst decision = bestRoi >= 0.25 ? 'GO' : bestRoi >= 0.20 ? 'GO_WITH_CONDITIONS' : bestRoi >= 0.10 ? 'RENEGOTIATE' : 'KILL';\nreturn [{ json: { ...result, decision, deal_id: $('Exit Analysis Request').first().json.deal_id } }];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "record-decision",
+      "name": "Record Decision",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [900, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/deal/approve",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ deal_id: $json.deal_id, decision: $json.decision, approved_by: 'Dynasty Auto-Underwriter', notes: 'Best exit: ' + $json.best_exit + ' | Profit: $' + $json.best_profit?.toLocaleString() }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "notify",
+      "name": "Notify Decision",
+      "type": "n8n-nodes-base.slack",
+      "position": [1120, 300],
+      "parameters": {
+        "channel": "#deal-desk",
+        "text": "=📊 Deal Decision: *{{ $('Auto-Approve if GO').first().json.decision }}*\nBest Exit: {{ $json.best_exit }} | Profit: ${{ $json.best_profit?.toLocaleString() }}\nARV: ${{ $json.arv?.toLocaleString() }} | Total Cost: ${{ $json.total_cost?.toLocaleString() }}",
+        "otherOptions": {}
+      },
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Exit Analysis Request": { "main": [[{ "node": "Run Exit Analysis", "type": "main", "index": 0 }]] },
+    "Run Exit Analysis": { "main": [[{ "node": "Auto-Approve if GO", "type": "main", "index": 0 }]] },
+    "Auto-Approve if GO": { "main": [[{ "node": "Record Decision", "type": "main", "index": 0 }]] },
+    "Record Decision": { "main": [[{ "node": "Notify Decision", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Deal Engine", "Exit Analysis"]
+}

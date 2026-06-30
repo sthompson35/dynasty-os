@@ -1,0 +1,61 @@
+{
+  "name": "21 - Closing Management",
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Closing Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": { "path": "closing-mgmt", "httpMethod": "POST", "options": {} },
+      "typeVersion": 1
+    },
+    {
+      "id": "record-closing",
+      "name": "Record Closing",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DYNASTY_API_URL }}/api/disposition/closings",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify({ property_id: $json.property_id, buyer_id: $json.buyer_id, contract_id: $json.contract_id, sale_price: $json.sale_price, net_profit: $json.net_profit, capital_recovered: $json.capital_recovered, close_date: $json.close_date, investor_distributions: $json.investor_distributions || {} }) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "trigger-capital-recovery",
+      "name": "Trigger Capital Recovery",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_URL }}/capital-recovery",
+        "sendBody": true,
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "typeVersion": 4
+    },
+    {
+      "id": "notify-closing",
+      "name": "Notify Closing",
+      "type": "n8n-nodes-base.slack",
+      "position": [900, 300],
+      "parameters": {
+        "channel": "#deals-closed",
+        "text": "=🎉 DEAL CLOSED!\nProperty: {{ $('Closing Webhook').first().json.property_id }}\nSale Price: ${{ $json.sale_price?.toLocaleString() }}\nNet Profit: ${{ $json.net_profit?.toLocaleString() }}\nCapital Recovered: ${{ $json.capital_recovered?.toLocaleString() }}\nClose Date: {{ $json.close_date }}",
+        "otherOptions": {}
+      },
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Closing Webhook": { "main": [[{ "node": "Record Closing", "type": "main", "index": 0 }]] },
+    "Record Closing": { "main": [[{ "node": "Trigger Capital Recovery", "type": "main", "index": 0 }]] },
+    "Trigger Capital Recovery": { "main": [[{ "node": "Notify Closing", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["Disposition Engine", "Closing"]
+}
