@@ -27,12 +27,10 @@ from .core.celery_app import celery_app
 from .services.llm_router import LLMRouter
 from .services.slack_service import SlackService
 from .models import Job, SlackMessage
-from .core.database import get_db, engine, Base
+from .core.database import get_db, engine
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 import urllib.parse
-
-# Create database tables
-Base.metadata.create_all(bind=engine)
 
 # Configure structured logging
 structlog.configure(
@@ -61,9 +59,6 @@ app = FastAPI(
 )
 
 # --- Railway Redis compatibility ---
-import redis
-from urllib.parse import urlparse
-
 try:
     redis_url = os.getenv("REDIS_URL")
     if redis_url:
@@ -84,7 +79,7 @@ try:
     r.ping()
     redis_available = True
 except Exception as e:
-    print(f"Redis connection failed: {e}. Running without Redis.")
+    logger.warning("Redis connection failed — queuing disabled", error=str(e))
     r = None
     redis_available = False
 
@@ -314,14 +309,54 @@ def healthz():
 
 @app.get("/readyz")
 def readyz():
-    """Readiness check endpoint - verifies Redis connection"""
-    if not redis_available:
-        raise HTTPException(status_code=503, detail="Redis not available")
+    """Readiness check — validates DB connectivity, Redis availability, and critical config."""
+    checks: Dict[str, str] = {}
+    ready = True
+
+    # 1. Database connectivity
+    db = None
     try:
-        r.ping()
-        return {"ready": True}
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        db = next(get_db())
+        db.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception as exc:
+        logger.error("Readiness check: database unreachable", error=str(exc))
+        checks["database"] = f"error: {exc}"
+        ready = False
+    finally:
+        if db is not None:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+    # 2. Redis availability (optional — degraded, not fatal)
+    if redis_available:
+        try:
+            r.ping()
+            checks["redis"] = "ok"
+        except Exception as exc:
+            logger.warning("Readiness check: Redis ping failed", error=str(exc))
+            checks["redis"] = "degraded"
+    else:
+        logger.warning("Readiness check: Redis unavailable — queuing disabled")
+        checks["redis"] = "degraded"
+
+    # 3. Critical configuration presence
+    missing_config: list[str] = []
+    if not settings.database_url:
+        missing_config.append("DATABASE_URL")
+    if missing_config:
+        checks["config"] = f"missing: {', '.join(missing_config)}"
+        ready = False
+    else:
+        checks["config"] = "ok"
+
+    status_code = 200 if ready else 503
+    return JSONResponse(
+        status_code=status_code,
+        content={"status": "ready" if ready else "not_ready", "checks": checks},
+    )
 
 @app.get("/jobs/{job_id}")
 async def get_job_status(job_id: str):
