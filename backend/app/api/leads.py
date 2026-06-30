@@ -137,8 +137,20 @@ def create_lead(payload: LeadCreate):
 def lead_stats():
     """Summary counts by status and grade."""
     db = get_supabase()
-    leads = db.table("leads").select("status, score").range(0, 10000).execute().data or []
-    scores = db.table("lead_scoring").select("grade").range(0, 10000).execute().data or []
+
+    def fetch_all(table: str, columns: str) -> list[dict]:
+        rows: list[dict] = []
+        page_size = 1000
+        offset = 0
+        while True:
+            page = db.table(table).select(columns).range(offset, offset + page_size - 1).execute().data or []
+            rows.extend(page)
+            if len(page) < page_size:
+                return rows
+            offset += page_size
+
+    leads = fetch_all("leads", "status, score")
+    scores = fetch_all("lead_scoring", "grade")
 
     by_status: dict[str, int] = {}
     for row in leads:
