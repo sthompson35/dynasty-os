@@ -133,15 +133,6 @@ def create_property(payload: PropertyCreate):
     return result.data[0]
 
 
-@router.get("/{property_id}")
-def get_property(property_id: UUID):
-    db = get_supabase()
-    result = db.table("properties").select("*").eq("id", str(property_id)).single().execute()
-    if not result.data:
-        raise HTTPException(404, "Property not found")
-    return result.data
-
-
 # ── Vacancy ─────────────────────────────────────────────────────────────────
 
 @router.get("/vacancy")
@@ -278,3 +269,12 @@ def add_rent(payload: RentCreate):
     if not result.data:
         raise HTTPException(500, "Failed to add rent record")
     return result.data[0]
+
+
+@router.get("/{property_id}")
+def get_property(property_id: UUID):
+    db = get_supabase()
+    result = db.table("properties").select("*").eq("id", str(property_id)).single().execute()
+    if not result.data:
+        raise HTTPException(404, "Property not found")
+    return result.data
