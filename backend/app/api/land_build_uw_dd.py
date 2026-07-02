@@ -5,6 +5,7 @@ scenario modeling, and due diligence management.
 """
 
 from __future__ import annotations
+import logging
 import sys
 from pathlib import Path
 from typing import Optional, List
@@ -20,6 +21,7 @@ if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 router = APIRouter(prefix="/api/land-build", tags=["Land + Build UW/DD"])
+logger = logging.getLogger("dynasty_property_os.api.land_build_uw_dd")
 
 
 # ─── Models ──────────────────────────────────────────────────────────────────
@@ -330,12 +332,28 @@ def calculate_optimal_offer(payload: OfferCalculationRequest):
 @router.get("/metrics", status_code=200)
 def get_all_metrics():
     """Get aggregated metrics from all Land + Build sub-engines."""
-    from dynasty_os.engines.land_build_uw_dd_engine import LandBuild_UW_DDEngine
-    
-    engine = LandBuild_UW_DDEngine()
-    metrics = engine.get_metrics()
-    
-    return {
-        "engine": "LandBuild_UW_DDEngine",
-        "metrics": metrics,
-    }
+    try:
+        from dynasty_os.engines.land_build_uw_dd_engine import LandBuild_UW_DDEngine
+
+        engine = LandBuild_UW_DDEngine()
+        metrics = engine.get_metrics()
+
+        return {
+            "status": "operational",
+            "engine": "land_build_uw_dd",
+            "metrics": metrics or {},
+            "warnings": [],
+            "verified": True,
+        }
+    except Exception as exc:
+        logger.exception("[ENG-006] /api/land-build/metrics failed")
+        return {
+            "status": "degraded",
+            "engine": "land_build_uw_dd",
+            "metrics": {},
+            "warnings": [
+                "metrics unavailable",
+                str(exc) or "unknown error",
+            ],
+            "verified": False,
+        }
