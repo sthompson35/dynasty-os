@@ -3,7 +3,7 @@ Configuration settings for the Slack AI Gateway
 """
 
 import os
-from typing import Optional
+from typing import Dict, Optional
 from pydantic_settings import BaseSettings
 
 
@@ -70,9 +70,34 @@ class Settings(BaseSettings):
     debug: bool = False
     log_level: str = "INFO"
 
+    # Web3 / blockchain configuration
+    coingecko_api_base: str = "https://api.coingecko.com/api/v3"
+    coingecko_api_key: Optional[str] = None
+    etherscan_api_key: Optional[str] = None
+    etherscan_api_base: str = "https://api.etherscan.io/api"
+    default_chain: str = "ethereum"
+
+    # EVM RPC endpoints (Alchemy/Infura/public), keyed by chain name
+    eth_rpc_url: str = "https://eth.llamarpc.com"
+    polygon_rpc_url: str = "https://polygon-rpc.com"
+    base_rpc_url: str = "https://mainnet.base.org"
+    arbitrum_rpc_url: str = "https://arb1.arbitrum.io/rpc"
+    bsc_rpc_url: str = "https://bsc-dataseed.binance.org"
+
     class Config:
         env_file = ".env"
         case_sensitive = False
+
+    @property
+    def chain_rpc_urls(self) -> Dict[str, str]:
+        """Map of supported chain name to RPC endpoint URL"""
+        return {
+            "ethereum": self.eth_rpc_url,
+            "polygon": self.polygon_rpc_url,
+            "base": self.base_rpc_url,
+            "arbitrum": self.arbitrum_rpc_url,
+            "bsc": self.bsc_rpc_url,
+        }
 
 
 # Global settings instance

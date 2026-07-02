@@ -28,6 +28,7 @@ from .services.llm_router import LLMRouter
 from .services.slack_service import SlackService
 from .models import Job, SlackMessage
 from .core.database import get_db, engine, Base
+from .routers.web3 import router as web3_router
 from sqlalchemy.orm import Session
 import urllib.parse
 
@@ -59,6 +60,8 @@ app = FastAPI(
     description="Event-driven AI/3D rendering system with Slack integration",
     version="1.0.0"
 )
+
+app.include_router(web3_router)
 
 # --- Railway Redis compatibility ---
 import redis

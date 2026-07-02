@@ -156,6 +156,45 @@ DATABASE_URL=mssql+pyodbc://sa:YourStrong!Passw0rd@sqlserver:1433/slack_ai?drive
 
 The system uses LLM routing to interpret natural language commands and convert them into structured actions.
 
+## Web3 Blockchain Intelligence (Layer 2)
+
+The gateway exposes read-only Web3 agents for crypto market data, on-chain
+wallet data, and smart contract inspection. These agents never request or
+store private keys; all wallet signing must happen client-side.
+
+### Endpoints
+
+| Endpoint | Description |
+| --- | --- |
+| `GET /web3/price?coin_ids=bitcoin,ethereum&vs_currencies=usd` | Real-time price/market data via CoinGecko |
+| `GET /web3/price/{coin_id}/summary` | Detailed market summary (market cap, rank, ATH/ATL) |
+| `GET /web3/wallet/{address}?chain=ethereum` | Wallet balance, tx count, and gas price for an EVM chain |
+| `GET /web3/gas?chain=ethereum` | Current network gas price |
+| `GET /web3/contract/{address}` | Fetches verified source and runs a heuristic vulnerability scan |
+| `GET /web3/contract/{address}/abi` | Fetches a contract's verified ABI |
+
+Supported chains: `ethereum`, `polygon`, `base`, `arbitrum`, `bsc`.
+
+### Configuration
+
+Set the following in `.env` (see `.env.example`):
+
+```bash
+COINGECKO_API_KEY=            # optional
+ETHERSCAN_API_KEY=your-etherscan-api-key-here
+DEFAULT_CHAIN=ethereum
+ETH_RPC_URL=https://eth.llamarpc.com
+POLYGON_RPC_URL=https://polygon-rpc.com
+BASE_RPC_URL=https://mainnet.base.org
+ARBITRUM_RPC_URL=https://arb1.arbitrum.io/rpc
+BSC_RPC_URL=https://bsc-dataseed.binance.org
+```
+
+> The contract scan is a lightweight heuristic pattern matcher (reentrancy,
+> `tx.origin` auth, unchecked `.send`, outdated pragma, `delegatecall`,
+> `selfdestruct`). It is a fast first-pass check, not a substitute for a full
+> audit (e.g. Slither/Mythril).
+
 ## Development
 
 ### Local Development
@@ -174,6 +213,7 @@ celery -A services.workers.blender_worker.app worker -Q blender
 ```bash
 # Run gateway tests
 cd services/gateway
+pip install -r requirements-test.txt
 pytest
 
 # Run worker tests
