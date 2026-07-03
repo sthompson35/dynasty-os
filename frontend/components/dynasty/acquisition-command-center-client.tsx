@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, BarChart3, ClipboardList, FileText, Filter, HandCoins, Home, Loader2, Mail, MessageSquare, Phone, Radar, RefreshCcw, Search, Send, SkipForward, Target, UserRound } from 'lucide-react'
+import { AlertTriangle, BarChart3, ClipboardList, Download, FileText, Filter, HandCoins, Home, Loader2, Mail, MessageSquare, Phone, Radar, RefreshCcw, Search, Send, SkipForward, Target, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -134,6 +134,25 @@ type OwnerIntelligencePayload = {
   }[]
 }
 
+type SkipTracePayload = {
+  totalItems: number
+  highPriority: number
+  channels: { recommendedChannel: string; count: number }[]
+  statuses: { status: string; count: number }[]
+  items: {
+    id: string
+    propertyId: string
+    propertyAddress: string
+    mailingAddress: string | null
+    absenteeOwner: boolean
+    vacancySignal: boolean
+    equitySignal: number
+    priority: number
+    recommendedChannel: string
+    status: string
+  }[]
+}
+
 const actionSections = [
   { type: 'CALL_NOW', label: 'Call Now', icon: Phone, tone: 'bg-emerald-50 text-emerald-800' },
   { type: 'MAIL_NOW', label: 'Mail Now', icon: Mail, tone: 'bg-sky-50 text-sky-800' },
@@ -163,6 +182,10 @@ function countCampaign(items: { campaignType: string; count: number }[], key: st
   return items.find((item) => item.campaignType === key)?.count ?? 0
 }
 
+function countSkipTrace(items: { recommendedChannel: string; count: number }[], key: string) {
+  return items.find((item) => item.recommendedChannel === key)?.count ?? 0
+}
+
 function toneForDecision(decision: string) {
   if (decision === 'GO') return 'bg-emerald-100 text-emerald-800'
   if (decision === 'RENEGOTIATE') return 'bg-amber-100 text-amber-800'
@@ -174,14 +197,17 @@ export function AcquisitionCommandCenterClient() {
   const [queue, setQueue] = useState<QueuePayload | null>(null)
   const [campaigns, setCampaigns] = useState<CampaignPayload | null>(null)
   const [owners, setOwners] = useState<OwnerIntelligencePayload | null>(null)
+  const [skipTrace, setSkipTrace] = useState<SkipTracePayload | null>(null)
   const [loading, setLoading] = useState(true)
   const [queueLoading, setQueueLoading] = useState(true)
   const [campaignLoading, setCampaignLoading] = useState(true)
   const [ownerLoading, setOwnerLoading] = useState(true)
+  const [skipTraceLoading, setSkipTraceLoading] = useState(true)
   const [running, setRunning] = useState(false)
   const [queueRunning, setQueueRunning] = useState(false)
   const [campaignRunning, setCampaignRunning] = useState(false)
   const [ownerRunning, setOwnerRunning] = useState(false)
+  const [skipTraceRunning, setSkipTraceRunning] = useState(false)
   const [limit, setLimit] = useState('all')
   const [bucket, setBucket] = useState('all')
   const [decision, setDecision] = useState('all')
@@ -245,6 +271,18 @@ export function AcquisitionCommandCenterClient() {
       setError(String(payload.error ?? 'Unable to load owner intelligence.'))
     }
     setOwnerLoading(false)
+  }
+
+  async function loadSkipTrace() {
+    setSkipTraceLoading(true)
+    const response = await fetch('/api/skip-trace-export-queue?limit=8', { cache: 'no-store' })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      setSkipTrace(payload as unknown as SkipTracePayload)
+    } else if (!error) {
+      setError(String(payload.error ?? 'Unable to load skip trace export queue.'))
+    }
+    setSkipTraceLoading(false)
   }
 
   async function runBatch() {
@@ -320,6 +358,7 @@ export function AcquisitionCommandCenterClient() {
     if (response.ok) {
       toast.success(`Generated ${payload.generated ?? 0} owner intelligence artifacts.`)
       await loadOwners()
+      await loadSkipTrace()
       await loadCampaigns()
     } else {
       const message = String(payload.error ?? 'Owner intelligence generation failed.')
@@ -329,11 +368,32 @@ export function AcquisitionCommandCenterClient() {
     setOwnerRunning(false)
   }
 
+  async function runSkipTrace() {
+    setSkipTraceRunning(true)
+    setError(null)
+    const response = await fetch('/api/skip-trace-export-queue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limit: 'all' }),
+    })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      toast.success(`Generated ${payload.generated ?? 0} skip trace export rows.`)
+      await loadSkipTrace()
+    } else {
+      const message = String(payload.error ?? 'Skip trace prep failed.')
+      setError(message)
+      toast.error(message)
+    }
+    setSkipTraceRunning(false)
+  }
+
   useEffect(() => {
     void loadScores()
     void loadQueue()
     void loadCampaigns()
     void loadOwners()
+    void loadSkipTrace()
   }, [queryString])
 
   const buckets = summary?.buckets ?? []
@@ -384,6 +444,10 @@ export function AcquisitionCommandCenterClient() {
               {ownerRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserRound className="h-4 w-4" />}
               Owner Intel
             </Button>
+            <Button type="button" onClick={runSkipTrace} loading={skipTraceRunning} className="bg-white/10 text-[#F8F7F2] hover:bg-white/20">
+              {skipTraceRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Skip Trace
+            </Button>
           </div>
         </div>
       </div>
@@ -394,6 +458,7 @@ export function AcquisitionCommandCenterClient() {
         <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Action Queue</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{queue?.totalItems ?? 0}</p></CardContent></Card>
         <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Campaign Items</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{campaigns?.totalItems ?? 0}</p></CardContent></Card>
         <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Owner Intel</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{owners?.totalArtifacts ?? 0}</p></CardContent></Card>
+        <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Skip Trace</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{skipTrace?.totalItems ?? 0}</p></CardContent></Card>
         <Card className="border-0 bg-emerald-50 shadow-sm"><CardContent className="p-4"><p className="text-xs text-emerald-700/70">GO</p><p className="font-display text-2xl font-black text-emerald-800">{countOf(decisions, 'GO')}</p></CardContent></Card>
         <Card className="border-0 bg-amber-50 shadow-sm"><CardContent className="p-4"><p className="text-xs text-amber-700/70">Renegotiate</p><p className="font-display text-2xl font-black text-amber-800">{countOf(decisions, 'RENEGOTIATE')}</p></CardContent></Card>
         <Card className="border-0 bg-red-50 shadow-sm"><CardContent className="p-4"><p className="text-xs text-red-700/70">Kill</p><p className="font-display text-2xl font-black text-red-800">{countOf(decisions, 'KILL')}</p></CardContent></Card>
@@ -531,6 +596,51 @@ export function AcquisitionCommandCenterClient() {
                   </div>
                 )
               })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mb-5 border-0 bg-[#F8F7F2] shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 font-display text-2xl text-[var(--dynasty-navy)]">
+            <Download className="h-5 w-5 text-[var(--dynasty-gold)]" /> Skip Trace Prep
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {skipTraceLoading ? (
+            <div className="flex items-center gap-2 rounded-lg bg-white/75 p-4 text-sm text-[var(--dynasty-black)]/55"><Loader2 className="h-4 w-4 animate-spin" /> Loading export queue...</div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+              <div className="grid gap-2">
+                <div className="rounded-lg bg-white/75 p-3 shadow-sm"><p className="text-xs text-[var(--dynasty-black)]/55">High Priority</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{skipTrace?.highPriority ?? 0}</p></div>
+                {['PHONE_EMAIL_SKIP_TRACE', 'MAILING_ADDRESS_EXPORT', 'MOBILE_APPEND', 'OWNERSHIP_RESEARCH', 'NO_TOUCH'].map((channel) => (
+                  <div key={channel} className="flex items-center justify-between rounded-lg bg-white/75 px-3 py-2 shadow-sm">
+                    <span className="text-xs font-bold text-[var(--dynasty-navy)]">{channel.replace(/_/g, ' ')}</span>
+                    <span className="font-display text-lg font-black text-[var(--dynasty-navy)]">{countSkipTrace(skipTrace?.channels ?? [], channel)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {(skipTrace?.items ?? []).length === 0 ? (
+                  <div className="rounded-lg bg-white/75 p-6 text-center md:col-span-2">
+                    <Download className="mx-auto mb-3 h-8 w-8 text-[var(--dynasty-gold)]" />
+                    <p className="font-display text-xl font-black text-[var(--dynasty-navy)]">No skip trace export rows yet.</p>
+                    <p className="mt-2 text-sm text-[var(--dynasty-black)]/60">Build the export queue to prioritize owner/contact enrichment.</p>
+                  </div>
+                ) : skipTrace?.items.map((item) => (
+                  <Link key={item.id} href={`/properties/${item.propertyId}`} className="rounded-lg bg-white/75 p-4 shadow-sm transition hover:shadow-md">
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      <Badge className="border-0 bg-[var(--dynasty-gold)]/18 text-[var(--dynasty-navy)]">{item.recommendedChannel.replace(/_/g, ' ')}</Badge>
+                      {item.absenteeOwner && <Badge className="border-0 bg-sky-100 text-sky-800">Absentee</Badge>}
+                      {item.vacancySignal && <Badge className="border-0 bg-amber-100 text-amber-800">Vacant</Badge>}
+                    </div>
+                    <p className="font-display text-lg font-black text-[var(--dynasty-navy)]">{item.propertyAddress}</p>
+                    <p className="mt-1 text-sm text-[var(--dynasty-black)]/60">{item.mailingAddress ?? 'Mailing address missing'}</p>
+                    <p className="mt-2 text-xs text-[var(--dynasty-black)]/50">Priority {item.priority} - Equity {formatCurrency(item.equitySignal || 0)}</p>
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
         </CardContent>

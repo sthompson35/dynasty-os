@@ -24,6 +24,7 @@ model User {
   sessions             Session[]
   properties           Property[]
   ownerIntelligenceArtifacts OwnerIntelligenceArtifact[]
+  skipTraceExportQueue SkipTraceExportQueue[]
   dealScores           DealScore[]
   leadActionQueue      LeadActionQueue[]
   campaignBatches      CampaignBatch[]
@@ -115,6 +116,7 @@ model Property {
   documents      PropertyDocument[]
   contactLinks   PropertyContact[]
   ownerIntelligenceArtifacts OwnerIntelligenceArtifact[]
+  skipTraceExportQueue SkipTraceExportQueue[]
   draws          Draw[]
   images         PropertyImage[]
   dealScores     DealScore[]
@@ -148,6 +150,7 @@ model OwnerIntelligenceArtifact {
   updatedAt         DateTime @updatedAt @map("updated_at")
   property          Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skipTraceExportQueue SkipTraceExportQueue[]
 
   @@unique([userId, propertyId])
   @@index([propertyId])
@@ -156,6 +159,37 @@ model OwnerIntelligenceArtifact {
   @@index([userId, vacancyIndicator])
   @@index([userId, contactConfidence])
   @@map("owner_intelligence_artifacts")
+  @@schema("dynasty")
+}
+
+model SkipTraceExportQueue {
+  id                 String                     @id @default(cuid())
+  propertyId         String                     @map("property_id")
+  ownerArtifactId    String                     @map("owner_artifact_id")
+  userId             String                     @map("user_id")
+  propertyAddress    String                     @map("property_address") @db.Text
+  mailingAddress     String?                    @map("mailing_address") @db.Text
+  absenteeOwner      Boolean                    @default(false) @map("absentee_owner")
+  vacancySignal      Boolean                    @default(false) @map("vacancy_signal")
+  equitySignal       Decimal?                   @map("equity_signal") @db.Decimal(14, 2)
+  priority           Int
+  recommendedChannel String                     @map("recommended_channel")
+  status             String                     @default("READY")
+  evidence           Json                       @default("{}")
+  createdAt          DateTime                   @default(now()) @map("created_at")
+  updatedAt          DateTime                   @updatedAt @map("updated_at")
+  property           Property                   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  ownerArtifact      OwnerIntelligenceArtifact  @relation(fields: [ownerArtifactId], references: [id], onDelete: Cascade)
+  user               User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@index([propertyId])
+  @@index([ownerArtifactId])
+  @@index([userId])
+  @@index([userId, recommendedChannel])
+  @@index([userId, status])
+  @@index([userId, priority])
+  @@map("skip_trace_export_queue")
   @@schema("dynasty")
 }
 
