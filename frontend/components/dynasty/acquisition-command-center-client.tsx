@@ -153,6 +153,25 @@ type SkipTracePayload = {
   }[]
 }
 
+type OwnershipResearchPayload = {
+  totalTasks: number
+  highPriority: number
+  statuses: { researchStatus: string; count: number }[]
+  counties: { county: string; count: number }[]
+  sources: { recommendedSource: string; count: number }[]
+  tasks: {
+    id: string
+    propertyId: string
+    propertyAddress: string
+    mailingAddress: string | null
+    county: string | null
+    sourcePriority: number
+    researchStatus: string
+    researchReason: string
+    recommendedSource: string
+  }[]
+}
+
 const actionSections = [
   { type: 'CALL_NOW', label: 'Call Now', icon: Phone, tone: 'bg-emerald-50 text-emerald-800' },
   { type: 'MAIL_NOW', label: 'Mail Now', icon: Mail, tone: 'bg-sky-50 text-sky-800' },
@@ -198,16 +217,19 @@ export function AcquisitionCommandCenterClient() {
   const [campaigns, setCampaigns] = useState<CampaignPayload | null>(null)
   const [owners, setOwners] = useState<OwnerIntelligencePayload | null>(null)
   const [skipTrace, setSkipTrace] = useState<SkipTracePayload | null>(null)
+  const [ownershipResearch, setOwnershipResearch] = useState<OwnershipResearchPayload | null>(null)
   const [loading, setLoading] = useState(true)
   const [queueLoading, setQueueLoading] = useState(true)
   const [campaignLoading, setCampaignLoading] = useState(true)
   const [ownerLoading, setOwnerLoading] = useState(true)
   const [skipTraceLoading, setSkipTraceLoading] = useState(true)
+  const [ownershipResearchLoading, setOwnershipResearchLoading] = useState(true)
   const [running, setRunning] = useState(false)
   const [queueRunning, setQueueRunning] = useState(false)
   const [campaignRunning, setCampaignRunning] = useState(false)
   const [ownerRunning, setOwnerRunning] = useState(false)
   const [skipTraceRunning, setSkipTraceRunning] = useState(false)
+  const [ownershipResearchRunning, setOwnershipResearchRunning] = useState(false)
   const [limit, setLimit] = useState('all')
   const [bucket, setBucket] = useState('all')
   const [decision, setDecision] = useState('all')
@@ -283,6 +305,18 @@ export function AcquisitionCommandCenterClient() {
       setError(String(payload.error ?? 'Unable to load skip trace export queue.'))
     }
     setSkipTraceLoading(false)
+  }
+
+  async function loadOwnershipResearch() {
+    setOwnershipResearchLoading(true)
+    const response = await fetch('/api/ownership-research-tasks?limit=8', { cache: 'no-store' })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      setOwnershipResearch(payload as unknown as OwnershipResearchPayload)
+    } else if (!error) {
+      setError(String(payload.error ?? 'Unable to load ownership research tasks.'))
+    }
+    setOwnershipResearchLoading(false)
   }
 
   async function runBatch() {
@@ -380,6 +414,7 @@ export function AcquisitionCommandCenterClient() {
     if (response.ok) {
       toast.success(`Generated ${payload.generated ?? 0} skip trace export rows.`)
       await loadSkipTrace()
+      await loadOwnershipResearch()
     } else {
       const message = String(payload.error ?? 'Skip trace prep failed.')
       setError(message)
@@ -388,12 +423,33 @@ export function AcquisitionCommandCenterClient() {
     setSkipTraceRunning(false)
   }
 
+  async function runOwnershipResearch() {
+    setOwnershipResearchRunning(true)
+    setError(null)
+    const response = await fetch('/api/ownership-research-tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limit: 'all' }),
+    })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      toast.success(`Generated ${payload.generated ?? 0} ownership research tasks.`)
+      await loadOwnershipResearch()
+    } else {
+      const message = String(payload.error ?? 'Ownership research task generation failed.')
+      setError(message)
+      toast.error(message)
+    }
+    setOwnershipResearchRunning(false)
+  }
+
   useEffect(() => {
     void loadScores()
     void loadQueue()
     void loadCampaigns()
     void loadOwners()
     void loadSkipTrace()
+    void loadOwnershipResearch()
   }, [queryString])
 
   const buckets = summary?.buckets ?? []
@@ -448,6 +504,10 @@ export function AcquisitionCommandCenterClient() {
               {skipTraceRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
               Skip Trace
             </Button>
+            <Button type="button" onClick={runOwnershipResearch} loading={ownershipResearchRunning} className="bg-white/10 text-[#F8F7F2] hover:bg-white/20">
+              {ownershipResearchRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              Research
+            </Button>
           </div>
         </div>
       </div>
@@ -459,6 +519,7 @@ export function AcquisitionCommandCenterClient() {
         <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Campaign Items</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{campaigns?.totalItems ?? 0}</p></CardContent></Card>
         <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Owner Intel</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{owners?.totalArtifacts ?? 0}</p></CardContent></Card>
         <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Skip Trace</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{skipTrace?.totalItems ?? 0}</p></CardContent></Card>
+        <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Research Tasks</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{ownershipResearch?.totalTasks ?? 0}</p></CardContent></Card>
         <Card className="border-0 bg-emerald-50 shadow-sm"><CardContent className="p-4"><p className="text-xs text-emerald-700/70">GO</p><p className="font-display text-2xl font-black text-emerald-800">{countOf(decisions, 'GO')}</p></CardContent></Card>
         <Card className="border-0 bg-amber-50 shadow-sm"><CardContent className="p-4"><p className="text-xs text-amber-700/70">Renegotiate</p><p className="font-display text-2xl font-black text-amber-800">{countOf(decisions, 'RENEGOTIATE')}</p></CardContent></Card>
         <Card className="border-0 bg-red-50 shadow-sm"><CardContent className="p-4"><p className="text-xs text-red-700/70">Kill</p><p className="font-display text-2xl font-black text-red-800">{countOf(decisions, 'KILL')}</p></CardContent></Card>
@@ -596,6 +657,51 @@ export function AcquisitionCommandCenterClient() {
                   </div>
                 )
               })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mb-5 border-0 bg-[#F8F7F2] shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 font-display text-2xl text-[var(--dynasty-navy)]">
+            <Search className="h-5 w-5 text-[var(--dynasty-gold)]" /> Ownership Research
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {ownershipResearchLoading ? (
+            <div className="flex items-center gap-2 rounded-lg bg-white/75 p-4 text-sm text-[var(--dynasty-black)]/55"><Loader2 className="h-4 w-4 animate-spin" /> Loading ownership research tasks...</div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+              <div className="grid gap-2">
+                <div className="rounded-lg bg-white/75 p-3 shadow-sm"><p className="text-xs text-[var(--dynasty-black)]/55">High Priority</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{ownershipResearch?.highPriority ?? 0}</p></div>
+                {(ownershipResearch?.sources ?? []).slice(0, 5).map((source) => (
+                  <div key={source.recommendedSource} className="flex items-center justify-between rounded-lg bg-white/75 px-3 py-2 shadow-sm">
+                    <span className="text-xs font-bold text-[var(--dynasty-navy)]">{source.recommendedSource}</span>
+                    <span className="font-display text-lg font-black text-[var(--dynasty-navy)]">{source.count}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {(ownershipResearch?.tasks ?? []).length === 0 ? (
+                  <div className="rounded-lg bg-white/75 p-6 text-center md:col-span-2">
+                    <Search className="mx-auto mb-3 h-8 w-8 text-[var(--dynasty-gold)]" />
+                    <p className="font-display text-xl font-black text-[var(--dynasty-navy)]">No ownership research tasks yet.</p>
+                    <p className="mt-2 text-sm text-[var(--dynasty-black)]/60">Generate tasks from ownership-research skip trace rows.</p>
+                  </div>
+                ) : ownershipResearch?.tasks.map((task) => (
+                  <Link key={task.id} href={`/properties/${task.propertyId}`} className="rounded-lg bg-white/75 p-4 shadow-sm transition hover:shadow-md">
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      <Badge className="border-0 bg-[var(--dynasty-gold)]/18 text-[var(--dynasty-navy)]">{task.recommendedSource}</Badge>
+                      <Badge className="border-0 bg-sky-100 text-sky-800">{task.county ?? 'Unknown county'}</Badge>
+                      <Badge className="border-0 bg-emerald-100 text-emerald-800">{task.researchStatus}</Badge>
+                    </div>
+                    <p className="font-display text-lg font-black text-[var(--dynasty-navy)]">{task.propertyAddress}</p>
+                    <p className="mt-1 text-sm text-[var(--dynasty-black)]/60">{task.mailingAddress ?? 'Mailing address missing'}</p>
+                    <p className="mt-2 line-clamp-2 text-xs text-[var(--dynasty-black)]/50">Priority {task.sourcePriority} - {task.researchReason}</p>
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
         </CardContent>

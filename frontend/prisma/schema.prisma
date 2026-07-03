@@ -25,6 +25,7 @@ model User {
   properties           Property[]
   ownerIntelligenceArtifacts OwnerIntelligenceArtifact[]
   skipTraceExportQueue SkipTraceExportQueue[]
+  ownershipResearchTasks OwnershipResearchTask[]
   dealScores           DealScore[]
   leadActionQueue      LeadActionQueue[]
   campaignBatches      CampaignBatch[]
@@ -117,6 +118,7 @@ model Property {
   contactLinks   PropertyContact[]
   ownerIntelligenceArtifacts OwnerIntelligenceArtifact[]
   skipTraceExportQueue SkipTraceExportQueue[]
+  ownershipResearchTasks OwnershipResearchTask[]
   draws          Draw[]
   images         PropertyImage[]
   dealScores     DealScore[]
@@ -181,6 +183,7 @@ model SkipTraceExportQueue {
   property           Property                   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   ownerArtifact      OwnerIntelligenceArtifact  @relation(fields: [ownerArtifactId], references: [id], onDelete: Cascade)
   user               User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ownershipResearchTasks OwnershipResearchTask[]
 
   @@unique([userId, propertyId])
   @@index([propertyId])
@@ -190,6 +193,35 @@ model SkipTraceExportQueue {
   @@index([userId, status])
   @@index([userId, priority])
   @@map("skip_trace_export_queue")
+  @@schema("dynasty")
+}
+
+model OwnershipResearchTask {
+  id                String               @id @default(cuid())
+  propertyId        String               @map("property_id")
+  skipTraceQueueId  String               @map("skip_trace_queue_id")
+  userId            String               @map("user_id")
+  propertyAddress   String               @map("property_address") @db.Text
+  mailingAddress    String?              @map("mailing_address") @db.Text
+  county            String?
+  sourcePriority    Int                  @default(50) @map("source_priority")
+  researchStatus    String               @default("READY") @map("research_status")
+  researchReason    String               @map("research_reason") @db.Text
+  recommendedSource String               @map("recommended_source")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+  property          Property             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  skipTraceQueue    SkipTraceExportQueue @relation(fields: [skipTraceQueueId], references: [id], onDelete: Cascade)
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@index([propertyId])
+  @@index([skipTraceQueueId])
+  @@index([userId])
+  @@index([userId, county])
+  @@index([userId, researchStatus])
+  @@index([userId, sourcePriority])
+  @@map("ownership_research_tasks")
   @@schema("dynasty")
 }
 
