@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, BarChart3, Filter, Loader2, Radar, RefreshCcw, Search, Target } from 'lucide-react'
+import { AlertTriangle, BarChart3, ClipboardList, Filter, HandCoins, Loader2, Mail, MessageSquare, Phone, Radar, RefreshCcw, Search, SkipForward, Target } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -45,6 +45,44 @@ type SummaryPayload = {
   scores: ScorePayload[]
 }
 
+type QueueItemPayload = {
+  id: string
+  propertyId: string
+  actionType: string
+  priority: number
+  status: string
+  nextActionDate: string | null
+  reason: string
+  property: {
+    address: string
+    city: string
+    state: string
+    zip: string | null
+    propertyType: string
+  } | null
+  dealScore: {
+    dealScore: number
+    strategy: string
+    scoreBucket: string
+  } | null
+}
+
+type QueuePayload = {
+  totalItems: number
+  actions: { actionType: string; count: number }[]
+  statuses: { status: string; count: number }[]
+  items: QueueItemPayload[]
+}
+
+const actionSections = [
+  { type: 'CALL_NOW', label: 'Call Now', icon: Phone, tone: 'bg-emerald-50 text-emerald-800' },
+  { type: 'MAIL_NOW', label: 'Mail Now', icon: Mail, tone: 'bg-sky-50 text-sky-800' },
+  { type: 'TEXT_NOW', label: 'Text Now', icon: MessageSquare, tone: 'bg-indigo-50 text-indigo-800' },
+  { type: 'RESEARCH', label: 'Research', icon: ClipboardList, tone: 'bg-amber-50 text-amber-800' },
+  { type: 'LOW_OFFER', label: 'Low Offer', icon: HandCoins, tone: 'bg-orange-50 text-orange-800' },
+  { type: 'SKIP', label: 'Skip', icon: SkipForward, tone: 'bg-red-50 text-red-800' },
+]
+
 async function safeJson(response: Response): Promise<Record<string, unknown>> {
   try {
     return (await response.json()) as Record<string, unknown>
@@ -57,6 +95,10 @@ function countOf(items: { bucket?: string; decision?: string; count: number }[],
   return items.find((item) => item.bucket === key || item.decision === key)?.count ?? 0
 }
 
+function countAction(items: { actionType: string; count: number }[], key: string) {
+  return items.find((item) => item.actionType === key)?.count ?? 0
+}
+
 function toneForDecision(decision: string) {
   if (decision === 'GO') return 'bg-emerald-100 text-emerald-800'
   if (decision === 'RENEGOTIATE') return 'bg-amber-100 text-amber-800'
@@ -65,8 +107,11 @@ function toneForDecision(decision: string) {
 
 export function AcquisitionCommandCenterClient() {
   const [summary, setSummary] = useState<SummaryPayload | null>(null)
+  const [queue, setQueue] = useState<QueuePayload | null>(null)
   const [loading, setLoading] = useState(true)
+  const [queueLoading, setQueueLoading] = useState(true)
   const [running, setRunning] = useState(false)
+  const [queueRunning, setQueueRunning] = useState(false)
   const [limit, setLimit] = useState('all')
   const [bucket, setBucket] = useState('all')
   const [decision, setDecision] = useState('all')
@@ -96,6 +141,18 @@ export function AcquisitionCommandCenterClient() {
     setLoading(false)
   }
 
+  async function loadQueue() {
+    setQueueLoading(true)
+    const response = await fetch('/api/lead-action-queue?limit=180', { cache: 'no-store' })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      setQueue(payload as unknown as QueuePayload)
+    } else if (!error) {
+      setError(String(payload.error ?? 'Unable to load lead action queue.'))
+    }
+    setQueueLoading(false)
+  }
+
   async function runBatch() {
     setRunning(true)
     setError(null)
@@ -108,6 +165,7 @@ export function AcquisitionCommandCenterClient() {
     if (response.ok) {
       toast.success(`Scored ${payload.scored ?? 0} properties.`)
       await loadScores()
+      await loadQueue()
     } else {
       const message = String(payload.error ?? 'Portfolio scoring failed.')
       setError(message)
@@ -116,13 +174,36 @@ export function AcquisitionCommandCenterClient() {
     setRunning(false)
   }
 
+  async function runQueue() {
+    setQueueRunning(true)
+    setError(null)
+    const response = await fetch('/api/lead-action-queue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limit: 'all' }),
+    })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      toast.success(`Generated ${payload.generated ?? 0} lead actions.`)
+      await loadQueue()
+    } else {
+      const message = String(payload.error ?? 'Lead action queue generation failed.')
+      setError(message)
+      toast.error(message)
+    }
+    setQueueRunning(false)
+  }
+
   useEffect(() => {
     void loadScores()
+    void loadQueue()
   }, [queryString])
 
   const buckets = summary?.buckets ?? []
   const decisions = summary?.decisions ?? []
   const scores = summary?.scores ?? []
+  const actionCounts = queue?.actions ?? []
+  const queueItems = queue?.items ?? []
 
   return (
     <div className="mx-auto w-[calc(100%-1.5rem)] max-w-[1200px] py-8">
@@ -152,13 +233,18 @@ export function AcquisitionCommandCenterClient() {
               {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
               Run Scoring
             </Button>
+            <Button type="button" onClick={runQueue} loading={queueRunning} className="bg-[#F8F7F2] text-[var(--dynasty-navy)] hover:bg-white">
+              {queueRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
+              Build Queue
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="mb-5 grid gap-3 md:grid-cols-5">
+      <div className="mb-5 grid gap-3 md:grid-cols-6">
         <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Inventory</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{summary?.totalProperties ?? 0}</p></CardContent></Card>
         <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Scored</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{summary?.totalScores ?? 0}</p></CardContent></Card>
+        <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Action Queue</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{queue?.totalItems ?? 0}</p></CardContent></Card>
         <Card className="border-0 bg-emerald-50 shadow-sm"><CardContent className="p-4"><p className="text-xs text-emerald-700/70">GO</p><p className="font-display text-2xl font-black text-emerald-800">{countOf(decisions, 'GO')}</p></CardContent></Card>
         <Card className="border-0 bg-amber-50 shadow-sm"><CardContent className="p-4"><p className="text-xs text-amber-700/70">Renegotiate</p><p className="font-display text-2xl font-black text-amber-800">{countOf(decisions, 'RENEGOTIATE')}</p></CardContent></Card>
         <Card className="border-0 bg-red-50 shadow-sm"><CardContent className="p-4"><p className="text-xs text-red-700/70">Kill</p><p className="font-display text-2xl font-black text-red-800">{countOf(decisions, 'KILL')}</p></CardContent></Card>
@@ -219,6 +305,45 @@ export function AcquisitionCommandCenterClient() {
           </Card>
         ))}
       </div>
+
+      <Card className="mb-5 border-0 bg-[#F8F7F2] shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 font-display text-2xl text-[var(--dynasty-navy)]">
+            <ClipboardList className="h-5 w-5 text-[var(--dynasty-gold)]" /> Lead Action Queue
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {queueLoading ? (
+            <div className="flex items-center gap-2 rounded-lg bg-white/75 p-4 text-sm text-[var(--dynasty-black)]/55"><Loader2 className="h-4 w-4 animate-spin" /> Loading action lanes...</div>
+          ) : (
+            <div className="grid gap-3 xl:grid-cols-6 md:grid-cols-3">
+              {actionSections.map((section) => {
+                const Icon = section.icon
+                const items = queueItems.filter((item) => item.actionType === section.type).slice(0, 3)
+                return (
+                  <div key={section.type} className="rounded-lg bg-white/75 p-3 shadow-sm">
+                    <div className={`mb-3 flex items-center justify-between rounded-md px-3 py-2 ${section.tone}`}>
+                      <span className="flex items-center gap-2 text-sm font-bold"><Icon className="h-4 w-4" /> {section.label}</span>
+                      <span className="font-display text-lg font-black">{countAction(actionCounts, section.type)}</span>
+                    </div>
+                    <div className="space-y-2">
+                      {items.length === 0 ? (
+                        <p className="px-1 py-3 text-xs text-[var(--dynasty-black)]/50">No active items.</p>
+                      ) : items.map((item) => (
+                        <Link key={item.id} href={`/properties/${item.propertyId}`} className="block rounded-md border border-[var(--dynasty-tan)]/20 bg-[#F8F7F2] p-2 transition hover:border-[var(--dynasty-gold)]/70">
+                          <p className="truncate text-sm font-bold text-[var(--dynasty-navy)]">{item.property?.address ?? 'Unknown property'}</p>
+                          <p className="mt-1 text-xs text-[var(--dynasty-black)]/55">{item.property?.city}, {item.property?.state} - Score {item.dealScore?.dealScore ?? 0}</p>
+                          <p className="mt-1 line-clamp-2 text-xs text-[var(--dynasty-black)]/50">{item.reason}</p>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="border-0 bg-[#F8F7F2] shadow-md">
         <CardHeader>
