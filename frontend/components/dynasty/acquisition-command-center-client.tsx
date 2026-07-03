@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, BarChart3, ClipboardList, Filter, HandCoins, Loader2, Mail, MessageSquare, Phone, Radar, RefreshCcw, Search, SkipForward, Target } from 'lucide-react'
+import { AlertTriangle, BarChart3, ClipboardList, FileText, Filter, HandCoins, Loader2, Mail, MessageSquare, Phone, Radar, RefreshCcw, Search, Send, SkipForward, Target } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -74,6 +74,38 @@ type QueuePayload = {
   items: QueueItemPayload[]
 }
 
+type CampaignPayload = {
+  totalBatches: number
+  totalItems: number
+  types: { campaignType: string; count: number }[]
+  batches: {
+    id: string
+    name: string
+    campaignType: string
+    status: string
+    totalItems: number
+    itemCount: number
+    createdAt: string
+  }[]
+  items: {
+    id: string
+    campaignType: string
+    status: string
+    priority: number
+    artifact: {
+      headline?: string
+      workType?: string
+      instructions?: string[]
+    }
+    property: {
+      address: string
+      city: string
+      state: string
+      zip: string | null
+    } | null
+  }[]
+}
+
 const actionSections = [
   { type: 'CALL_NOW', label: 'Call Now', icon: Phone, tone: 'bg-emerald-50 text-emerald-800' },
   { type: 'MAIL_NOW', label: 'Mail Now', icon: Mail, tone: 'bg-sky-50 text-sky-800' },
@@ -99,6 +131,10 @@ function countAction(items: { actionType: string; count: number }[], key: string
   return items.find((item) => item.actionType === key)?.count ?? 0
 }
 
+function countCampaign(items: { campaignType: string; count: number }[], key: string) {
+  return items.find((item) => item.campaignType === key)?.count ?? 0
+}
+
 function toneForDecision(decision: string) {
   if (decision === 'GO') return 'bg-emerald-100 text-emerald-800'
   if (decision === 'RENEGOTIATE') return 'bg-amber-100 text-amber-800'
@@ -108,10 +144,13 @@ function toneForDecision(decision: string) {
 export function AcquisitionCommandCenterClient() {
   const [summary, setSummary] = useState<SummaryPayload | null>(null)
   const [queue, setQueue] = useState<QueuePayload | null>(null)
+  const [campaigns, setCampaigns] = useState<CampaignPayload | null>(null)
   const [loading, setLoading] = useState(true)
   const [queueLoading, setQueueLoading] = useState(true)
+  const [campaignLoading, setCampaignLoading] = useState(true)
   const [running, setRunning] = useState(false)
   const [queueRunning, setQueueRunning] = useState(false)
+  const [campaignRunning, setCampaignRunning] = useState(false)
   const [limit, setLimit] = useState('all')
   const [bucket, setBucket] = useState('all')
   const [decision, setDecision] = useState('all')
@@ -151,6 +190,18 @@ export function AcquisitionCommandCenterClient() {
       setError(String(payload.error ?? 'Unable to load lead action queue.'))
     }
     setQueueLoading(false)
+  }
+
+  async function loadCampaigns() {
+    setCampaignLoading(true)
+    const response = await fetch('/api/campaign-batches?limit=10', { cache: 'no-store' })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      setCampaigns(payload as unknown as CampaignPayload)
+    } else if (!error) {
+      setError(String(payload.error ?? 'Unable to load campaign batches.'))
+    }
+    setCampaignLoading(false)
   }
 
   async function runBatch() {
@@ -194,9 +245,30 @@ export function AcquisitionCommandCenterClient() {
     setQueueRunning(false)
   }
 
+  async function runCampaigns() {
+    setCampaignRunning(true)
+    setError(null)
+    const response = await fetch('/api/campaign-batches', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ campaignType: 'ALL', limit: 500 }),
+    })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      toast.success(`Generated ${payload.generated ?? 0} campaign items.`)
+      await loadCampaigns()
+    } else {
+      const message = String(payload.error ?? 'Campaign generation failed.')
+      setError(message)
+      toast.error(message)
+    }
+    setCampaignRunning(false)
+  }
+
   useEffect(() => {
     void loadScores()
     void loadQueue()
+    void loadCampaigns()
   }, [queryString])
 
   const buckets = summary?.buckets ?? []
@@ -204,6 +276,8 @@ export function AcquisitionCommandCenterClient() {
   const scores = summary?.scores ?? []
   const actionCounts = queue?.actions ?? []
   const queueItems = queue?.items ?? []
+  const campaignCounts = campaigns?.types ?? []
+  const campaignItems = campaigns?.items ?? []
 
   return (
     <div className="mx-auto w-[calc(100%-1.5rem)] max-w-[1200px] py-8">
@@ -237,14 +311,19 @@ export function AcquisitionCommandCenterClient() {
               {queueRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
               Build Queue
             </Button>
+            <Button type="button" onClick={runCampaigns} loading={campaignRunning} className="bg-emerald-600 text-white hover:bg-emerald-700">
+              {campaignRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Build Campaigns
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="mb-5 grid gap-3 md:grid-cols-6">
+      <div className="mb-5 grid gap-3 md:grid-cols-7">
         <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Inventory</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{summary?.totalProperties ?? 0}</p></CardContent></Card>
         <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Scored</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{summary?.totalScores ?? 0}</p></CardContent></Card>
         <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Action Queue</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{queue?.totalItems ?? 0}</p></CardContent></Card>
+        <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Campaign Items</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{campaigns?.totalItems ?? 0}</p></CardContent></Card>
         <Card className="border-0 bg-emerald-50 shadow-sm"><CardContent className="p-4"><p className="text-xs text-emerald-700/70">GO</p><p className="font-display text-2xl font-black text-emerald-800">{countOf(decisions, 'GO')}</p></CardContent></Card>
         <Card className="border-0 bg-amber-50 shadow-sm"><CardContent className="p-4"><p className="text-xs text-amber-700/70">Renegotiate</p><p className="font-display text-2xl font-black text-amber-800">{countOf(decisions, 'RENEGOTIATE')}</p></CardContent></Card>
         <Card className="border-0 bg-red-50 shadow-sm"><CardContent className="p-4"><p className="text-xs text-red-700/70">Kill</p><p className="font-display text-2xl font-black text-red-800">{countOf(decisions, 'KILL')}</p></CardContent></Card>
@@ -340,6 +419,53 @@ export function AcquisitionCommandCenterClient() {
                   </div>
                 )
               })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mb-5 border-0 bg-[#F8F7F2] shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 font-display text-2xl text-[var(--dynasty-navy)]">
+            <Send className="h-5 w-5 text-[var(--dynasty-gold)]" /> Campaign Engine
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {campaignLoading ? (
+            <div className="flex items-center gap-2 rounded-lg bg-white/75 p-4 text-sm text-[var(--dynasty-black)]/55"><Loader2 className="h-4 w-4 animate-spin" /> Loading campaign worklists...</div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+              <div className="grid gap-2">
+                {actionSections.map((section) => {
+                  const Icon = section.icon
+                  return (
+                    <div key={section.type} className="flex items-center justify-between rounded-lg bg-white/75 px-3 py-2 shadow-sm">
+                      <span className="flex items-center gap-2 text-sm font-bold text-[var(--dynasty-navy)]"><Icon className="h-4 w-4 text-[var(--dynasty-gold)]" /> {section.label}</span>
+                      <span className="font-display text-lg font-black text-[var(--dynasty-navy)]">{countCampaign(campaignCounts, section.type)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="space-y-3">
+                {campaignItems.length === 0 ? (
+                  <div className="rounded-lg bg-white/75 p-6 text-center">
+                    <FileText className="mx-auto mb-3 h-8 w-8 text-[var(--dynasty-gold)]" />
+                    <p className="font-display text-xl font-black text-[var(--dynasty-navy)]">No campaign batches yet.</p>
+                    <p className="mt-2 text-sm text-[var(--dynasty-black)]/60">Build campaigns to turn queue lanes into call scripts, mail rows, research checklists, and offer worksheets.</p>
+                  </div>
+                ) : campaignItems.map((item) => (
+                  <div key={item.id} className="rounded-lg bg-white/75 p-4 shadow-sm">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <Badge className="border-0 bg-emerald-100 text-emerald-800">{item.campaignType.replace(/_/g, ' ')}</Badge>
+                      <Badge className="border-0 bg-[var(--dynasty-gold)]/18 text-[var(--dynasty-navy)]">{item.status}</Badge>
+                      <span className="text-xs text-[var(--dynasty-black)]/50">Priority {item.priority}</span>
+                    </div>
+                    <p className="font-display text-lg font-black text-[var(--dynasty-navy)]">{item.artifact?.headline ?? item.property?.address ?? 'Campaign item'}</p>
+                    <p className="mt-1 text-sm text-[var(--dynasty-black)]/60">{item.artifact?.workType ?? 'Work item'}</p>
+                    <p className="mt-2 text-xs text-[var(--dynasty-black)]/50">{item.artifact?.instructions?.slice(0, 2).join(' ')}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </CardContent>

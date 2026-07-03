@@ -25,6 +25,8 @@ model User {
   properties           Property[]
   dealScores           DealScore[]
   leadActionQueue      LeadActionQueue[]
+  campaignBatches      CampaignBatch[]
+  campaignItems        CampaignItem[]
   shares               DealShare[]
   documents            PropertyDocument[]
   contacts             Contact[]
@@ -115,6 +117,7 @@ model Property {
   images         PropertyImage[]
   dealScores     DealScore[]
   leadActionQueue LeadActionQueue[]
+  campaignItems  CampaignItem[]
 
   @@index([userId])
   @@index([userId, status])
@@ -168,6 +171,7 @@ model LeadActionQueue {
   property       Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   dealScore      DealScore @relation(fields: [dealScoreId], references: [id], onDelete: Cascade)
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaignItems  CampaignItem[]
 
   @@unique([userId, propertyId])
   @@index([propertyId])
@@ -178,6 +182,57 @@ model LeadActionQueue {
   @@index([userId, priority])
   @@index([userId, nextActionDate])
   @@map("lead_action_queue")
+  @@schema("dynasty")
+}
+
+model CampaignBatch {
+  id            String         @id @default(cuid())
+  userId        String         @map("user_id")
+  name          String
+  campaignType  String         @map("campaign_type")
+  status        String         @default("DRAFT")
+  scheduledDate DateTime?      @map("scheduled_date")
+  totalItems    Int            @default(0) @map("total_items")
+  completedItems Int           @default(0) @map("completed_items")
+  notes         String?        @db.Text
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items         CampaignItem[]
+
+  @@index([userId])
+  @@index([userId, campaignType])
+  @@index([userId, status])
+  @@index([userId, scheduledDate])
+  @@map("campaign_batches")
+  @@schema("dynasty")
+}
+
+model CampaignItem {
+  id            String          @id @default(cuid())
+  batchId       String          @map("batch_id")
+  queueItemId   String          @map("queue_item_id")
+  propertyId    String          @map("property_id")
+  userId        String          @map("user_id")
+  campaignType  String          @map("campaign_type")
+  status        String          @default("READY")
+  priority      Int
+  artifact      Json            @default("{}")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  batch         CampaignBatch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  queueItem     LeadActionQueue @relation(fields: [queueItemId], references: [id], onDelete: Cascade)
+  property      Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, queueItemId])
+  @@index([batchId])
+  @@index([queueItemId])
+  @@index([propertyId])
+  @@index([userId])
+  @@index([userId, campaignType])
+  @@index([userId, status])
+  @@map("campaign_items")
   @@schema("dynasty")
 }
 
