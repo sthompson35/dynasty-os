@@ -338,7 +338,7 @@ export function DealIntelligencePanel({
               <CardContent>
                 {syncErrors.length > 0 && (
                   <div className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-                    Deal approved, but some syncs failed — retry from the relevant engine page:
+                    Deal approved — some items need attention:
                     <ul className="mt-1 list-disc pl-5">{syncErrors.map((e, i) => <li key={i}>{e}</li>)}</ul>
                   </div>
                 )}

@@ -785,13 +785,15 @@ def approve_deal(payload: DealApproveRequest):
     if payload.decision not in valid:
         raise HTTPException(400, f"decision must be one of: {valid}")
 
+    # investor_id is optional, not required: n8n's automation nodes
+    # ("Deal Intake: Approve Deal", "Deal Status: APPROVED - HTTP" in
+    # n8n/dynasty-os-v3-workflow.json) auto-approve deals with decision=GO
+    # and no investor_id — deal approval and capital assignment are separate
+    # decisions, and an unattended pipeline shouldn't be the one committing a
+    # specific investor's capital. Without investor_id, Operations and
+    # Disposition still sync normally; Capital is left pending until a human
+    # picks an investor via the Panel's /investor-matches + /approve flow.
     syncs_on_approve = payload.decision in ("GO", "GO_WITH_CONDITIONS")
-    if syncs_on_approve and not payload.investor_id:
-        raise HTTPException(
-            400,
-            "investor_id is required when decision is GO or GO_WITH_CONDITIONS — "
-            "select an investor from GET /api/deal/{deal_id}/investor-matches first.",
-        )
 
     db = get_supabase()
     result = db.table("deals").update({
@@ -806,48 +808,54 @@ def approve_deal(payload: DealApproveRequest):
     sync_errors: list[str] = []
 
     if syncs_on_approve:
-        # Nothing about a re-submitted GO/GO_WITH_CONDITIONS approval (a double
-        # click, a page refresh replaying the request, etc.) is idempotent by
-        # default — _sync_to_* all do plain inserts, so re-running them would
-        # create duplicate commitments/projects/marketing rows for the same
-        # deal. Guard on the one sync step that's easy to check cheaply.
+        # Nothing about a re-submitted GO/GO_WITH_CONDITIONS approval (a
+        # double click, a page refresh, a second automation run, or a human
+        # picking an investor after an earlier auto-approval left Capital
+        # pending) is idempotent by default — _sync_to_* all do plain
+        # inserts. Check each of the three sync targets independently so a
+        # later call (e.g. finally supplying investor_id) only fills the gap
+        # instead of re-inserting Operations/Disposition rows that already
+        # exist from an earlier approval.
         existing_commitment = db.table("commitments").select("*").eq(
             "deal_id", payload.deal_id
         ).limit(1).execute()
+        existing_project = db.table("projects").select("*").eq(
+            "deal_id", payload.deal_id
+        ).limit(1).execute()
+        existing_marketing = db.table("property_marketing").select("*").eq(
+            "property_id", deal.get("property_id")
+        ).limit(1).execute()
 
-        if existing_commitment.data:
-            existing_project = db.table("projects").select("*").eq(
-                "deal_id", payload.deal_id
-            ).limit(1).execute()
-            existing_marketing = db.table("property_marketing").select("*").eq(
-                "property_id", deal.get("property_id")
-            ).limit(1).execute()
-            sync_results["capital"] = existing_commitment.data[0]
-            sync_results["operations"] = (existing_project.data or [None])[0]
-            sync_results["disposition"] = (existing_marketing.data or [None])[0]
-            sync_errors.append(
-                "This deal was already approved and synced previously — showing the "
-                "existing Capital/Operations/Disposition records instead of creating new ones."
-            )
-            syncs_on_approve = False  # already handled, skip the fan-out below
-
-    if syncs_on_approve:
         risk_row = db.table("risk_scores").select("risk_level").eq(
             "deal_id", payload.deal_id
         ).maybe_single().execute()
         risk_level = (risk_row.data or {}).get("risk_level")
 
-        sync_results["capital"], err = _sync_to_capital(db, deal, payload.investor_id)
-        if err:
-            sync_errors.append(err)
+        if existing_commitment.data:
+            sync_results["capital"] = existing_commitment.data[0]
+        elif payload.investor_id:
+            sync_results["capital"], err = _sync_to_capital(db, deal, payload.investor_id)
+            if err:
+                sync_errors.append(err)
+        else:
+            sync_errors.append(
+                "No investor selected — Capital sync is pending. Select an investor via "
+                "GET /api/deal/{deal_id}/investor-matches and re-approve to complete it."
+            )
 
-        sync_results["operations"], err = _sync_to_operations(db, deal, risk_level)
-        if err:
-            sync_errors.append(err)
+        if existing_project.data:
+            sync_results["operations"] = existing_project.data[0]
+        else:
+            sync_results["operations"], err = _sync_to_operations(db, deal, risk_level)
+            if err:
+                sync_errors.append(err)
 
-        sync_results["disposition"], err = _sync_to_disposition(db, deal)
-        if err:
-            sync_errors.append(err)
+        if existing_marketing.data:
+            sync_results["disposition"] = existing_marketing.data[0]
+        else:
+            sync_results["disposition"], err = _sync_to_disposition(db, deal)
+            if err:
+                sync_errors.append(err)
 
     try:
         from app.api.automation import AutomationEvent, log_automation_event

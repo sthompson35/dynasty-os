@@ -29,11 +29,11 @@ Migrations 001-007 were already live prior to this session. `supabase/migrations
 
 ## What's new in this RC vs. what's currently live on Railway
 
-`backend/app/api/deal_engine.py` gains: `POST /{deal_id}/analyze`, `GET /{deal_id}/intelligence`, `GET /{deal_id}/investor-matches`, and `POST /approve` now requires `investor_id` on GO/GO_WITH_CONDITIONS decisions and fans out into `commitments`/`projects`/`property_marketing`. **This changes `/approve`'s request contract and WILL break two existing n8n automation nodes on deploy**, confirmed by reading `n8n/dynasty-os-v3-workflow.json` directly:
-- `Deal Intake: Approve Deal` (line 576) — sends `{deal_id, decision: 'GO', approved_by: 'dynasty_os_automation', notes}`, no `investor_id`.
-- `Deal Status: APPROVED - HTTP` (line 894) — same shape, same gap.
+`backend/app/api/deal_engine.py` gains: `POST /{deal_id}/analyze`, `GET /{deal_id}/intelligence`, `GET /{deal_id}/investor-matches`, and `POST /approve` fans out into Capital (`commitments`)/Operations+Rehab (`projects`)/Disposition (`property_marketing`) on GO/GO_WITH_CONDITIONS.
 
-Both have `continueOnFail: true`, so the workflows won't crash outright, but auto-approval will silently stop working (400 response, swallowed) until either these nodes are updated to supply an `investor_id`, or `/approve`'s validation is relaxed for automation-originated calls. **Fix this in the n8n workflow before deploying this backend change**, or auto-approved deals will stop syncing to Capital/Operations/Disposition without any visible error.
+**Resolved compatibility issue:** initial design made `investor_id` required on GO/GO_WITH_CONDITIONS, which would have broken two existing n8n automation nodes that approve with no `investor_id` (`Deal Intake: Approve Deal` and `Deal Status: APPROVED - HTTP` in `n8n/dynasty-os-v3-workflow.json`, both sending `decision: 'GO'` unconditionally). Fixed by decoupling deal approval from capital assignment instead of patching n8n: `investor_id` is now optional. Without it, the deal status updates and Operations + Disposition sync normally; Capital sync is deferred and flagged in `sync_errors` (informational, not an error — response is still `200`) until a human supplies an investor via a follow-up `/approve` call. Re-approving later with `investor_id` fills only the missing Capital piece — verified against production that Operations/Disposition are not re-created (same `project_id`/`marketing_id` returned) when only Capital is being backfilled.
+
+This means the existing n8n workflow needs **no changes** to keep working with this RC — auto-approval continues to update deal status and stage Operations/Disposition exactly as it already does; Capital commitment now correctly requires a human decision instead of either blocking automation or auto-assigning investor capital unattended.
 
 ## Rollback plan
 
