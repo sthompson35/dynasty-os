@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, BarChart3, ClipboardList, FileText, Filter, HandCoins, Loader2, Mail, MessageSquare, Phone, Radar, RefreshCcw, Search, Send, SkipForward, Target } from 'lucide-react'
+import { AlertTriangle, BarChart3, ClipboardList, FileText, Filter, HandCoins, Home, Loader2, Mail, MessageSquare, Phone, Radar, RefreshCcw, Search, Send, SkipForward, Target, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -106,6 +106,34 @@ type CampaignPayload = {
   }[]
 }
 
+type OwnerIntelligencePayload = {
+  totalArtifacts: number
+  absenteeOwners: number
+  vacantOwners: number
+  withPhones: number
+  withEmails: number
+  highConfidence: number
+  ownerTypes: { ownerType: string; count: number }[]
+  items: {
+    id: string
+    propertyId: string
+    ownerName: string | null
+    mailingAddress: string | null
+    ownerType: string
+    absenteeOwner: boolean
+    vacancyIndicator: boolean
+    contactConfidence: number
+    phones: string[]
+    emails: string[]
+    property: {
+      address: string
+      city: string
+      state: string
+      zip: string | null
+    } | null
+  }[]
+}
+
 const actionSections = [
   { type: 'CALL_NOW', label: 'Call Now', icon: Phone, tone: 'bg-emerald-50 text-emerald-800' },
   { type: 'MAIL_NOW', label: 'Mail Now', icon: Mail, tone: 'bg-sky-50 text-sky-800' },
@@ -145,12 +173,15 @@ export function AcquisitionCommandCenterClient() {
   const [summary, setSummary] = useState<SummaryPayload | null>(null)
   const [queue, setQueue] = useState<QueuePayload | null>(null)
   const [campaigns, setCampaigns] = useState<CampaignPayload | null>(null)
+  const [owners, setOwners] = useState<OwnerIntelligencePayload | null>(null)
   const [loading, setLoading] = useState(true)
   const [queueLoading, setQueueLoading] = useState(true)
   const [campaignLoading, setCampaignLoading] = useState(true)
+  const [ownerLoading, setOwnerLoading] = useState(true)
   const [running, setRunning] = useState(false)
   const [queueRunning, setQueueRunning] = useState(false)
   const [campaignRunning, setCampaignRunning] = useState(false)
+  const [ownerRunning, setOwnerRunning] = useState(false)
   const [limit, setLimit] = useState('all')
   const [bucket, setBucket] = useState('all')
   const [decision, setDecision] = useState('all')
@@ -202,6 +233,18 @@ export function AcquisitionCommandCenterClient() {
       setError(String(payload.error ?? 'Unable to load campaign batches.'))
     }
     setCampaignLoading(false)
+  }
+
+  async function loadOwners() {
+    setOwnerLoading(true)
+    const response = await fetch('/api/owner-intelligence?limit=8', { cache: 'no-store' })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      setOwners(payload as unknown as OwnerIntelligencePayload)
+    } else if (!error) {
+      setError(String(payload.error ?? 'Unable to load owner intelligence.'))
+    }
+    setOwnerLoading(false)
   }
 
   async function runBatch() {
@@ -265,10 +308,32 @@ export function AcquisitionCommandCenterClient() {
     setCampaignRunning(false)
   }
 
+  async function runOwners() {
+    setOwnerRunning(true)
+    setError(null)
+    const response = await fetch('/api/owner-intelligence', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limit: 'all' }),
+    })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      toast.success(`Generated ${payload.generated ?? 0} owner intelligence artifacts.`)
+      await loadOwners()
+      await loadCampaigns()
+    } else {
+      const message = String(payload.error ?? 'Owner intelligence generation failed.')
+      setError(message)
+      toast.error(message)
+    }
+    setOwnerRunning(false)
+  }
+
   useEffect(() => {
     void loadScores()
     void loadQueue()
     void loadCampaigns()
+    void loadOwners()
   }, [queryString])
 
   const buckets = summary?.buckets ?? []
@@ -315,15 +380,20 @@ export function AcquisitionCommandCenterClient() {
               {campaignRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               Build Campaigns
             </Button>
+            <Button type="button" onClick={runOwners} loading={ownerRunning} className="bg-white/10 text-[#F8F7F2] hover:bg-white/20">
+              {ownerRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserRound className="h-4 w-4" />}
+              Owner Intel
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="mb-5 grid gap-3 md:grid-cols-7">
+      <div className="mb-5 grid gap-3 md:grid-cols-4 lg:grid-cols-8">
         <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Inventory</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{summary?.totalProperties ?? 0}</p></CardContent></Card>
         <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Scored</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{summary?.totalScores ?? 0}</p></CardContent></Card>
         <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Action Queue</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{queue?.totalItems ?? 0}</p></CardContent></Card>
         <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Campaign Items</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{campaigns?.totalItems ?? 0}</p></CardContent></Card>
+        <Card className="border-0 bg-[#F8F7F2] shadow-sm"><CardContent className="p-4"><p className="text-xs text-[var(--dynasty-black)]/55">Owner Intel</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{owners?.totalArtifacts ?? 0}</p></CardContent></Card>
         <Card className="border-0 bg-emerald-50 shadow-sm"><CardContent className="p-4"><p className="text-xs text-emerald-700/70">GO</p><p className="font-display text-2xl font-black text-emerald-800">{countOf(decisions, 'GO')}</p></CardContent></Card>
         <Card className="border-0 bg-amber-50 shadow-sm"><CardContent className="p-4"><p className="text-xs text-amber-700/70">Renegotiate</p><p className="font-display text-2xl font-black text-amber-800">{countOf(decisions, 'RENEGOTIATE')}</p></CardContent></Card>
         <Card className="border-0 bg-red-50 shadow-sm"><CardContent className="p-4"><p className="text-xs text-red-700/70">Kill</p><p className="font-display text-2xl font-black text-red-800">{countOf(decisions, 'KILL')}</p></CardContent></Card>
@@ -373,6 +443,48 @@ export function AcquisitionCommandCenterClient() {
       </Card>
 
       {error && <div className="mb-5 flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"><AlertTriangle className="h-4 w-4" /> {error}</div>}
+
+      <Card className="mb-5 border-0 bg-[#F8F7F2] shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 font-display text-2xl text-[var(--dynasty-navy)]">
+            <UserRound className="h-5 w-5 text-[var(--dynasty-gold)]" /> Owner Intelligence
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {ownerLoading ? (
+            <div className="flex items-center gap-2 rounded-lg bg-white/75 p-4 text-sm text-[var(--dynasty-black)]/55"><Loader2 className="h-4 w-4 animate-spin" /> Loading owner profiles...</div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+              <div className="grid gap-2">
+                <div className="rounded-lg bg-white/75 p-3 shadow-sm"><p className="text-xs text-[var(--dynasty-black)]/55">Absentee Owners</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{owners?.absenteeOwners ?? 0}</p></div>
+                <div className="rounded-lg bg-white/75 p-3 shadow-sm"><p className="text-xs text-[var(--dynasty-black)]/55">Vacancy Signals</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{owners?.vacantOwners ?? 0}</p></div>
+                <div className="rounded-lg bg-white/75 p-3 shadow-sm"><p className="text-xs text-[var(--dynasty-black)]/55">Phone Coverage</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{owners?.withPhones ?? 0}</p></div>
+                <div className="rounded-lg bg-white/75 p-3 shadow-sm"><p className="text-xs text-[var(--dynasty-black)]/55">High Confidence</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{owners?.highConfidence ?? 0}</p></div>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {(owners?.items ?? []).length === 0 ? (
+                  <div className="rounded-lg bg-white/75 p-6 text-center md:col-span-2">
+                    <Home className="mx-auto mb-3 h-8 w-8 text-[var(--dynasty-gold)]" />
+                    <p className="font-display text-xl font-black text-[var(--dynasty-navy)]">No owner profiles yet.</p>
+                    <p className="mt-2 text-sm text-[var(--dynasty-black)]/60">Generate owner intelligence to connect scored properties to reachable owners.</p>
+                  </div>
+                ) : owners?.items.map((item) => (
+                  <Link key={item.id} href={`/properties/${item.propertyId}`} className="rounded-lg bg-white/75 p-4 shadow-sm transition hover:shadow-md">
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      <Badge className="border-0 bg-[var(--dynasty-gold)]/18 text-[var(--dynasty-navy)]">{item.ownerType}</Badge>
+                      {item.absenteeOwner && <Badge className="border-0 bg-sky-100 text-sky-800">Absentee</Badge>}
+                      {item.vacancyIndicator && <Badge className="border-0 bg-amber-100 text-amber-800">Vacant</Badge>}
+                    </div>
+                    <p className="font-display text-lg font-black text-[var(--dynasty-navy)]">{item.ownerName ?? 'Unknown owner'}</p>
+                    <p className="mt-1 text-sm text-[var(--dynasty-black)]/60">{item.property?.address}</p>
+                    <p className="mt-2 text-xs text-[var(--dynasty-black)]/50">Confidence {item.contactConfidence}/100 - Phones {item.phones.length} - Emails {item.emails.length}</p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="mb-5 grid gap-3 md:grid-cols-5">
         {['Elite Deals', 'Strong GO', 'GO With Conditions', 'Renegotiate', 'Kill'].map((item) => (

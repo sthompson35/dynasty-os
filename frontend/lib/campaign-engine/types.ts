@@ -47,6 +47,18 @@ export type CampaignQueueItemInput = {
         company: string | null
       } | null
     }>
+    ownerIntelligenceArtifacts?: Array<{
+      ownerName: string | null
+      mailingAddress: string | null
+      ownerType: string
+      absenteeOwner: boolean
+      yearsOwned: number | null
+      equityEstimate: unknown
+      vacancyIndicator: boolean
+      contactConfidence: number
+      phones: unknown
+      emails: unknown
+    }>
   }
   dealScore: {
     dealScore: number

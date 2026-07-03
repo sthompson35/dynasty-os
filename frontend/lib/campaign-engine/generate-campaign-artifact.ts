@@ -2,12 +2,35 @@ import { formatCurrency, getTypeLabel, toNumber } from '@/lib/property-utils'
 import type { CampaignArtifact, CampaignQueueItemInput, CampaignType } from './types'
 
 function firstContact(item: CampaignQueueItemInput) {
+  const ownerIntel = item.property.ownerIntelligenceArtifacts?.[0]
+  if (ownerIntel) {
+    const phones = Array.isArray(ownerIntel.phones) ? ownerIntel.phones.map(String) : []
+    const emails = Array.isArray(ownerIntel.emails) ? ownerIntel.emails.map(String) : []
+    if (!ownerIntel.ownerName && !ownerIntel.mailingAddress && phones.length === 0 && emails.length === 0) {
+      return fallbackContact(item)
+    }
+    return {
+      contactName: ownerIntel.ownerName,
+      contactPhone: phones[0] ?? null,
+      contactEmail: emails[0] ?? null,
+      company: ownerIntel.ownerType !== 'INDIVIDUAL' ? ownerIntel.ownerName : null,
+      mailingAddress: ownerIntel.mailingAddress,
+      contactConfidence: ownerIntel.contactConfidence,
+    }
+  }
+
+  return fallbackContact(item)
+}
+
+function fallbackContact(item: CampaignQueueItemInput) {
   const contact = item.property.contactLinks?.find((link) => link.contact)?.contact
   return {
     contactName: contact?.name ?? null,
     contactPhone: contact?.phone ?? null,
     contactEmail: contact?.email ?? null,
     company: contact?.company ?? null,
+    mailingAddress: null,
+    contactConfidence: contact ? 50 : 0,
   }
 }
 
@@ -24,6 +47,7 @@ function mailMerge(item: CampaignQueueItemInput) {
     zip: item.property.zip,
     owner_name: contact.contactName,
     owner_company: contact.company,
+    mailing_address: contact.mailingAddress,
     property_type: getTypeLabel(item.property.propertyType),
     estimated_value: toNumber(item.property.arv) || toNumber(item.property.currentValue),
     deal_score: item.dealScore.dealScore,
@@ -43,6 +67,7 @@ function callArtifact(item: CampaignQueueItemInput): CampaignArtifact {
     contactEmail: contact.contactEmail,
     instructions: [
       'Confirm decision-maker and property ownership.',
+      `Owner intelligence confidence: ${contact.contactConfidence}/100.`,
       'Ask whether they would consider a clean as-is offer.',
       'Capture motivation, timing, price expectation, and occupancy status.',
       'Move qualified conversations into offer research.',
@@ -108,13 +133,15 @@ function lowOfferArtifact(item: CampaignQueueItemInput): CampaignArtifact {
 
 function mailArtifact(item: CampaignQueueItemInput): CampaignArtifact {
   const address = propertyLine(item)
+  const contact = firstContact(item)
   return {
     workType: 'Mail merge batch row',
     headline: `Mail outreach for ${address}`,
     propertyAddress: address,
-    ...firstContact(item),
+    ...contact,
     instructions: [
       'Include in next direct-mail export.',
+      contact.mailingAddress ? `Mailing address: ${contact.mailingAddress}.` : 'Research mailing address before export.',
       'Use as-is purchase language.',
       'Route responses back into call queue.',
     ],

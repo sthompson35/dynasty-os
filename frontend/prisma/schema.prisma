@@ -23,6 +23,7 @@ model User {
   accounts             Account[]
   sessions             Session[]
   properties           Property[]
+  ownerIntelligenceArtifacts OwnerIntelligenceArtifact[]
   dealScores           DealScore[]
   leadActionQueue      LeadActionQueue[]
   campaignBatches      CampaignBatch[]
@@ -113,6 +114,7 @@ model Property {
   shares         DealShare[]
   documents      PropertyDocument[]
   contactLinks   PropertyContact[]
+  ownerIntelligenceArtifacts OwnerIntelligenceArtifact[]
   draws          Draw[]
   images         PropertyImage[]
   dealScores     DealScore[]
@@ -123,6 +125,37 @@ model Property {
   @@index([userId, status])
   @@index([userId, propertyType])
   @@index([userId, updatedAt])
+  @@schema("dynasty")
+}
+
+model OwnerIntelligenceArtifact {
+  id                String   @id @default(cuid())
+  propertyId        String   @map("property_id")
+  userId            String   @map("user_id")
+  ownerName         String?  @map("owner_name")
+  mailingAddress    String?  @map("mailing_address") @db.Text
+  ownerType         String   @default("UNKNOWN") @map("owner_type")
+  absenteeOwner     Boolean  @default(false) @map("absentee_owner")
+  yearsOwned        Float?   @map("years_owned")
+  equityEstimate    Decimal? @map("equity_estimate") @db.Decimal(14, 2)
+  vacancyIndicator  Boolean  @default(false) @map("vacancy_indicator")
+  contactConfidence Int      @default(0) @map("contact_confidence")
+  phones            Json     @default("[]")
+  emails            Json     @default("[]")
+  source            String   @default("PROPERTY_NOTES")
+  evidence          Json     @default("{}")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  property          Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@index([propertyId])
+  @@index([userId])
+  @@index([userId, absenteeOwner])
+  @@index([userId, vacancyIndicator])
+  @@index([userId, contactConfidence])
+  @@map("owner_intelligence_artifacts")
   @@schema("dynasty")
 }
 

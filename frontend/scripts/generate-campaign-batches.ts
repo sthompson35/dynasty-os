@@ -43,6 +43,22 @@ async function main() {
             take: 1,
             include: { contact: { select: { name: true, phone: true, email: true, company: true } } },
           },
+          ownerIntelligenceArtifacts: {
+            take: 1,
+            orderBy: { updatedAt: "desc" },
+            select: {
+              ownerName: true,
+              mailingAddress: true,
+              ownerType: true,
+              absenteeOwner: true,
+              yearsOwned: true,
+              equityEstimate: true,
+              vacancyIndicator: true,
+              contactConfidence: true,
+              phones: true,
+              emails: true,
+            },
+          },
         },
       },
       dealScore: {
