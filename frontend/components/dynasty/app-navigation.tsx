@@ -7,7 +7,7 @@ import { signOut } from 'next-auth/react'
 import {
   Building2, LayoutDashboard, LogOut, PlusCircle, UserCircle, Users,
   Zap, Target, DollarSign, Layers, ShoppingBag, Activity, ChevronDown, ChevronUp, Home,
-  ClipboardCheck, BrainCircuit,
+  ClipboardCheck, BrainCircuit, Radar,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BrandMark } from '@/components/dynasty/brand-mark'
@@ -25,6 +25,7 @@ const engineItems = [
 
 const mainNavItems = [
   { href: '/command-center', label: 'Command Center', icon: Activity },
+  { href: '/acquisition-command-center', label: 'Acquisition', icon: Radar },
   { href: '/dashboard',      label: 'Dashboard',      icon: LayoutDashboard },
   { href: '/properties',     label: 'Properties',     icon: Building2 },
   { href: '/contacts',       label: 'Contacts',       icon: Users },

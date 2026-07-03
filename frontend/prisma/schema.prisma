@@ -23,6 +23,7 @@ model User {
   accounts             Account[]
   sessions             Session[]
   properties           Property[]
+  dealScores           DealScore[]
   shares               DealShare[]
   documents            PropertyDocument[]
   contacts             Contact[]
@@ -111,11 +112,40 @@ model Property {
   contactLinks   PropertyContact[]
   draws          Draw[]
   images         PropertyImage[]
+  dealScores     DealScore[]
 
   @@index([userId])
   @@index([userId, status])
   @@index([userId, propertyType])
   @@index([userId, updatedAt])
+  @@schema("dynasty")
+}
+
+model DealScore {
+  id            String   @id @default(cuid())
+  propertyId    String   @map("property_id")
+  userId        String   @map("user_id")
+  dealScore     Int      @map("deal_score")
+  riskScore     Int      @map("risk_score")
+  arvConfidence Int      @map("arv_confidence")
+  capitalScore  Int      @map("capital_score")
+  strategy      String
+  decision      String
+  scoreBucket   String   @map("score_bucket")
+  reasons       Json     @default("[]")
+  inputs        Json     @default("{}")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  property      Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@index([propertyId])
+  @@index([userId])
+  @@index([userId, decision])
+  @@index([userId, scoreBucket])
+  @@index([userId, dealScore])
+  @@map("deal_scores")
   @@schema("dynasty")
 }
 
