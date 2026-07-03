@@ -1,5 +1,6 @@
 .env
 .env.local
+.env.wave2.local
 __pycache__/
 *.pyc
 node_modules/
@@ -17,3 +18,23 @@ storage/photos/*
 storage/plans/*
 blender/exports/glb/*
 blender/exports/renders/*
+
+# logs
+*.log
+*.err.log
+
+# data dumps / one-off exports
+*.csv
+
+# tool temp dirs
+.abacusai/
+*.db
+
+# unrelated side projects nested in this folder (not Dynasty OS code)
+realtor_agent/
+stllc_website/
+
+# local-only holding area for retired/backup content; not part of repo history
+# except dynasty_app-legacy-scaffold, which keeps its pre-existing git history
+_archive/*
+!_archive/dynasty_app-legacy-scaffold/

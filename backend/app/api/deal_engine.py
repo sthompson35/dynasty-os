@@ -1,13 +1,20 @@
 """Deal Engine API — ARV, MAO, Risk, Stress-Test, Exit Analysis, Approve."""
 from __future__ import annotations
 
-from typing import Optional
+import sys
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from app.db import get_supabase
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
 router = APIRouter(prefix="/api/deal", tags=["Deal Engine"])
 
@@ -68,6 +75,38 @@ class DealApproveRequest(BaseModel):
     decision: str                       # GO | GO_WITH_CONDITIONS | KILL
     approved_by: str
     notes: Optional[str] = None
+    investor_id: Optional[str] = None   # required when decision is GO / GO_WITH_CONDITIONS
+
+
+class RiskScoreOverrides(BaseModel):
+    """Optional manual overrides for the 9 risk categories (0-100 each);
+    unspecified categories default to the stored risk_scores row for this
+    deal, or 0 if none exists yet."""
+    market_risk: Optional[int] = None
+    property_risk: Optional[int] = None
+    contractor_risk: Optional[int] = None
+    legal_risk: Optional[int] = None
+    title_risk: Optional[int] = None
+    capital_risk: Optional[int] = None
+    execution_risk: Optional[int] = None
+    tenant_risk: Optional[int] = None
+    economic_risk: Optional[int] = None
+
+
+class IntelligenceRequest(BaseModel):
+    target_margin: float = 0.30
+    target_roi: float = 0.15
+    risk_overrides: Optional[RiskScoreOverrides] = None
+
+
+class IntelligenceResponse(BaseModel):
+    deal_id: str
+    outcome: str                    # GO | GO_WITH_CONDITIONS | RENEGOTIATE | HOLD | KILL
+    outcome_label: str
+    analysis: dict                  # full DealEngine.analyze() payload, passthrough
+    reasoning: list[str]            # "why Charlie says this"
+    analyzed_at: str
+    persisted: bool                 # whether outputs were written back to Supabase
 
 
 class DealCreate(BaseModel):
@@ -124,6 +163,313 @@ def _risk_components(
     }
 
 
+# ─── Charlie Deal Intelligence helpers ──────────────────────────────────────
+
+_RISK_CATEGORIES = [
+    "market_risk", "property_risk", "contractor_risk", "legal_risk",
+    "title_risk", "capital_risk", "execution_risk", "tenant_risk", "economic_risk",
+]
+
+_EXIT_PROFIT_KEYS = {
+    "Wholesale": "wholesale_profit", "Flip": "flip_profit", "BRRRR": "brrrr_cash_returned",
+    "Rental": "rental_cash_flow_annual", "Development": "development_profit",
+}
+
+_OUTCOME_SUMMARY = {
+    "GO": "All checks passed — Charlie recommends proceeding to acquisition.",
+    "GO_WITH_CONDITIONS": "Elevated risk profile — Charlie recommends proceeding only with "
+                           "risk mitigation (e.g. contractor secured, title cleared) before close.",
+    "RENEGOTIATE": "Price exceeds MAO and risk is elevated — Charlie recommends renegotiating "
+                    "price or terms before proceeding.",
+    "HOLD": "Deal is inconclusive under current numbers — Charlie recommends holding for "
+            "better comps, updated repair estimate, or market conditions.",
+    "KILL": "Deal does not meet Dynasty OS minimum criteria — Charlie recommends killing this deal.",
+}
+
+# Mirrors TrooperCharlie._label() (dynasty_os/ai_troopers/trooper_charlie.py)
+# so GET /intelligence can produce the same short label without needing a
+# live TrooperCharlie instance for a read-only reconstruction.
+_OUTCOME_LABELS = {
+    "GO": "Deal approved — execute acquisition",
+    "GO_WITH_CONDITIONS": "Deal approved with risk mitigation conditions",
+    "RENEGOTIATE": "Price/terms need renegotiation",
+    "HOLD": "Hold for market conditions or further analysis",
+    "KILL": "Deal does not meet Dynasty OS criteria",
+}
+
+
+def _outcome_label(outcome: str) -> str:
+    return _OUTCOME_LABELS.get(outcome, outcome)
+
+
+# StrategyEngine.process() constants (dynasty_os/engines/deal_engine) — timeline
+# and risk are static per strategy name, not deal-dependent, so they can be
+# reconstructed exactly on read. capital_required is deal-dependent but uses
+# the exact same formulas as StrategyEngine, given the same deal inputs.
+def _reconstruct_strategy_ranking(exit_row: dict[str, Any], asking_price: float, repairs: float) -> dict[str, Any]:
+    strategies = [
+        {"strategy": "Wholesale", "profit": exit_row.get("wholesale_profit"), "timeline_months": 1,
+         "capital_required": 5000, "risk": "LOW"},
+        {"strategy": "Flip", "profit": exit_row.get("flip_profit"), "timeline_months": 6,
+         "capital_required": repairs + asking_price * 0.25, "risk": "MODERATE"},
+        {"strategy": "BRRRR", "profit": exit_row.get("brrrr_cash_returned"), "timeline_months": 8,
+         "capital_required": repairs + asking_price * 0.20, "risk": "MODERATE"},
+        {"strategy": "Rental", "profit": exit_row.get("rental_cash_flow"), "timeline_months": 24,
+         "capital_required": asking_price * 0.25 + repairs, "risk": "LOW"},
+        {"strategy": "Development", "profit": exit_row.get("development_profit"), "timeline_months": 18,
+         "capital_required": asking_price + repairs * 2, "risk": "HIGH"},
+    ]
+    ranked = sorted(
+        [s for s in strategies if s["profit"] is not None],
+        key=lambda s: s["profit"], reverse=True,
+    )
+    return {
+        "deal_id": None,
+        "ranked_strategies": ranked,
+        "recommended": ranked[0]["strategy"] if ranked else "None",
+    }
+
+# risk_scores.risk_level is uppercase (LOW/MODERATE/HIGH/CRITICAL); projects.risk_score
+# is Title Case (Low/Moderate/High/Critical) — mismatch would silently fail the
+# projects CHECK constraint on sync.
+_RISK_LEVEL_TO_OPS_LABEL = {
+    "LOW": "Low", "MODERATE": "Moderate", "HIGH": "High", "CRITICAL": "Critical",
+}
+
+
+def _risk_score_to_ops_label(risk_level: Optional[str]) -> str:
+    return _RISK_LEVEL_TO_OPS_LABEL.get((risk_level or "").upper(), "Low")
+
+
+def _deal_row_to_dealdata_dict(row: dict[str, Any], payload: "IntelligenceRequest") -> dict[str, Any]:
+    """Map a Supabase `deals` row (with nested risk_scores(*) from the select)
+    into the flat dict TrooperCharlie.analyze_deal() expects."""
+    existing_risk_rows = row.get("risk_scores") or []
+    existing_risk = existing_risk_rows[0] if isinstance(existing_risk_rows, list) and existing_risk_rows else (
+        existing_risk_rows if isinstance(existing_risk_rows, dict) else {}
+    )
+
+    overrides = payload.risk_overrides.model_dump() if payload.risk_overrides else {}
+    risk_scores = {
+        cat: overrides.get(cat) if overrides.get(cat) is not None
+        else existing_risk.get(cat) if existing_risk.get(cat) is not None
+        else 0
+        for cat in _RISK_CATEGORIES
+    }
+
+    # row.get(key, default) only falls back when the key is *absent* — a
+    # Supabase NULL column still comes through as an explicit `None` value,
+    # which `.get()` happily returns instead of the default. Every numeric
+    # field must be coalesced explicitly or TrooperCharlie's float(...) calls
+    # blow up on the first NULL column.
+    def num(key: str) -> float:
+        return row.get(key) if row.get(key) is not None else 0
+
+    def text(key: str, default: str = "") -> str:
+        return row.get(key) if row.get(key) is not None else default
+
+    return {
+        "deal_id": text("deal_id"),
+        "property_id": text("property_id"),
+        "seller": text("seller"),
+        "asking_price": num("asking_price"),
+        "arv": num("arv"),
+        "repairs": num("repairs"),
+        "beds": num("beds"),
+        "baths": num("baths"),
+        "sqft": num("sqft"),
+        "rent": num("rent"),
+        "taxes": num("taxes"),
+        "insurance": num("insurance"),
+        "zoning": text("zoning"),
+        "flood_status": text("flood_status", "Unknown"),
+        "title_status": text("title_status", "Unknown"),
+        "risk_scores": risk_scores,
+        "target_margin": payload.target_margin,
+        "target_roi": payload.target_roi,
+    }
+
+
+def _build_reasoning(analysis: dict[str, Any]) -> list[str]:
+    """Deterministic 'why Charlie says this' text, one sentence per decision
+    point, following the same reasoning.append() pattern as score_lead()."""
+    reasoning: list[str] = []
+    acq = analysis.get("acquisition", {})
+    risk = analysis.get("risk", {})
+    stress = analysis.get("stress_test", {})
+    kill = analysis.get("kill_switch", {})
+    exit_ = analysis.get("exit", {})
+
+    if acq.get("meets_mao"):
+        reasoning.append(
+            f"Asking price (${acq.get('asking_price', 0):,.0f}) is at or below MAO "
+            f"(${acq.get('mao', 0):,.0f}) — deal has built-in margin."
+        )
+    else:
+        spread = acq.get("asking_price", 0) - acq.get("mao", 0)
+        reasoning.append(
+            f"Asking price (${acq.get('asking_price', 0):,.0f}) exceeds MAO "
+            f"(${acq.get('mao', 0):,.0f}) by ${spread:,.0f} — seller is asking more than "
+            f"the {int(acq.get('target_margin', 0.3) * 100)}% margin target allows."
+        )
+
+    level = risk.get("risk_level")
+    if level in ("HIGH", "CRITICAL"):
+        reasoning.append(
+            f"Risk score is {risk.get('total_score')} ({level}) — "
+            f"above the threshold for an unconditional GO."
+        )
+    elif level == "LOW":
+        reasoning.append(f"Risk score is {risk.get('total_score')} (LOW) — no elevated risk factors.")
+    else:
+        reasoning.append(f"Risk score is {risk.get('total_score')} (MODERATE) — within acceptable range.")
+
+    if stress.get("passes_stress_test"):
+        reasoning.append(
+            f"Deal survives stress testing: worst-case ROI is "
+            f"{stress.get('worst_case_roi', 0) * 100:.1f}%, above the "
+            f"{stress.get('target_roi', 0) * 100:.0f}% target."
+        )
+    else:
+        reasoning.append(
+            f"Deal fails stress testing: worst-case ROI is "
+            f"{stress.get('worst_case_roi', 0) * 100:.1f}%, below the "
+            f"{stress.get('target_roi', 0) * 100:.0f}% target — a 20% ARV drop or "
+            f"25% repair overrun would erase the margin."
+        )
+
+    if kill.get("decision") == "KILL":
+        failed = ", ".join(kill.get("failed_checks", []))
+        reasoning.append(
+            f"KILL SWITCH TRIPPED: {kill.get('fail_count')} critical checks failed "
+            f"({failed}) — automatic kill threshold is 3."
+        )
+
+    if exit_.get("recommended_exit"):
+        profit_key = _EXIT_PROFIT_KEYS.get(exit_["recommended_exit"])
+        reasoning.append(
+            f"Best exit strategy is {exit_['recommended_exit']} "
+            f"(${exit_.get(profit_key, 0):,.0f} projected profit)."
+        )
+
+    outcome = analysis.get("outcome")
+    reasoning.append(_OUTCOME_SUMMARY.get(outcome, f"Outcome: {outcome}"))
+    return reasoning
+
+
+def _persist_analysis(db, deal_id: str, analysis: dict[str, Any], outcome: str) -> None:
+    """Upsert DealEngine.analyze() output back into the same tables
+    GET /api/deal/{deal_id} already joins against, so Charlie's numbers show
+    up there with zero changes to that route."""
+    acq = analysis.get("acquisition", {})
+    financing = analysis.get("financing", {})
+    risk = analysis.get("risk", {})
+    exit_ = analysis.get("exit", {})
+    stress = analysis.get("stress_test", {})
+
+    db.table("property_analysis").upsert({
+        "deal_id": deal_id,
+        "mao": acq.get("mao"),
+        "target_margin": acq.get("target_margin"),
+    }, on_conflict="deal_id").execute()
+
+    db.table("underwriting").upsert({
+        "deal_id": deal_id,
+        "cash_needed": financing.get("cash_needed"),
+        "closing_costs": financing.get("closing_costs"),
+        "holding_costs": financing.get("holding_cost_est"),
+        "interest_rate": financing.get("interest_rate"),
+        "profit": stress.get("base_profit"),
+    }, on_conflict="deal_id").execute()
+
+    def as_int(value: Any) -> Optional[int]:
+        return int(round(value)) if value is not None else None
+
+    db.table("risk_scores").upsert({
+        "deal_id": deal_id,
+        **{cat: as_int(risk.get("category_scores", {}).get(cat)) for cat in _RISK_CATEGORIES},
+        # RiskEngine.total_score is an average (e.g. 60.0), but the column is INT.
+        "total_score": as_int(risk.get("total_score")),
+        "risk_level": risk.get("risk_level"),
+    }, on_conflict="deal_id").execute()
+
+    db.table("exit_models").upsert({
+        "deal_id": deal_id,
+        "wholesale_profit": exit_.get("wholesale_profit"),
+        "flip_profit": exit_.get("flip_profit"),
+        "rental_equity": exit_.get("rental_equity"),
+        "rental_cash_flow": exit_.get("rental_cash_flow_annual"),  # column has no _annual suffix
+        "brrrr_cash_returned": exit_.get("brrrr_cash_returned"),
+        "development_profit": exit_.get("development_profit"),
+        "recommended_exit": exit_.get("recommended_exit"),
+    }, on_conflict="deal_id").execute()
+
+    db.table("stress_tests").upsert({
+        "deal_id": deal_id,
+        "arv_drop_10_profit": stress.get("arv_drop_10_profit"),
+        "arv_drop_20_profit": stress.get("arv_drop_20_profit"),
+        "repairs_up_15_profit": stress.get("repairs_up_15_profit"),
+        "repairs_up_25_profit": stress.get("repairs_up_25_profit"),
+        "hold_time_doubled_profit": stress.get("hold_time_doubled_profit"),
+        "worst_case_roi": stress.get("worst_case_roi"),
+        "target_roi": stress.get("target_roi"),
+        "passes_stress_test": stress.get("passes_stress_test"),
+    }, on_conflict="deal_id").execute()
+
+    db.table("deals").update({"status": outcome}).eq("deal_id", deal_id).execute()
+
+
+def _sync_to_capital(db, deal: dict[str, Any], investor_id: str) -> tuple[Optional[dict], Optional[str]]:
+    try:
+        underwriting = db.table("underwriting").select("cash_needed").eq(
+            "deal_id", deal["deal_id"]
+        ).maybe_single().execute()
+        amount = (underwriting.data or {}).get("cash_needed") or deal.get("asking_price") or 0
+        result = db.table("commitments").insert({
+            "investor_id": investor_id,
+            "deal_id": deal["deal_id"],
+            "amount": amount,
+            "status": "Pending",
+        }).execute()
+        return (result.data[0] if result.data else None), None
+    except Exception as exc:  # noqa: BLE001 - fan-out step must not raise
+        return None, f"Capital sync failed: {exc}"
+
+
+def _sync_to_operations(db, deal: dict[str, Any], risk_level: Optional[str]) -> tuple[Optional[dict], Optional[str]]:
+    try:
+        underwriting = db.table("underwriting").select("closing_costs,holding_costs").eq(
+            "deal_id", deal["deal_id"]
+        ).maybe_single().execute()
+        uw = underwriting.data or {}
+        budget = (uw.get("closing_costs") or 0) + (uw.get("holding_costs") or 0) + (deal.get("repairs") or 0)
+        result = db.table("projects").insert({
+            "deal_id": deal["deal_id"],
+            "property_id": deal.get("property_id"),
+            "status": "Planning",
+            "budget": budget,
+            "actual_cost": 0,
+            "completion_percent": 0,
+            "risk_score": _risk_score_to_ops_label(risk_level),
+        }).execute()
+        return (result.data[0] if result.data else None), None
+    except Exception as exc:  # noqa: BLE001
+        return None, f"Operations (Rehab) sync failed: {exc}"
+
+
+def _sync_to_disposition(db, deal: dict[str, Any]) -> tuple[Optional[dict], Optional[str]]:
+    try:
+        result = db.table("property_marketing").insert({
+            "property_id": deal.get("property_id"),
+            "channels": [],
+            "assets": {},
+            "status": "Draft",
+        }).execute()
+        return (result.data[0] if result.data else None), None
+    except Exception as exc:  # noqa: BLE001
+        return None, f"Disposition sync failed: {exc}"
+
+
 # ─── Routes ──────────────────────────────────────────────────────────────────
 
 @router.get("")
@@ -160,6 +506,122 @@ def get_deal(deal_id: UUID):
     if not result.data:
         raise HTTPException(404, "Deal not found")
     return result.data
+
+
+@router.post("/{deal_id}/analyze", response_model=IntelligenceResponse)
+def analyze_deal_intelligence(deal_id: UUID, payload: IntelligenceRequest = IntelligenceRequest()):
+    """Run the full Charlie/DealEngine brain against a saved deal and persist
+    the results. This is what the Intelligence Panel calls on 'Run Analysis'."""
+    db = get_supabase()
+    row = db.table("deals").select("*, risk_scores(*)").eq("deal_id", str(deal_id)).single().execute()
+    if not row.data:
+        raise HTTPException(404, "Deal not found")
+
+    deal_data = _deal_row_to_dealdata_dict(row.data, payload)
+
+    from dynasty_os.ai_troopers.trooper_charlie import TrooperCharlie
+    charlie = TrooperCharlie()
+    result = charlie.analyze_deal(deal_data)
+
+    reasoning = _build_reasoning(result["analysis"])
+    _persist_analysis(db, str(deal_id), result["analysis"], result["outcome"])
+
+    return IntelligenceResponse(
+        deal_id=str(deal_id),
+        outcome=result["outcome"],
+        outcome_label=result["outcome_label"],
+        analysis=result["analysis"],
+        reasoning=reasoning,
+        analyzed_at=result["analyzed_at"],
+        persisted=True,
+    )
+
+
+@router.get("/{deal_id}/intelligence", response_model=IntelligenceResponse)
+def get_deal_intelligence(deal_id: UUID):
+    """Read-only: reconstruct the most recently persisted Charlie analysis for
+    a deal from Supabase, without re-running the engine. Used on Panel page
+    load so navigating to the Panel does not silently mutate stored numbers."""
+    db = get_supabase()
+    row = db.table("deals").select(
+        "*, property_analysis(*), underwriting(*), risk_scores(*), exit_models(*), stress_tests(*)"
+    ).eq("deal_id", str(deal_id)).single().execute()
+    if not row.data:
+        raise HTTPException(404, "Deal not found")
+
+    d = row.data
+    prop_analysis = (d.get("property_analysis") or [{}])[0] if isinstance(d.get("property_analysis"), list) else (d.get("property_analysis") or {})
+    underwriting = (d.get("underwriting") or [{}])[0] if isinstance(d.get("underwriting"), list) else (d.get("underwriting") or {})
+    risk = (d.get("risk_scores") or [{}])[0] if isinstance(d.get("risk_scores"), list) else (d.get("risk_scores") or {})
+    exit_ = (d.get("exit_models") or [{}])[0] if isinstance(d.get("exit_models"), list) else (d.get("exit_models") or {})
+    stress = (d.get("stress_tests") or [{}])[0] if isinstance(d.get("stress_tests"), list) else (d.get("stress_tests") or {})
+
+    if not risk and not exit_:
+        raise HTTPException(404, "No Charlie analysis has been run for this deal yet — POST /analyze first")
+
+    analysis = {
+        "deal_id": str(deal_id),
+        "outcome": d.get("status"),
+        "acquisition": {
+            "mao": prop_analysis.get("mao"),
+            "target_margin": prop_analysis.get("target_margin"),
+            "asking_price": d.get("asking_price"),
+            "meets_mao": (d.get("asking_price") or 0) <= (prop_analysis.get("mao") or 0),
+        },
+        "financing": underwriting,
+        "risk": risk,
+        "exit": exit_,
+        "strategy": _reconstruct_strategy_ranking(
+            exit_, float(d.get("asking_price") or 0), float(d.get("repairs") or 0)
+        ),
+        "stress_test": stress,
+        "kill_switch": {"decision": "KILL" if d.get("status") == "KILL" else "CONTINUE"},
+    }
+    reasoning = _build_reasoning(analysis)
+
+    return IntelligenceResponse(
+        deal_id=str(deal_id),
+        outcome=d.get("status", "PENDING"),
+        outcome_label=_outcome_label(d.get("status", "PENDING")),
+        analysis=analysis,
+        reasoning=reasoning,
+        analyzed_at=datetime.utcnow().isoformat(),
+        persisted=True,
+    )
+
+
+@router.get("/{deal_id}/investor-matches")
+def get_investor_matches(deal_id: UUID):
+    """Candidate investors for the Approve-flow picker, using the same
+    matching rule as InvestorEngine (available_capital >= 20% of asking price)."""
+    db = get_supabase()
+    deal_row = db.table("deals").select("*").eq("deal_id", str(deal_id)).single().execute()
+    if not deal_row.data:
+        raise HTTPException(404, "Deal not found")
+
+    investors_rows = db.table("investors").select("*").execute()
+    investors = investors_rows.data or []
+
+    from dynasty_os.engines.deal_engine import DealData, InvestorEngine
+
+    deal = DealData(
+        deal_id=str(deal_id),
+        property_id=deal_row.data.get("property_id", ""),
+        seller=deal_row.data.get("seller", ""),
+        asking_price=float(deal_row.data.get("asking_price") or 0),
+        arv=float(deal_row.data.get("arv") or 0),
+        repairs=float(deal_row.data.get("repairs") or 0),
+    )
+    exit_row = db.table("exit_models").select("flip_profit").eq("deal_id", str(deal_id)).maybe_single().execute()
+    profit = (exit_row.data or {}).get("flip_profit") or 0
+
+    match = InvestorEngine().process(deal, profit, investors)
+    matched_ids = set(match["investors"])
+    return {
+        "deal_id": str(deal_id),
+        "matched_investors": [inv for inv in investors if inv.get("investor_id") in matched_ids],
+        "all_investors": investors,
+    }
 
 
 @router.post("/arv")
@@ -314,10 +776,22 @@ def exit_analysis(payload: ExitAnalysisInput):
 
 @router.post("/approve")
 def approve_deal(payload: DealApproveRequest):
-    """Record a GO / NO-GO decision on a deal."""
+    """Record a GO / NO-GO decision on a deal. On GO / GO_WITH_CONDITIONS,
+    fans out into Capital (commitments), Operations/Rehab (projects), and
+    Disposition (property_marketing). Each sync step is independent and
+    non-blocking — a failure in one does not roll back the approval or
+    prevent the others from running."""
     valid = {"GO", "GO_WITH_CONDITIONS", "RENEGOTIATE", "HOLD", "KILL"}
     if payload.decision not in valid:
         raise HTTPException(400, f"decision must be one of: {valid}")
+
+    syncs_on_approve = payload.decision in ("GO", "GO_WITH_CONDITIONS")
+    if syncs_on_approve and not payload.investor_id:
+        raise HTTPException(
+            400,
+            "investor_id is required when decision is GO or GO_WITH_CONDITIONS — "
+            "select an investor from GET /api/deal/{deal_id}/investor-matches first.",
+        )
 
     db = get_supabase()
     result = db.table("deals").update({
@@ -327,9 +801,74 @@ def approve_deal(payload: DealApproveRequest):
     if not result.data:
         raise HTTPException(404, "Deal not found")
 
+    deal = result.data[0]
+    sync_results: dict[str, Optional[dict]] = {"capital": None, "operations": None, "disposition": None}
+    sync_errors: list[str] = []
+
+    if syncs_on_approve:
+        # Nothing about a re-submitted GO/GO_WITH_CONDITIONS approval (a double
+        # click, a page refresh replaying the request, etc.) is idempotent by
+        # default — _sync_to_* all do plain inserts, so re-running them would
+        # create duplicate commitments/projects/marketing rows for the same
+        # deal. Guard on the one sync step that's easy to check cheaply.
+        existing_commitment = db.table("commitments").select("*").eq(
+            "deal_id", payload.deal_id
+        ).limit(1).execute()
+
+        if existing_commitment.data:
+            existing_project = db.table("projects").select("*").eq(
+                "deal_id", payload.deal_id
+            ).limit(1).execute()
+            existing_marketing = db.table("property_marketing").select("*").eq(
+                "property_id", deal.get("property_id")
+            ).limit(1).execute()
+            sync_results["capital"] = existing_commitment.data[0]
+            sync_results["operations"] = (existing_project.data or [None])[0]
+            sync_results["disposition"] = (existing_marketing.data or [None])[0]
+            sync_errors.append(
+                "This deal was already approved and synced previously — showing the "
+                "existing Capital/Operations/Disposition records instead of creating new ones."
+            )
+            syncs_on_approve = False  # already handled, skip the fan-out below
+
+    if syncs_on_approve:
+        risk_row = db.table("risk_scores").select("risk_level").eq(
+            "deal_id", payload.deal_id
+        ).maybe_single().execute()
+        risk_level = (risk_row.data or {}).get("risk_level")
+
+        sync_results["capital"], err = _sync_to_capital(db, deal, payload.investor_id)
+        if err:
+            sync_errors.append(err)
+
+        sync_results["operations"], err = _sync_to_operations(db, deal, risk_level)
+        if err:
+            sync_errors.append(err)
+
+        sync_results["disposition"], err = _sync_to_disposition(db, deal)
+        if err:
+            sync_errors.append(err)
+
+    try:
+        from app.api.automation import AutomationEvent, log_automation_event
+        log_automation_event(AutomationEvent(
+            event="deal_approved",
+            trigger="manual",
+            payload={
+                "deal_id": payload.deal_id,
+                "decision": payload.decision,
+                "approved_by": payload.approved_by,
+                "sync_errors": sync_errors,
+            },
+        ))
+    except Exception:  # noqa: BLE001 - audit log must never block approval
+        pass
+
     return {
         "deal_id": payload.deal_id,
         "decision": payload.decision,
         "approved_by": payload.approved_by,
         "notes": payload.notes,
+        "sync": sync_results,
+        "sync_errors": sync_errors,
     }
