@@ -10,6 +10,7 @@ build/
 *.blend1
 *.blend2
 *.tmp
+*.tsbuildinfo
 .DS_Store
 .vscode/*.log
 .venv-linux/
@@ -33,6 +34,7 @@ blender/exports/renders/*
 # unrelated side projects nested in this folder (not Dynasty OS code)
 realtor_agent/
 stllc_website/
+land_investor/
 
 # local-only holding area for retired/backup content; not part of repo history
 # except dynasty_app-legacy-scaffold, which keeps its pre-existing git history

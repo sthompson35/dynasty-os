@@ -16,6 +16,8 @@ type DashboardMetrics = {
   portfolioValue: number
   totalEquity: number
   averageRoi: number
+  totalProspects: number
+  totalPipelineValue: number
 }
 
 export function DashboardClient(props: {
@@ -24,7 +26,7 @@ export function DashboardClient(props: {
   typeData: ChartDatum[]
   statusData: ChartDatum[]
 }) {
-  const metrics = props?.metrics ?? { totalProperties: 0, portfolioValue: 0, totalEquity: 0, averageRoi: 0 }
+  const metrics = props?.metrics ?? { totalProperties: 0, portfolioValue: 0, totalEquity: 0, averageRoi: 0, totalProspects: 0, totalPipelineValue: 0 }
   const recentProperties = props?.recentProperties ?? []
 
   return (
@@ -46,18 +48,21 @@ export function DashboardClient(props: {
         </div>
       </FadeIn>
 
-      <Stagger className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <Stagger className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
         <StaggerItem>
           <MetricCard label="Total properties" value={metrics?.totalProperties ?? 0} helper="Across every status" icon="Building2" format="integer" />
         </StaggerItem>
         <StaggerItem>
-          <MetricCard label="Portfolio value" value={metrics?.portfolioValue ?? 0} helper="Current estimated value" icon="WalletCards" format="currency" />
+          <MetricCard label="Portfolio value" value={metrics?.portfolioValue ?? 0} helper="Owned properties only" icon="WalletCards" format="currency" />
         </StaggerItem>
         <StaggerItem>
           <MetricCard label="Total equity" value={metrics?.totalEquity ?? 0} helper="Value above basis" icon="Landmark" format="currency" />
         </StaggerItem>
         <StaggerItem>
           <MetricCard label="Average ROI" value={metrics?.averageRoi ?? 0} helper="Across analyzed deals" icon="TrendingUp" format="percent" />
+        </StaggerItem>
+        <StaggerItem>
+          <MetricCard label="Pipeline value" value={metrics?.totalPipelineValue ?? 0} helper={`${metrics?.totalProspects ?? 0} prospects/leads`} icon="Activity" format="currency" />
         </StaggerItem>
       </Stagger>
 

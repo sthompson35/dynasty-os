@@ -37,6 +37,11 @@ function serializeTask(task: {
   researchStatus: string
   researchReason: string
   recommendedSource: string
+  recoveredOwnerName: string | null
+  confidence: number | null
+  sourceUrl: string | null
+  researchNotes: string | null
+  completedAt: Date | null
   updatedAt: Date
 }) {
   return {
@@ -50,6 +55,11 @@ function serializeTask(task: {
     researchStatus: task.researchStatus,
     researchReason: task.researchReason,
     recommendedSource: task.recommendedSource,
+    recoveredOwnerName: task.recoveredOwnerName,
+    confidence: task.confidence,
+    sourceUrl: task.sourceUrl,
+    researchNotes: task.researchNotes,
+    completedAt: task.completedAt ? task.completedAt.toISOString() : null,
     updatedAt: task.updatedAt.toISOString(),
   }
 }

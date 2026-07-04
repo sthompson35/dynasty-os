@@ -36,6 +36,17 @@ model User {
   images               PropertyImage[]
   leads                Lead[]
   deals                Deal[]
+  leadIntakeArtifacts  LeadIntakeArtifact[]
+  sellerConversations  SellerConversation[]
+  sellerFollowups      SellerFollowup[]
+  sellerOffers         SellerOffer[]
+  sellerNegotiations   SellerNegotiation[]
+  buyerProfiles        BuyerProfile[]
+  buyerCriteria        BuyerCriteria[]
+  buyerMatches         BuyerMatch[]
+  dispositionPackages  DispositionPackage[]
+  assignmentPipeline   AssignmentPipeline[]
+  closingTracker       ClosingTracker[]
   investors            Investor[]
   capitalTransactions  CapitalTransaction[]
   projects             Project[]
@@ -124,6 +135,13 @@ model Property {
   dealScores     DealScore[]
   leadActionQueue LeadActionQueue[]
   campaignItems  CampaignItem[]
+  leadIntakeArtifacts LeadIntakeArtifact[]
+  sellerConversations SellerConversation[]
+  sellerFollowups SellerFollowup[]
+  sellerOffers   SellerOffer[]
+  sellerNegotiations SellerNegotiation[]
+  buyerMatches   BuyerMatch[]
+  dispositionPackages DispositionPackage[]
 
   @@index([userId])
   @@index([userId, status])
@@ -208,6 +226,11 @@ model OwnershipResearchTask {
   researchStatus    String               @default("READY") @map("research_status")
   researchReason    String               @map("research_reason") @db.Text
   recommendedSource String               @map("recommended_source")
+  recoveredOwnerName String?             @map("recovered_owner_name")
+  confidence        Int?
+  sourceUrl         String?              @map("source_url") @db.Text
+  researchNotes     String?              @map("research_notes") @db.Text
+  completedAt       DateTime?            @map("completed_at")
   createdAt         DateTime             @default(now()) @map("created_at")
   updatedAt         DateTime             @updatedAt @map("updated_at")
   property          Property             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
@@ -551,10 +574,154 @@ model Deal {
   updatedAt        DateTime  @updatedAt
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   dispositions     Disposition[]
+  leadIntakeArtifacts LeadIntakeArtifact[]
+  sellerOffers     SellerOffer[]
+  buyerMatches     BuyerMatch[]
+  dispositionPackages DispositionPackage[]
+  assignmentPipeline AssignmentPipeline[]
+  closingTracker   ClosingTracker[]
 
   @@index([userId])
   @@index([userId, status])
   @@index([userId, decision])
+  @@schema("dynasty")
+}
+
+model LeadIntakeArtifact {
+  id              String    @id @default(cuid())
+  propertyId      String    @map("property_id")
+  userId          String    @map("user_id")
+  dealId          String?   @map("deal_id")
+  ownerName       String?   @map("owner_name")
+  contactName     String?   @map("contact_name")
+  phone           String?
+  email           String?
+  contactDate     DateTime? @map("contact_date")
+  leadSource      String    @default("CALL_CAMPAIGN") @map("lead_source")
+  motivationScore Int       @default(0) @map("motivation_score")
+  askingPrice     Decimal?  @map("asking_price") @db.Decimal(14, 2)
+  occupancyStatus String?   @map("occupancy_status")
+  timeline        String?
+  painPoints      String[]  @default([]) @map("pain_points")
+  notes           String?   @db.Text
+  status          String    @default("NEW")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  property        Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deal            Deal?     @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  conversations   SellerConversation[]
+
+  @@index([propertyId])
+  @@index([userId])
+  @@index([dealId])
+  @@index([userId, status])
+  @@index([userId, motivationScore])
+  @@index([userId, contactDate])
+  @@map("lead_intake_artifacts")
+  @@schema("dynasty")
+}
+
+// ─── SELLER CRM (CONVERSATIONS → FOLLOW-UPS → OFFERS → NEGOTIATIONS) ─────────
+
+model SellerConversation {
+  id                String   @id @default(cuid())
+  leadIntakeId      String   @map("lead_intake_id")
+  propertyId        String   @map("property_id")
+  userId            String   @map("user_id")
+  conversationType  String   @default("CALL") @map("conversation_type")
+  summary           String   @db.Text
+  objections        String[] @default([])
+  motivationChanges String?  @map("motivation_changes") @db.Text
+  nextStep          String?  @map("next_step") @db.Text
+  recordedAt        DateTime @default(now()) @map("recorded_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  leadIntake        LeadIntakeArtifact @relation(fields: [leadIntakeId], references: [id], onDelete: Cascade)
+  property          Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  followups         SellerFollowup[]
+
+  @@index([leadIntakeId])
+  @@index([propertyId])
+  @@index([userId])
+  @@index([userId, conversationType])
+  @@index([userId, recordedAt])
+  @@map("seller_conversations")
+  @@schema("dynasty")
+}
+
+model SellerFollowup {
+  id             String   @id @default(cuid())
+  conversationId String   @map("conversation_id")
+  propertyId     String   @map("property_id")
+  userId         String   @map("user_id")
+  followupDate   DateTime @map("followup_date")
+  followupType   String   @default("CALL") @map("followup_type")
+  assignedTo     String?  @map("assigned_to")
+  status         String   @default("OPEN")
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  conversation   SellerConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  property       Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([propertyId])
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, followupDate])
+  @@map("seller_followups")
+  @@schema("dynasty")
+}
+
+model SellerOffer {
+  id             String    @id @default(cuid())
+  propertyId     String    @map("property_id")
+  dealId         String    @map("deal_id")
+  userId         String    @map("user_id")
+  offerAmount    Decimal   @map("offer_amount") @db.Decimal(14, 2)
+  offerType      String    @default("CASH") @map("offer_type")
+  sentDate       DateTime? @map("sent_date")
+  expirationDate DateTime? @map("expiration_date")
+  status         String    @default("DRAFT")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  property       Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  deal           Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  negotiations   SellerNegotiation[]
+
+  @@index([propertyId])
+  @@index([dealId])
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, sentDate])
+  @@map("seller_offers")
+  @@schema("dynasty")
+}
+
+model SellerNegotiation {
+  id               String   @id @default(cuid())
+  offerId          String   @map("offer_id")
+  propertyId       String   @map("property_id")
+  userId           String   @map("user_id")
+  counterAmount    Decimal? @map("counter_amount") @db.Decimal(14, 2)
+  sellerResponse   String?  @map("seller_response") @db.Text
+  negotiationStage String   @default("OPEN") @map("negotiation_stage")
+  resolution       String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  offer            SellerOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  property         Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([offerId])
+  @@index([propertyId])
+  @@index([userId])
+  @@index([userId, negotiationStage])
+  @@map("seller_negotiations")
   @@schema("dynasty")
 }
 
@@ -652,7 +819,10 @@ model ProjectTask {
   @@schema("dynasty")
 }
 
-// ─── DISPOSITION ENGINE ───────────────────────────────────────────────────────
+// ─── DISPOSITION ENGINE (LEGACY) ──────────────────────────────────────────────
+// Deprecated: superseded by BuyerProfile/BuyerCriteria and DispositionPackage/
+// AssignmentPipeline/ClosingTracker below. Kept (not dropped) as the legacy
+// backing store for /engines/disposition; see scripts/migrate-legacy-buyer-disposition.ts.
 
 model Buyer {
   id              String    @id @default(cuid())
@@ -723,5 +893,171 @@ model InvestorDistribution {
 
   @@index([investorId])
   @@index([dispositionId])
+  @@schema("dynasty")
+}
+
+// ─── DISPOSITION ENGINE / BUYER CRM ──────────────────────────────────────────
+
+model BuyerProfile {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  name             String
+  entity           String?
+  email            String?
+  phone            String?
+  buyerType        String   @default("CASH") @map("buyer_type")
+  fundingVerified  Boolean  @default(false) @map("funding_verified")
+  fundingCapacity  Decimal? @map("funding_capacity") @db.Decimal(14, 2)
+  closeSpeedDays   Int?     @map("close_speed_days")
+  dealsClosedCount Int      @default(0) @map("deals_closed_count")
+  rating           Int      @default(0)
+  status           String   @default("ACTIVE")
+  notes            String?  @db.Text
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  criteria         BuyerCriteria[]
+  matches          BuyerMatch[]
+  assignments      AssignmentPipeline[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, buyerType])
+  @@map("buyer_profiles")
+  @@schema("dynasty")
+}
+
+model BuyerCriteria {
+  id             String   @id @default(cuid())
+  buyerProfileId String   @map("buyer_profile_id")
+  userId         String   @map("user_id")
+  propertyTypes  String[] @default([]) @map("property_types")
+  exitStrategies String[] @default([]) @map("exit_strategies")
+  markets        String[] @default([])
+  minPrice       Decimal? @map("min_price") @db.Decimal(14, 2)
+  maxPrice       Decimal? @map("max_price") @db.Decimal(14, 2)
+  minArv         Decimal? @map("min_arv") @db.Decimal(14, 2)
+  maxCapital     Decimal? @map("max_capital") @db.Decimal(14, 2)
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  buyerProfile   BuyerProfile @relation(fields: [buyerProfileId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([buyerProfileId])
+  @@index([userId])
+  @@map("buyer_criteria")
+  @@schema("dynasty")
+}
+
+model BuyerMatch {
+  id             String   @id @default(cuid())
+  dealId         String   @map("deal_id")
+  propertyId     String   @map("property_id")
+  buyerProfileId String   @map("buyer_profile_id")
+  userId         String   @map("user_id")
+  matchScore     Int      @map("match_score")
+  matchReasons   Json     @default("[]") @map("match_reasons")
+  status         String   @default("SUGGESTED")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  deal           Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  property       Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  buyerProfile   BuyerProfile @relation(fields: [buyerProfileId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignments    AssignmentPipeline[]
+
+  @@unique([dealId, buyerProfileId])
+  @@index([dealId])
+  @@index([propertyId])
+  @@index([buyerProfileId])
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, matchScore])
+  @@map("buyer_matches")
+  @@schema("dynasty")
+}
+
+model DispositionPackage {
+  id            String    @id @default(cuid())
+  dealId        String    @map("deal_id")
+  propertyId    String    @map("property_id")
+  userId        String    @map("user_id")
+  packageType   String    @default("WHOLESALE_ASSIGNMENT") @map("package_type")
+  askingPrice   Decimal?  @map("asking_price") @db.Decimal(14, 2)
+  assignmentFee Decimal?  @map("assignment_fee") @db.Decimal(14, 2)
+  description   String?   @db.Text
+  status        String    @default("DRAFT")
+  distributedAt DateTime? @map("distributed_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deal          Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  property      Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignments   AssignmentPipeline[]
+
+  @@unique([userId, dealId])
+  @@index([dealId])
+  @@index([propertyId])
+  @@index([userId])
+  @@index([userId, status])
+  @@map("disposition_packages")
+  @@schema("dynasty")
+}
+
+model AssignmentPipeline {
+  id                   String    @id @default(cuid())
+  dealId               String    @map("deal_id")
+  packageId            String    @map("package_id")
+  buyerProfileId       String    @map("buyer_profile_id")
+  buyerMatchId         String?   @map("buyer_match_id")
+  userId               String    @map("user_id")
+  stage                String    @default("CONTRACT_SENT")
+  assignmentFee        Decimal?  @map("assignment_fee") @db.Decimal(14, 2)
+  contractDate         DateTime? @map("contract_date")
+  dueDiligenceDeadline DateTime? @map("due_diligence_deadline")
+  emdReceived          Boolean   @default(false) @map("emd_received")
+  notes                String?   @db.Text
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  deal                 Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  package              DispositionPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  buyerProfile         BuyerProfile @relation(fields: [buyerProfileId], references: [id], onDelete: Cascade)
+  buyerMatch           BuyerMatch? @relation(fields: [buyerMatchId], references: [id], onDelete: SetNull)
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  closingRecords       ClosingTracker[]
+
+  @@index([dealId])
+  @@index([packageId])
+  @@index([buyerProfileId])
+  @@index([buyerMatchId])
+  @@index([userId])
+  @@index([userId, stage])
+  @@map("assignment_pipeline")
+  @@schema("dynasty")
+}
+
+model ClosingTracker {
+  id                   String    @id @default(cuid())
+  dealId               String    @map("deal_id")
+  assignmentPipelineId String    @map("assignment_pipeline_id")
+  userId               String    @map("user_id")
+  closingDate          DateTime? @map("closing_date")
+  titleCompany         String?   @map("title_company")
+  status               String    @default("SCHEDULED")
+  finalAmount          Decimal?  @map("final_amount") @db.Decimal(14, 2)
+  fundsReceivedDate    DateTime? @map("funds_received_date")
+  notes                String?   @db.Text
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  deal                 Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  assignmentPipeline   AssignmentPipeline @relation(fields: [assignmentPipelineId], references: [id], onDelete: Cascade)
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([dealId])
+  @@index([assignmentPipelineId])
+  @@index([userId])
+  @@index([userId, status])
+  @@map("closing_tracker")
   @@schema("dynasty")
 }

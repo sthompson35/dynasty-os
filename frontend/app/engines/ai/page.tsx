@@ -29,15 +29,19 @@ export default async function DynastyAIPage() {
   const userId = session?.user?.id ?? ''
   if (!userId) redirect('/login')
 
-  const [properties, deals, leads, investors, buyers, projects, capitalTransactions, dispositions] = await Promise.all([
+  // Buyer/disposition stats are sourced from the Disposition Command Center's
+  // BuyerProfile / DispositionPackage / ClosingTracker pipeline, not the legacy
+  // Buyer/Disposition CRM behind /engines/disposition.
+  const [properties, deals, leads, investors, buyerProfiles, projects, capitalTransactions, dispositionPackages, closingRecords] = await Promise.all([
     prisma.property.findMany({ where: { userId }, orderBy: [{ updatedAt: 'desc' }] }).catch(() => []),
     prisma.deal.findMany({ where: { userId }, orderBy: [{ updatedAt: 'desc' }] }).catch(() => []),
     prisma.lead.findMany({ where: { userId }, orderBy: [{ updatedAt: 'desc' }] }).catch(() => []),
     prisma.investor.findMany({ where: { userId }, orderBy: [{ updatedAt: 'desc' }] }).catch(() => []),
-    prisma.buyer.findMany({ where: { userId }, orderBy: [{ updatedAt: 'desc' }] }).catch(() => []),
+    prisma.buyerProfile.findMany({ where: { userId }, orderBy: [{ updatedAt: 'desc' }] }).catch(() => []),
     prisma.project.findMany({ where: { userId }, orderBy: [{ updatedAt: 'desc' }] }).catch(() => []),
     prisma.capitalTransaction.findMany({ where: { userId }, orderBy: [{ updatedAt: 'desc' }] }).catch(() => []),
-    prisma.disposition.findMany({ where: { userId }, orderBy: [{ updatedAt: 'desc' }] }).catch(() => []),
+    prisma.dispositionPackage.findMany({ where: { userId }, orderBy: [{ updatedAt: 'desc' }] }).catch(() => []),
+    prisma.closingTracker.findMany({ where: { userId }, orderBy: [{ updatedAt: 'desc' }] }).catch(() => []),
   ])
 
   const propertyIds = properties.map((property) => property.id)
@@ -77,7 +81,14 @@ export default async function DynastyAIPage() {
   const reviewCandidates = candidates.filter((candidate) => candidate.atlasRecommendation.action !== 'PASS')
   const activeDeals = deals.filter((deal) => !['closed', 'dead', 'archived', 'rejected'].includes(deal.status.toLowerCase()))
   const positiveDeals = deals.filter((deal) => money(deal.flipProfit) > 0 || money(deal.wholesaleFee) > 0)
-  const closedDispositions = dispositions.filter((item) => item.status.toLowerCase() === 'closed' || item.closeDate)
+  const closedClosings = closingRecords.filter((item) => item.status === 'CLOSED')
+  const dealById = new Map(deals.map((deal) => [deal.id, deal]))
+  const holdDaysFor = (closing: (typeof closingRecords)[number]) => {
+    const deal = dealById.get(closing.dealId)
+    if (!deal || !closing.closingDate) return 92
+    const days = Math.round((closing.closingDate.getTime() - deal.createdAt.getTime()) / (1000 * 60 * 60 * 24))
+    return Number.isFinite(days) && days >= 0 ? days : 92
+  }
   const rejectedCount = candidates.filter((candidate) => candidate.atlasRecommendation.action === 'PASS').length + leads.filter((lead) => ['dead', 'archived', 'rejected'].includes(lead.status.toLowerCase())).length
   const profit30 = buyCandidates.slice(0, 5).reduce((sum, candidate) => sum + Math.max(0, candidate.projectedProfit), 0)
   const profit90 = reviewCandidates.slice(0, 17).reduce((sum, candidate) => sum + Math.max(0, candidate.projectedProfit), 0)
@@ -116,7 +127,7 @@ export default async function DynastyAIPage() {
       { engine: 'Deal Engine', health: Math.max(65, Math.min(96, 88 - deals.filter((deal) => deal.decision === 'pending').length)), metrics: [{ label: 'Deals Reviewed', value: deals.length }, { label: 'Pending', value: deals.filter((deal) => deal.decision === 'pending').length }, { label: 'Last Run', value: ago(4) }] },
       { engine: 'Capital Engine', health: Math.max(60, Math.min(94, 80 + investors.filter((investor) => investor.status === 'active').length - capitalTransactions.filter((item) => item.status === 'pending').length)), metrics: [{ label: 'Funding Requests', value: activeDeals.filter((deal) => money(deal.capitalRequired) > money(deal.capitalAllocated)).length }, { label: 'Investor Matches', value: investors.filter((investor) => investor.status === 'active' || money(investor.availableCapital) > 0).length }, { label: 'Pending', value: capitalTransactions.filter((item) => item.status === 'pending').length }] },
       { engine: 'Rehab Engine', health: Math.max(58, 92 - projects.filter((project) => project.riskScore >= 60).length * 4), metrics: [{ label: 'Active Projects', value: projects.filter((project) => !['closed', 'complete', 'completed'].includes(project.status.toLowerCase())).length }, { label: 'Open Tasks', value: openTasks }, { label: 'Last Run', value: ago(18) }] },
-      { engine: 'Disposition Engine', health: Math.max(62, Math.min(96, 82 + buyers.filter((buyer) => buyer.active).length - dispositions.filter((item) => item.status === 'marketing').length)), metrics: [{ label: 'Buyer Pool', value: buyers.filter((buyer) => buyer.active).length }, { label: 'Active Exits', value: dispositions.filter((item) => !['closed', 'cancelled'].includes(item.status.toLowerCase())).length }, { label: 'Last Run', value: ago(9) }] },
+      { engine: 'Disposition Engine', health: Math.max(62, Math.min(96, 82 + buyerProfiles.filter((buyer) => buyer.status === 'ACTIVE').length - dispositionPackages.filter((item) => item.status === 'READY').length)), metrics: [{ label: 'Buyer Pool', value: buyerProfiles.filter((buyer) => buyer.status === 'ACTIVE').length }, { label: 'Active Exits', value: dispositionPackages.length - closedClosings.length }, { label: 'Last Run', value: ago(9) }] },
     ],
     memory: {
       targetMarkets: 'Missouri',
@@ -124,10 +135,10 @@ export default async function DynastyAIPage() {
       minimumProfit: 25000,
       minimumRoi: 0.25,
       maximumRehab: 'Medium',
-      averageHoldDays: closedDispositions.length ? Math.round(closedDispositions.reduce((sum, item) => sum + (item.daysToExit ?? 92), 0) / closedDispositions.length) : 92,
-      closedDeals: closedDispositions.length || positiveDeals.length,
+      averageHoldDays: closedClosings.length ? Math.round(closedClosings.reduce((sum, item) => sum + holdDaysFor(item), 0) / closedClosings.length) : 92,
+      closedDeals: closedClosings.length || positiveDeals.length,
       rejectedDeals: rejectedCount,
-      predictionAccuracy: Math.max(82, Math.min(96, 90 + closedDispositions.length - Math.round(rejectedCount / 2000))),
+      predictionAccuracy: Math.max(82, Math.min(96, 90 + closedClosings.length - Math.round(rejectedCount / 2000))),
     },
     today: {
       offersNeeded: buyCandidates.length,

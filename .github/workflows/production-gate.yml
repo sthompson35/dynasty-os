@@ -1,0 +1,86 @@
+name: Production Migration Gate
+
+# Manual trigger only (workflow_dispatch), never on push/pull_request — this is
+# the one workflow that touches a production credential (PROD_DATABASE_URL),
+# and that secret should never be reachable from a PR, including from a fork.
+# Run this by hand right before clicking deploy on Railway.
+#
+# Design: DATABASE_URL stays a disposable CI Postgres so the full 6-gate
+# ENGINE_REGISTRY check (schema/table/columns/indexes/API/dashboard-query) runs
+# against a known-good database, exactly like predeploy.yml. --compare-url
+# points at production and only does a read-only structural diff (tables,
+# columns, indexes) — verify_migration_state.ts enforces that via
+# assertSelectOnly(), so this workflow cannot write to production even if a
+# future edit tried to.
+#
+# Setup required: add a PROD_DATABASE_URL repository secret (Settings > Secrets
+# and variables > Actions) pointing at the production Postgres connection
+# string, with read access to information_schema/pg_indexes.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  production-gate:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      NEXTAUTH_SECRET: ci-predeploy-secret-not-for-production
+      NEXTAUTH_URL: http://localhost:3000
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Apply SQL migrations (disposable CI database)
+        run: |
+          for f in $(ls ../database/migrations/*.sql | sort); do
+            echo "Applying $(basename "$f")"
+            npx prisma db execute --url "$DATABASE_URL" --file "$f"
+          done
+
+      - name: Seed baseline data (test user + sample properties)
+        run: npx prisma db seed
+
+      - name: Production Migration Gate
+        env:
+          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -z "$PROD_DATABASE_URL" ]; then
+            echo "PROD_DATABASE_URL secret is not set. Add it in Settings > Secrets and variables > Actions before running this workflow."
+            exit 1
+          fi
+          npx tsx scripts/verify_migration_state.ts --compare-url="$PROD_DATABASE_URL" --readonly

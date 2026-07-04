@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getOwnedPortfolioMetrics } from '@/lib/portfolio-metrics'
 import { AppNavigation } from '@/components/dynasty/app-navigation'
 import { CommandCenterClient } from '@/components/dynasty/command-center-client'
 
@@ -19,7 +20,8 @@ export default async function CommandCenterPage() {
     deals,
     investors,
     projects,
-    dispositions,
+    dispositionPackages,
+    closingRecords,
     capitalTxns,
   ] = await Promise.all([
     prisma.property.findMany({ where: { userId } }).catch(() => []),
@@ -27,7 +29,8 @@ export default async function CommandCenterPage() {
     prisma.deal.findMany({ where: { userId } }).catch(() => []),
     prisma.investor.findMany({ where: { userId } }).catch(() => []),
     prisma.project.findMany({ where: { userId } }).catch(() => []),
-    prisma.disposition.findMany({ where: { userId } }).catch(() => []),
+    prisma.dispositionPackage.findMany({ where: { userId } }).catch(() => []),
+    prisma.closingTracker.findMany({ where: { userId }, include: { assignmentPipeline: { select: { assignmentFee: true } } } }).catch(() => []),
     prisma.capitalTransaction.findMany({ where: { userId } }).catch(() => []),
   ])
 
@@ -60,21 +63,18 @@ export default async function CommandCenterPage() {
   const projectsActual = projects.reduce((s, p) => s + Number(p.actualCost ?? 0), 0)
   const budgetVariance = projectsBudget - projectsActual
 
-  // Disposition stats
-  const propsForSale = dispositions.filter(d => ['marketing', 'offers'].includes(d.status)).length
-  const pendingClosings = dispositions.filter(d => d.status === 'under_contract').length
-  const capitalRecovered = dispositions
-    .filter(d => d.status === 'closed')
-    .reduce((s, d) => s + Number(d.salePrice ?? 0), 0)
-  const totalProfit = dispositions
-    .filter(d => d.status === 'closed')
-    .reduce((s, d) => s + Number(d.netProfit ?? 0), 0)
+  // Disposition stats (sourced from the Disposition Command Center's buyer-match /
+  // assignment / closing pipeline, not the legacy Buyer/Disposition CRM)
+  const propsForSale = dispositionPackages.filter(p => ['DRAFT', 'READY'].includes(p.status)).length
+  const pendingClosings = closingRecords.filter(c => c.status === 'SCHEDULED').length
+  const closedRecords = closingRecords.filter(c => c.status === 'CLOSED')
+  const capitalRecovered = closedRecords.reduce((s, c) => s + Number(c.finalAmount ?? 0), 0)
+  const totalProfit = closedRecords.reduce((s, c) => s + Number(c.assignmentPipeline?.assignmentFee ?? 0), 0)
 
   // Investor stats
   const activeInvestors = investors.filter(i => i.status === 'funded').length
 
-  // Portfolio value from properties
-  const portfolioValue = properties.reduce((s, p) => s + Number(p.currentValue ?? p.purchasePrice ?? 0), 0)
+  const portfolioValue = getOwnedPortfolioMetrics(properties).portfolioValue
 
   return (
     <main className="min-h-screen dynasty-shell pb-10">

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency, getTypeLabel } from '@/lib/property-utils'
 
 type ScorePayload = {
@@ -169,7 +170,192 @@ type OwnershipResearchPayload = {
     researchStatus: string
     researchReason: string
     recommendedSource: string
+    recoveredOwnerName: string | null
+    confidence: number | null
+    sourceUrl: string | null
+    researchNotes: string | null
+    completedAt: string | null
   }[]
+}
+
+type ResearchCompletionForm = {
+  ownerName: string
+  confidence: string
+  sourceUrl: string
+  notes: string
+}
+
+const emptyCompletionForm: ResearchCompletionForm = { ownerName: '', confidence: '70', sourceUrl: '', notes: '' }
+
+type LeadIntakePayload = {
+  totalArtifacts: number
+  hotLeads: number
+  syncedToDeal: number
+  averageMotivation: number
+  statuses: { status: string; count: number }[]
+  sources: { leadSource: string; count: number }[]
+  items: {
+    id: string
+    propertyId: string
+    dealId: string | null
+    ownerName: string | null
+    contactName: string | null
+    phone: string | null
+    email: string | null
+    contactDate: string | null
+    leadSource: string
+    motivationScore: number
+    askingPrice: number
+    occupancyStatus: string | null
+    timeline: string | null
+    painPoints: string[]
+    notes: string | null
+    status: string
+    property: { address: string; city: string; state: string; zip: string | null } | null
+    deal: { decision: string; status: string } | null
+  }[]
+}
+
+type IntakeForm = {
+  ownerName: string
+  contactName: string
+  phone: string
+  email: string
+  contactDate: string
+  leadSource: string
+  askingPrice: string
+  occupancyStatus: string
+  timeline: string
+  painPoints: string[]
+  notes: string
+}
+
+function emptyIntakeForm(): IntakeForm {
+  return {
+    ownerName: '',
+    contactName: '',
+    phone: '',
+    email: '',
+    contactDate: new Date().toISOString().slice(0, 10),
+    leadSource: 'CALL_CAMPAIGN',
+    askingPrice: '',
+    occupancyStatus: '',
+    timeline: '',
+    painPoints: [],
+    notes: '',
+  }
+}
+
+const TIMELINE_OPTIONS = ['ASAP', 'WITHIN_30_DAYS', '1_3_MONTHS', '3_6_MONTHS', '6_12_MONTHS', 'NO_RUSH']
+const OCCUPANCY_OPTIONS = ['OWNER_OCCUPIED', 'TENANT_OCCUPIED', 'VACANT', 'UNKNOWN']
+const PAIN_POINT_OPTIONS = ['FORECLOSURE', 'TAX_LIEN', 'FINANCIAL_HARDSHIP', 'DIVORCE', 'CODE_VIOLATION', 'TIRED_LANDLORD', 'INHERITANCE', 'RELOCATION', 'VACANT_PROPERTY', 'REPAIRS_NEEDED']
+
+type SellerConversationsPayload = {
+  totalConversations: number
+  types: { conversationType: string; count: number }[]
+  items: {
+    id: string
+    leadIntakeId: string
+    propertyId: string
+    conversationType: string
+    summary: string
+    objections: string[]
+    motivationChanges: string | null
+    nextStep: string | null
+    recordedAt: string
+    property: { address: string; city: string; state: string; zip: string | null } | null
+    leadIntake: { contactName: string | null; motivationScore: number; dealId: string | null } | null
+  }[]
+}
+
+type SellerFollowupsPayload = {
+  totalFollowups: number
+  openCount: number
+  overdueCount: number
+  statuses: { status: string; count: number }[]
+  items: {
+    id: string
+    conversationId: string
+    propertyId: string
+    followupDate: string
+    followupType: string
+    assignedTo: string | null
+    status: string
+    notes: string | null
+    property: { address: string; city: string; state: string; zip: string | null } | null
+    conversation: { summary: string; conversationType: string } | null
+  }[]
+}
+
+type SellerOffersPayload = {
+  totalOffers: number
+  sentCount: number
+  acceptedCount: number
+  rejectedCount: number
+  averageOfferAmount: number
+  statuses: { status: string; count: number }[]
+  items: {
+    id: string
+    propertyId: string
+    dealId: string
+    offerAmount: number
+    offerType: string
+    sentDate: string | null
+    expirationDate: string | null
+    status: string
+    property: { address: string; city: string; state: string; zip: string | null } | null
+    deal: { decision: string; status: string } | null
+  }[]
+}
+
+type SellerNegotiationsPayload = {
+  totalNegotiations: number
+  stages: { negotiationStage: string; count: number }[]
+  resolutions: { resolution: string | null; count: number }[]
+  items: {
+    id: string
+    offerId: string
+    propertyId: string
+    counterAmount: number
+    sellerResponse: string | null
+    negotiationStage: string
+    resolution: string | null
+    property: { address: string; city: string; state: string; zip: string | null } | null
+    offer: { offerAmount: number; status: string } | null
+  }[]
+}
+
+type ConversationForm = { conversationType: string; summary: string; objections: string; newMotivationScore: string; nextStep: string }
+function emptyConversationForm(): ConversationForm {
+  return { conversationType: 'CALL', summary: '', objections: '', newMotivationScore: '', nextStep: '' }
+}
+
+type OfferForm = { offerAmount: string; offerType: string; sentDate: string; expirationDate: string }
+function emptyOfferForm(): OfferForm {
+  return { offerAmount: '', offerType: 'CASH', sentDate: new Date().toISOString().slice(0, 10), expirationDate: '' }
+}
+
+type FollowupForm = { followupDate: string; followupType: string; assignedTo: string; notes: string }
+function emptyFollowupForm(): FollowupForm {
+  return { followupDate: new Date().toISOString().slice(0, 10), followupType: 'CALL', assignedTo: '', notes: '' }
+}
+
+type NegotiationForm = { counterAmount: string; sellerResponse: string; negotiationStage: string; resolution: string }
+function emptyNegotiationForm(): NegotiationForm {
+  return { counterAmount: '', sellerResponse: '', negotiationStage: 'OPEN', resolution: '' }
+}
+
+const CONVERSATION_TYPE_OPTIONS = ['CALL', 'TEXT', 'EMAIL', 'IN_PERSON']
+const OFFER_TYPE_OPTIONS = ['CASH', 'SELLER_FINANCE', 'NOVATION', 'SUBJECT_TO']
+const FOLLOWUP_TYPE_OPTIONS = ['CALL', 'TEXT', 'EMAIL', 'VISIT']
+const NEGOTIATION_STAGE_OPTIONS = ['OPEN', 'COUNTERED', 'FINAL']
+const RESOLUTION_OPTIONS = ['ACCEPTED', 'REJECTED', 'COUNTERED', 'WALKED_AWAY']
+
+function toneForOfferStatus(status: string) {
+  if (status === 'ACCEPTED') return 'bg-emerald-100 text-emerald-800'
+  if (status === 'REJECTED' || status === 'WITHDRAWN' || status === 'EXPIRED') return 'bg-red-100 text-red-800'
+  if (status === 'COUNTERED') return 'bg-amber-100 text-amber-800'
+  return 'bg-sky-100 text-sky-800'
 }
 
 const actionSections = [
@@ -230,6 +416,39 @@ export function AcquisitionCommandCenterClient() {
   const [ownerRunning, setOwnerRunning] = useState(false)
   const [skipTraceRunning, setSkipTraceRunning] = useState(false)
   const [ownershipResearchRunning, setOwnershipResearchRunning] = useState(false)
+  const [completingTaskId, setCompletingTaskId] = useState<string | null>(null)
+  const [completionForm, setCompletionForm] = useState<ResearchCompletionForm>(emptyCompletionForm)
+  const [completionSubmitting, setCompletionSubmitting] = useState(false)
+  const [leadIntake, setLeadIntake] = useState<LeadIntakePayload | null>(null)
+  const [leadIntakeLoading, setLeadIntakeLoading] = useState(true)
+  const [intakeFormPropertyId, setIntakeFormPropertyId] = useState<string | null>(null)
+  const [intakeForm, setIntakeForm] = useState<IntakeForm>(emptyIntakeForm())
+  const [intakeSubmitting, setIntakeSubmitting] = useState(false)
+
+  const [conversations, setConversations] = useState<SellerConversationsPayload | null>(null)
+  const [conversationsLoading, setConversationsLoading] = useState(true)
+  const [conversationFormLeadId, setConversationFormLeadId] = useState<string | null>(null)
+  const [conversationForm, setConversationForm] = useState<ConversationForm>(emptyConversationForm())
+  const [conversationSubmitting, setConversationSubmitting] = useState(false)
+
+  const [followups, setFollowups] = useState<SellerFollowupsPayload | null>(null)
+  const [followupsLoading, setFollowupsLoading] = useState(true)
+  const [followupFormConversationId, setFollowupFormConversationId] = useState<string | null>(null)
+  const [followupForm, setFollowupForm] = useState<FollowupForm>(emptyFollowupForm())
+  const [followupSubmitting, setFollowupSubmitting] = useState(false)
+
+  const [offers, setOffers] = useState<SellerOffersPayload | null>(null)
+  const [offersLoading, setOffersLoading] = useState(true)
+  const [offerFormDealId, setOfferFormDealId] = useState<string | null>(null)
+  const [offerForm, setOfferForm] = useState<OfferForm>(emptyOfferForm())
+  const [offerSubmitting, setOfferSubmitting] = useState(false)
+
+  const [negotiations, setNegotiations] = useState<SellerNegotiationsPayload | null>(null)
+  const [negotiationsLoading, setNegotiationsLoading] = useState(true)
+  const [negotiationFormOfferId, setNegotiationFormOfferId] = useState<string | null>(null)
+  const [negotiationForm, setNegotiationForm] = useState<NegotiationForm>(emptyNegotiationForm())
+  const [negotiationSubmitting, setNegotiationSubmitting] = useState(false)
+
   const [limit, setLimit] = useState('all')
   const [bucket, setBucket] = useState('all')
   const [decision, setDecision] = useState('all')
@@ -317,6 +536,66 @@ export function AcquisitionCommandCenterClient() {
       setError(String(payload.error ?? 'Unable to load ownership research tasks.'))
     }
     setOwnershipResearchLoading(false)
+  }
+
+  async function loadLeadIntake() {
+    setLeadIntakeLoading(true)
+    const response = await fetch('/api/lead-intake-artifacts?limit=8', { cache: 'no-store' })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      setLeadIntake(payload as unknown as LeadIntakePayload)
+    } else if (!error) {
+      setError(String(payload.error ?? 'Unable to load lead intake artifacts.'))
+    }
+    setLeadIntakeLoading(false)
+  }
+
+  async function loadConversations() {
+    setConversationsLoading(true)
+    const response = await fetch('/api/seller-conversations?limit=8', { cache: 'no-store' })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      setConversations(payload as unknown as SellerConversationsPayload)
+    } else if (!error) {
+      setError(String(payload.error ?? 'Unable to load seller conversations.'))
+    }
+    setConversationsLoading(false)
+  }
+
+  async function loadFollowups() {
+    setFollowupsLoading(true)
+    const response = await fetch('/api/seller-followups?limit=8', { cache: 'no-store' })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      setFollowups(payload as unknown as SellerFollowupsPayload)
+    } else if (!error) {
+      setError(String(payload.error ?? 'Unable to load seller follow-ups.'))
+    }
+    setFollowupsLoading(false)
+  }
+
+  async function loadOffers() {
+    setOffersLoading(true)
+    const response = await fetch('/api/seller-offers?limit=8', { cache: 'no-store' })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      setOffers(payload as unknown as SellerOffersPayload)
+    } else if (!error) {
+      setError(String(payload.error ?? 'Unable to load seller offers.'))
+    }
+    setOffersLoading(false)
+  }
+
+  async function loadNegotiations() {
+    setNegotiationsLoading(true)
+    const response = await fetch('/api/seller-negotiations?limit=8', { cache: 'no-store' })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      setNegotiations(payload as unknown as SellerNegotiationsPayload)
+    } else if (!error) {
+      setError(String(payload.error ?? 'Unable to load seller negotiations.'))
+    }
+    setNegotiationsLoading(false)
   }
 
   async function runBatch() {
@@ -443,6 +722,266 @@ export function AcquisitionCommandCenterClient() {
     setOwnershipResearchRunning(false)
   }
 
+  function openCompletion(taskId: string) {
+    setCompletingTaskId(taskId)
+    setCompletionForm(emptyCompletionForm)
+  }
+
+  function closeCompletion() {
+    setCompletingTaskId(null)
+    setCompletionForm(emptyCompletionForm)
+  }
+
+  async function submitCompletion(taskId: string) {
+    if (!completionForm.ownerName.trim()) {
+      toast.error('Enter the recovered owner name or entity.')
+      return
+    }
+    setCompletionSubmitting(true)
+    const response = await fetch(`/api/ownership-research-tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ownerName: completionForm.ownerName.trim(),
+        confidence: Number(completionForm.confidence) || 0,
+        sourceUrl: completionForm.sourceUrl.trim() || null,
+        notes: completionForm.notes.trim() || null,
+      }),
+    })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      toast.success('Owner promoted to Owner Intelligence and Skip Trace Queue.')
+      closeCompletion()
+      await loadOwnershipResearch()
+      await loadOwners()
+      await loadSkipTrace()
+    } else {
+      toast.error(String(payload.error ?? 'Unable to save research completion.'))
+    }
+    setCompletionSubmitting(false)
+  }
+
+  function openIntakeForm(propertyId: string) {
+    setIntakeFormPropertyId(propertyId)
+    setIntakeForm(emptyIntakeForm())
+  }
+
+  function closeIntakeForm() {
+    setIntakeFormPropertyId(null)
+    setIntakeForm(emptyIntakeForm())
+  }
+
+  function togglePainPoint(point: string) {
+    setIntakeForm((prev) => ({
+      ...prev,
+      painPoints: prev.painPoints.includes(point)
+        ? prev.painPoints.filter((item) => item !== point)
+        : [...prev.painPoints, point],
+    }))
+  }
+
+  async function submitIntake(propertyId: string) {
+    if (!intakeForm.contactName.trim()) {
+      toast.error('Enter who you spoke with.')
+      return
+    }
+    setIntakeSubmitting(true)
+    const response = await fetch('/api/lead-intake-artifacts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        propertyId,
+        ownerName: intakeForm.ownerName.trim() || null,
+        contactName: intakeForm.contactName.trim(),
+        phone: intakeForm.phone.trim() || null,
+        email: intakeForm.email.trim() || null,
+        contactDate: intakeForm.contactDate || null,
+        leadSource: intakeForm.leadSource,
+        askingPrice: intakeForm.askingPrice ? Number(intakeForm.askingPrice) : null,
+        occupancyStatus: intakeForm.occupancyStatus || null,
+        timeline: intakeForm.timeline || null,
+        painPoints: intakeForm.painPoints,
+        notes: intakeForm.notes.trim() || null,
+      }),
+    })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      toast.success(`Motivation scored ${payload.decision ?? ''} - synced to Deal Pipeline.`)
+      closeIntakeForm()
+      await loadLeadIntake()
+      await loadScores()
+    } else {
+      toast.error(String(payload.error ?? 'Unable to save lead intake.'))
+    }
+    setIntakeSubmitting(false)
+  }
+
+  function openConversationForm(leadIntakeId: string) {
+    setConversationFormLeadId(leadIntakeId)
+    setConversationForm(emptyConversationForm())
+  }
+
+  function closeConversationForm() {
+    setConversationFormLeadId(null)
+    setConversationForm(emptyConversationForm())
+  }
+
+  async function submitConversation(leadIntakeId: string) {
+    if (!conversationForm.summary.trim()) {
+      toast.error('Summarize what the seller said.')
+      return
+    }
+    setConversationSubmitting(true)
+    const response = await fetch('/api/seller-conversations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        leadIntakeId,
+        conversationType: conversationForm.conversationType,
+        summary: conversationForm.summary.trim(),
+        objections: conversationForm.objections.split(',').map((item) => item.trim()).filter(Boolean),
+        newMotivationScore: conversationForm.newMotivationScore ? Number(conversationForm.newMotivationScore) : null,
+        nextStep: conversationForm.nextStep.trim() || null,
+      }),
+    })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      toast.success('Conversation logged to seller CRM history.')
+      closeConversationForm()
+      await loadConversations()
+      await loadLeadIntake()
+    } else {
+      toast.error(String(payload.error ?? 'Unable to save conversation.'))
+    }
+    setConversationSubmitting(false)
+  }
+
+  function openFollowupForm(conversationId: string) {
+    setFollowupFormConversationId(conversationId)
+    setFollowupForm(emptyFollowupForm())
+  }
+
+  function closeFollowupForm() {
+    setFollowupFormConversationId(null)
+    setFollowupForm(emptyFollowupForm())
+  }
+
+  async function submitFollowup(conversationId: string) {
+    setFollowupSubmitting(true)
+    const response = await fetch('/api/seller-followups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conversationId,
+        followupDate: followupForm.followupDate,
+        followupType: followupForm.followupType,
+        assignedTo: followupForm.assignedTo.trim() || null,
+        notes: followupForm.notes.trim() || null,
+      }),
+    })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      toast.success('Follow-up scheduled.')
+      closeFollowupForm()
+      await loadFollowups()
+    } else {
+      toast.error(String(payload.error ?? 'Unable to schedule follow-up.'))
+    }
+    setFollowupSubmitting(false)
+  }
+
+  async function markFollowupDone(id: string) {
+    const response = await fetch(`/api/seller-followups/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'DONE' }),
+    })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      toast.success('Follow-up marked done.')
+      await loadFollowups()
+    } else {
+      toast.error(String(payload.error ?? 'Unable to update follow-up.'))
+    }
+  }
+
+  function openOfferForm(dealId: string) {
+    setOfferFormDealId(dealId)
+    setOfferForm(emptyOfferForm())
+  }
+
+  function closeOfferForm() {
+    setOfferFormDealId(null)
+    setOfferForm(emptyOfferForm())
+  }
+
+  async function submitOffer(propertyId: string, dealId: string) {
+    const amount = Number(offerForm.offerAmount)
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error('Enter a valid offer amount.')
+      return
+    }
+    setOfferSubmitting(true)
+    const response = await fetch('/api/seller-offers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        propertyId,
+        dealId,
+        offerAmount: amount,
+        offerType: offerForm.offerType,
+        sentDate: offerForm.sentDate || null,
+        expirationDate: offerForm.expirationDate || null,
+        status: 'SENT',
+      }),
+    })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      toast.success('Offer sent - Deal Pipeline updated.')
+      closeOfferForm()
+      await loadOffers()
+      await loadLeadIntake()
+    } else {
+      toast.error(String(payload.error ?? 'Unable to save offer.'))
+    }
+    setOfferSubmitting(false)
+  }
+
+  function openNegotiationForm(offerId: string) {
+    setNegotiationFormOfferId(offerId)
+    setNegotiationForm(emptyNegotiationForm())
+  }
+
+  function closeNegotiationForm() {
+    setNegotiationFormOfferId(null)
+    setNegotiationForm(emptyNegotiationForm())
+  }
+
+  async function submitNegotiation(offerId: string) {
+    setNegotiationSubmitting(true)
+    const response = await fetch('/api/seller-negotiations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        offerId,
+        counterAmount: negotiationForm.counterAmount ? Number(negotiationForm.counterAmount) : null,
+        sellerResponse: negotiationForm.sellerResponse.trim() || null,
+        negotiationStage: negotiationForm.negotiationStage,
+        resolution: negotiationForm.resolution || null,
+      }),
+    })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      toast.success('Negotiation logged - Deal Pipeline updated.')
+      closeNegotiationForm()
+      await loadNegotiations()
+      await loadOffers()
+    } else {
+      toast.error(String(payload.error ?? 'Unable to save negotiation.'))
+    }
+    setNegotiationSubmitting(false)
+  }
+
   useEffect(() => {
     void loadScores()
     void loadQueue()
@@ -450,6 +989,11 @@ export function AcquisitionCommandCenterClient() {
     void loadOwners()
     void loadSkipTrace()
     void loadOwnershipResearch()
+    void loadLeadIntake()
+    void loadConversations()
+    void loadFollowups()
+    void loadOffers()
+    void loadNegotiations()
   }, [queryString])
 
   const buckets = summary?.buckets ?? []
@@ -647,16 +1191,365 @@ export function AcquisitionCommandCenterClient() {
                       {items.length === 0 ? (
                         <p className="px-1 py-3 text-xs text-[var(--dynasty-black)]/50">No active items.</p>
                       ) : items.map((item) => (
-                        <Link key={item.id} href={`/properties/${item.propertyId}`} className="block rounded-md border border-[var(--dynasty-tan)]/20 bg-[#F8F7F2] p-2 transition hover:border-[var(--dynasty-gold)]/70">
-                          <p className="truncate text-sm font-bold text-[var(--dynasty-navy)]">{item.property?.address ?? 'Unknown property'}</p>
-                          <p className="mt-1 text-xs text-[var(--dynasty-black)]/55">{item.property?.city}, {item.property?.state} - Score {item.dealScore?.dealScore ?? 0}</p>
-                          <p className="mt-1 line-clamp-2 text-xs text-[var(--dynasty-black)]/50">{item.reason}</p>
-                        </Link>
+                        <div key={item.id} className="rounded-md border border-[var(--dynasty-tan)]/20 bg-[#F8F7F2] p-2 transition hover:border-[var(--dynasty-gold)]/70">
+                          <Link href={`/properties/${item.propertyId}`} className="block">
+                            <p className="truncate text-sm font-bold text-[var(--dynasty-navy)]">{item.property?.address ?? 'Unknown property'}</p>
+                            <p className="mt-1 text-xs text-[var(--dynasty-black)]/55">{item.property?.city}, {item.property?.state} - Score {item.dealScore?.dealScore ?? 0}</p>
+                            <p className="mt-1 line-clamp-2 text-xs text-[var(--dynasty-black)]/50">{item.reason}</p>
+                          </Link>
+                          {section.type === 'CALL_NOW' && (
+                            intakeFormPropertyId === item.propertyId ? (
+                              <div className="mt-2 space-y-1.5 rounded-md bg-white/80 p-2">
+                                <Input className="h-8 text-xs" value={intakeForm.ownerName} onChange={(event) => setIntakeForm((prev) => ({ ...prev, ownerName: event.target.value }))} placeholder="Owner name / entity" />
+                                <Input className="h-8 text-xs" value={intakeForm.contactName} onChange={(event) => setIntakeForm((prev) => ({ ...prev, contactName: event.target.value }))} placeholder="Who you spoke with" />
+                                <div className="grid grid-cols-2 gap-1.5">
+                                  <Input className="h-8 text-xs" value={intakeForm.phone} onChange={(event) => setIntakeForm((prev) => ({ ...prev, phone: event.target.value }))} placeholder="Phone" />
+                                  <Input className="h-8 text-xs" value={intakeForm.email} onChange={(event) => setIntakeForm((prev) => ({ ...prev, email: event.target.value }))} placeholder="Email" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                  <Input className="h-8 text-xs" type="date" value={intakeForm.contactDate} onChange={(event) => setIntakeForm((prev) => ({ ...prev, contactDate: event.target.value }))} />
+                                  <Input className="h-8 text-xs" type="number" value={intakeForm.askingPrice} onChange={(event) => setIntakeForm((prev) => ({ ...prev, askingPrice: event.target.value }))} placeholder="Asking price" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                  <Select value={intakeForm.timeline} onValueChange={(value) => setIntakeForm((prev) => ({ ...prev, timeline: value }))}>
+                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Timeline" /></SelectTrigger>
+                                    <SelectContent>
+                                      {TIMELINE_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option.replace(/_/g, ' ')}</SelectItem>)}
+                                    </SelectContent>
+                                  </Select>
+                                  <Select value={intakeForm.occupancyStatus} onValueChange={(value) => setIntakeForm((prev) => ({ ...prev, occupancyStatus: value }))}>
+                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Occupancy" /></SelectTrigger>
+                                    <SelectContent>
+                                      {OCCUPANCY_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option.replace(/_/g, ' ')}</SelectItem>)}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {PAIN_POINT_OPTIONS.map((point) => (
+                                    <button
+                                      key={point}
+                                      type="button"
+                                      onClick={() => togglePainPoint(point)}
+                                      className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${intakeForm.painPoints.includes(point) ? 'border-[var(--dynasty-gold)] bg-[var(--dynasty-gold)]/20 text-[var(--dynasty-navy)]' : 'border-[var(--dynasty-tan)]/30 text-[var(--dynasty-black)]/50'}`}
+                                    >
+                                      {point.replace(/_/g, ' ')}
+                                    </button>
+                                  ))}
+                                </div>
+                                <Textarea className="text-xs" rows={2} value={intakeForm.notes} onChange={(event) => setIntakeForm((prev) => ({ ...prev, notes: event.target.value }))} placeholder="Call notes" />
+                                <div className="flex justify-end gap-2">
+                                  <Button type="button" variant="ghost" className="h-7 px-2 text-xs" onClick={closeIntakeForm} disabled={intakeSubmitting}>Cancel</Button>
+                                  <Button type="button" className="h-7 bg-[var(--dynasty-navy)] px-2 text-xs text-[#F8F7F2] hover:bg-[var(--dynasty-black)]" onClick={() => submitIntake(item.propertyId)} loading={intakeSubmitting}>
+                                    Save &amp; Sync
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <Button type="button" variant="ghost" className="mt-2 h-7 w-full px-2 text-xs" onClick={() => openIntakeForm(item.propertyId)}>
+                                <Phone className="h-3 w-3" /> Log Call
+                              </Button>
+                            )
+                          )}
+                        </div>
                       ))}
                     </div>
                   </div>
                 )
               })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mb-5 border-0 bg-[#F8F7F2] shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 font-display text-2xl text-[var(--dynasty-navy)]">
+            <Phone className="h-5 w-5 text-[var(--dynasty-gold)]" /> Deal Intake
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {leadIntakeLoading ? (
+            <div className="flex items-center gap-2 rounded-lg bg-white/75 p-4 text-sm text-[var(--dynasty-black)]/55"><Loader2 className="h-4 w-4 animate-spin" /> Loading seller conversations...</div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+              <div className="grid gap-2">
+                <div className="rounded-lg bg-white/75 p-3 shadow-sm"><p className="text-xs text-[var(--dynasty-black)]/55">Hot Leads (65+)</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{leadIntake?.hotLeads ?? 0}</p></div>
+                <div className="rounded-lg bg-white/75 p-3 shadow-sm"><p className="text-xs text-[var(--dynasty-black)]/55">Synced to Deal Pipeline</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{leadIntake?.syncedToDeal ?? 0}</p></div>
+                <div className="rounded-lg bg-white/75 p-3 shadow-sm"><p className="text-xs text-[var(--dynasty-black)]/55">Avg Motivation</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{leadIntake?.averageMotivation ?? 0}</p></div>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {(leadIntake?.items ?? []).length === 0 ? (
+                  <div className="rounded-lg bg-white/75 p-6 text-center md:col-span-2">
+                    <Phone className="mx-auto mb-3 h-8 w-8 text-[var(--dynasty-gold)]" />
+                    <p className="font-display text-xl font-black text-[var(--dynasty-navy)]">No seller conversations logged yet.</p>
+                    <p className="mt-2 text-sm text-[var(--dynasty-black)]/60">Log a call from the Call Now lane above to capture motivation and sync it into the Deal Pipeline.</p>
+                  </div>
+                ) : leadIntake?.items.map((item) => (
+                  <div key={item.id} className="rounded-lg bg-white/75 p-4 shadow-sm transition hover:shadow-md">
+                    <Link href={`/properties/${item.propertyId}`} className="block">
+                      <div className="mb-2 flex flex-wrap gap-2">
+                        <Badge className="border-0 bg-[var(--dynasty-gold)]/18 text-[var(--dynasty-navy)]">Motivation {item.motivationScore}</Badge>
+                        {item.deal && <Badge className={`border-0 ${toneForDecision(item.deal.decision)}`}>{item.deal.decision}</Badge>}
+                      </div>
+                      <p className="font-display text-lg font-black text-[var(--dynasty-navy)]">{item.contactName ?? 'Unknown contact'}</p>
+                      <p className="mt-1 text-sm text-[var(--dynasty-black)]/60">{item.property?.address}</p>
+                      <p className="mt-2 line-clamp-2 text-xs text-[var(--dynasty-black)]/50">{item.timeline ? item.timeline.replace(/_/g, ' ') : 'No timeline'} - {item.occupancyStatus ?? 'Occupancy unknown'}</p>
+                    </Link>
+
+                    {conversationFormLeadId === item.id ? (
+                      <div className="mt-3 space-y-1.5 rounded-md bg-[#F8F7F2] p-2">
+                        <Select value={conversationForm.conversationType} onValueChange={(value) => setConversationForm((prev) => ({ ...prev, conversationType: value }))}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {CONVERSATION_TYPE_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option.replace(/_/g, ' ')}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <Textarea className="text-xs" rows={2} value={conversationForm.summary} onChange={(event) => setConversationForm((prev) => ({ ...prev, summary: event.target.value }))} placeholder="What did the seller say?" />
+                        <Input className="h-8 text-xs" value={conversationForm.objections} onChange={(event) => setConversationForm((prev) => ({ ...prev, objections: event.target.value }))} placeholder="Objections (comma separated)" />
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <Input className="h-8 text-xs" type="number" min={0} max={100} value={conversationForm.newMotivationScore} onChange={(event) => setConversationForm((prev) => ({ ...prev, newMotivationScore: event.target.value }))} placeholder="Updated motivation" />
+                          <Input className="h-8 text-xs" value={conversationForm.nextStep} onChange={(event) => setConversationForm((prev) => ({ ...prev, nextStep: event.target.value }))} placeholder="Next step" />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button type="button" variant="ghost" className="h-7 px-2 text-xs" onClick={closeConversationForm} disabled={conversationSubmitting}>Cancel</Button>
+                          <Button type="button" className="h-7 bg-[var(--dynasty-navy)] px-2 text-xs text-[#F8F7F2] hover:bg-[var(--dynasty-black)]" onClick={() => submitConversation(item.id)} loading={conversationSubmitting}>Log Conversation</Button>
+                        </div>
+                      </div>
+                    ) : item.dealId && offerFormDealId === item.dealId ? (
+                      <div className="mt-3 space-y-1.5 rounded-md bg-[#F8F7F2] p-2">
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <Input className="h-8 text-xs" type="number" value={offerForm.offerAmount} onChange={(event) => setOfferForm((prev) => ({ ...prev, offerAmount: event.target.value }))} placeholder="Offer amount" />
+                          <Select value={offerForm.offerType} onValueChange={(value) => setOfferForm((prev) => ({ ...prev, offerType: value }))}>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {OFFER_TYPE_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option.replace(/_/g, ' ')}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <Input className="h-8 text-xs" type="date" value={offerForm.sentDate} onChange={(event) => setOfferForm((prev) => ({ ...prev, sentDate: event.target.value }))} />
+                          <Input className="h-8 text-xs" type="date" value={offerForm.expirationDate} onChange={(event) => setOfferForm((prev) => ({ ...prev, expirationDate: event.target.value }))} placeholder="Expires" />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button type="button" variant="ghost" className="h-7 px-2 text-xs" onClick={closeOfferForm} disabled={offerSubmitting}>Cancel</Button>
+                          <Button type="button" className="h-7 bg-[var(--dynasty-navy)] px-2 text-xs text-[#F8F7F2] hover:bg-[var(--dynasty-black)]" onClick={() => submitOffer(item.propertyId, item.dealId as string)} loading={offerSubmitting}>Send Offer</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 flex gap-2">
+                        <Button type="button" variant="ghost" className="h-7 flex-1 px-2 text-xs" onClick={() => openConversationForm(item.id)}>Log Conversation</Button>
+                        {item.dealId && (
+                          <Button type="button" variant="ghost" className="h-7 flex-1 px-2 text-xs" onClick={() => openOfferForm(item.dealId as string)}>Send Offer</Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mb-5 border-0 bg-[#F8F7F2] shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 font-display text-2xl text-[var(--dynasty-navy)]">
+            <MessageSquare className="h-5 w-5 text-[var(--dynasty-gold)]" /> Seller Conversations
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {conversationsLoading ? (
+            <div className="flex items-center gap-2 rounded-lg bg-white/75 p-4 text-sm text-[var(--dynasty-black)]/55"><Loader2 className="h-4 w-4 animate-spin" /> Loading conversation history...</div>
+          ) : (conversations?.items ?? []).length === 0 ? (
+            <div className="rounded-lg bg-white/75 p-6 text-center">
+              <MessageSquare className="mx-auto mb-3 h-8 w-8 text-[var(--dynasty-gold)]" />
+              <p className="font-display text-xl font-black text-[var(--dynasty-navy)]">No conversations logged yet.</p>
+              <p className="mt-2 text-sm text-[var(--dynasty-black)]/60">Log a conversation from a Deal Intake card above to start the permanent CRM history.</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {conversations?.items.map((item) => (
+                <div key={item.id} className="rounded-lg bg-white/75 p-4 shadow-sm">
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    <Badge className="border-0 bg-[var(--dynasty-gold)]/18 text-[var(--dynasty-navy)]">{item.conversationType}</Badge>
+                    <span className="text-xs text-[var(--dynasty-black)]/45">{new Date(item.recordedAt).toLocaleDateString()}</span>
+                  </div>
+                  <p className="font-display text-lg font-black text-[var(--dynasty-navy)]">{item.leadIntake?.contactName ?? 'Unknown contact'}</p>
+                  <p className="mt-1 text-sm text-[var(--dynasty-black)]/60">{item.property?.address}</p>
+                  <p className="mt-2 line-clamp-2 text-xs text-[var(--dynasty-black)]/50">{item.summary}</p>
+                  {item.motivationChanges && <p className="mt-1 text-xs font-semibold text-[var(--dynasty-navy)]">{item.motivationChanges}</p>}
+                  {item.nextStep && <p className="mt-1 text-xs text-[var(--dynasty-black)]/50">Next: {item.nextStep}</p>}
+
+                  {followupFormConversationId === item.id ? (
+                    <div className="mt-3 space-y-1.5 rounded-md bg-[#F8F7F2] p-2">
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <Input className="h-8 text-xs" type="date" value={followupForm.followupDate} onChange={(event) => setFollowupForm((prev) => ({ ...prev, followupDate: event.target.value }))} />
+                        <Select value={followupForm.followupType} onValueChange={(value) => setFollowupForm((prev) => ({ ...prev, followupType: value }))}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {FOLLOWUP_TYPE_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option.replace(/_/g, ' ')}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Input className="h-8 text-xs" value={followupForm.assignedTo} onChange={(event) => setFollowupForm((prev) => ({ ...prev, assignedTo: event.target.value }))} placeholder="Assigned to" />
+                      <Textarea className="text-xs" rows={2} value={followupForm.notes} onChange={(event) => setFollowupForm((prev) => ({ ...prev, notes: event.target.value }))} placeholder="Notes" />
+                      <div className="flex justify-end gap-2">
+                        <Button type="button" variant="ghost" className="h-7 px-2 text-xs" onClick={closeFollowupForm} disabled={followupSubmitting}>Cancel</Button>
+                        <Button type="button" className="h-7 bg-[var(--dynasty-navy)] px-2 text-xs text-[#F8F7F2] hover:bg-[var(--dynasty-black)]" onClick={() => submitFollowup(item.id)} loading={followupSubmitting}>Schedule</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button type="button" variant="ghost" className="mt-3 h-7 w-full px-2 text-xs" onClick={() => openFollowupForm(item.id)}>Schedule Follow-Up</Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mb-5 border-0 bg-[#F8F7F2] shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 font-display text-2xl text-[var(--dynasty-navy)]">
+            <ClipboardList className="h-5 w-5 text-[var(--dynasty-gold)]" /> Seller Follow-Ups
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {followupsLoading ? (
+            <div className="flex items-center gap-2 rounded-lg bg-white/75 p-4 text-sm text-[var(--dynasty-black)]/55"><Loader2 className="h-4 w-4 animate-spin" /> Loading task engine...</div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
+              <div className="grid gap-2">
+                <div className="rounded-lg bg-white/75 p-3 shadow-sm"><p className="text-xs text-[var(--dynasty-black)]/55">Open Tasks</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{followups?.openCount ?? 0}</p></div>
+                <div className="rounded-lg bg-red-50 p-3 shadow-sm"><p className="text-xs text-red-700/70">Overdue</p><p className="font-display text-2xl font-black text-red-800">{followups?.overdueCount ?? 0}</p></div>
+              </div>
+              <div className="grid gap-2">
+                {(followups?.items ?? []).length === 0 ? (
+                  <div className="rounded-lg bg-white/75 p-6 text-center">
+                    <ClipboardList className="mx-auto mb-3 h-8 w-8 text-[var(--dynasty-gold)]" />
+                    <p className="font-display text-xl font-black text-[var(--dynasty-navy)]">No follow-ups scheduled.</p>
+                    <p className="mt-2 text-sm text-[var(--dynasty-black)]/60">Schedule a follow-up from a conversation above to build the task queue.</p>
+                  </div>
+                ) : followups?.items.map((item) => {
+                  const overdue = item.status === 'OPEN' && new Date(item.followupDate).getTime() < Date.now()
+                  return (
+                    <div key={item.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-lg p-3 shadow-sm ${overdue ? 'bg-red-50' : 'bg-white/75'}`}>
+                      <div>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge className="border-0 bg-[var(--dynasty-gold)]/18 text-[var(--dynasty-navy)]">{item.followupType}</Badge>
+                          <Badge className={`border-0 ${item.status === 'DONE' ? 'bg-emerald-100 text-emerald-800' : overdue ? 'bg-red-100 text-red-800' : 'bg-sky-100 text-sky-800'}`}>{item.status}</Badge>
+                        </div>
+                        <p className="mt-1 text-sm font-bold text-[var(--dynasty-navy)]">{item.property?.address}</p>
+                        <p className="text-xs text-[var(--dynasty-black)]/50">{new Date(item.followupDate).toLocaleDateString()}{item.assignedTo ? ` - ${item.assignedTo}` : ''}</p>
+                      </div>
+                      {item.status === 'OPEN' && (
+                        <Button type="button" variant="ghost" className="h-7 px-2 text-xs" onClick={() => markFollowupDone(item.id)}>Mark Done</Button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mb-5 border-0 bg-[#F8F7F2] shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 font-display text-2xl text-[var(--dynasty-navy)]">
+            <HandCoins className="h-5 w-5 text-[var(--dynasty-gold)]" /> Seller Offers
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {offersLoading ? (
+            <div className="flex items-center gap-2 rounded-lg bg-white/75 p-4 text-sm text-[var(--dynasty-black)]/55"><Loader2 className="h-4 w-4 animate-spin" /> Loading offers...</div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
+              <div className="grid gap-2">
+                <div className="rounded-lg bg-white/75 p-3 shadow-sm"><p className="text-xs text-[var(--dynasty-black)]/55">Sent</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{offers?.sentCount ?? 0}</p></div>
+                <div className="rounded-lg bg-emerald-50 p-3 shadow-sm"><p className="text-xs text-emerald-700/70">Accepted</p><p className="font-display text-2xl font-black text-emerald-800">{offers?.acceptedCount ?? 0}</p></div>
+                <div className="rounded-lg bg-red-50 p-3 shadow-sm"><p className="text-xs text-red-700/70">Rejected</p><p className="font-display text-2xl font-black text-red-800">{offers?.rejectedCount ?? 0}</p></div>
+                <div className="rounded-lg bg-white/75 p-3 shadow-sm"><p className="text-xs text-[var(--dynasty-black)]/55">Avg Offer</p><p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{formatCurrency(offers?.averageOfferAmount ?? 0)}</p></div>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {(offers?.items ?? []).length === 0 ? (
+                  <div className="rounded-lg bg-white/75 p-6 text-center md:col-span-2">
+                    <HandCoins className="mx-auto mb-3 h-8 w-8 text-[var(--dynasty-gold)]" />
+                    <p className="font-display text-xl font-black text-[var(--dynasty-navy)]">No offers sent yet.</p>
+                    <p className="mt-2 text-sm text-[var(--dynasty-black)]/60">Send an offer from a Deal Intake card above to make acquisition measurable.</p>
+                  </div>
+                ) : offers?.items.map((item) => (
+                  <div key={item.id} className="rounded-lg bg-white/75 p-4 shadow-sm">
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      <Badge className={`border-0 ${toneForOfferStatus(item.status)}`}>{item.status}</Badge>
+                      <Badge className="border-0 bg-[var(--dynasty-gold)]/18 text-[var(--dynasty-navy)]">{item.offerType.replace(/_/g, ' ')}</Badge>
+                    </div>
+                    <p className="font-display text-lg font-black text-[var(--dynasty-navy)]">{formatCurrency(item.offerAmount)}</p>
+                    <p className="mt-1 text-sm text-[var(--dynasty-black)]/60">{item.property?.address}</p>
+                    <p className="mt-2 text-xs text-[var(--dynasty-black)]/50">{item.sentDate ? `Sent ${new Date(item.sentDate).toLocaleDateString()}` : 'Not yet sent'}{item.expirationDate ? ` - Expires ${new Date(item.expirationDate).toLocaleDateString()}` : ''}</p>
+
+                    {negotiationFormOfferId === item.id ? (
+                      <div className="mt-3 space-y-1.5 rounded-md bg-[#F8F7F2] p-2">
+                        <Input className="h-8 text-xs" type="number" value={negotiationForm.counterAmount} onChange={(event) => setNegotiationForm((prev) => ({ ...prev, counterAmount: event.target.value }))} placeholder="Counter amount" />
+                        <Textarea className="text-xs" rows={2} value={negotiationForm.sellerResponse} onChange={(event) => setNegotiationForm((prev) => ({ ...prev, sellerResponse: event.target.value }))} placeholder="Seller response" />
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <Select value={negotiationForm.negotiationStage} onValueChange={(value) => setNegotiationForm((prev) => ({ ...prev, negotiationStage: value }))}>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {NEGOTIATION_STAGE_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <Select value={negotiationForm.resolution} onValueChange={(value) => setNegotiationForm((prev) => ({ ...prev, resolution: value }))}>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Resolution" /></SelectTrigger>
+                            <SelectContent>
+                              {RESOLUTION_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option.replace(/_/g, ' ')}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button type="button" variant="ghost" className="h-7 px-2 text-xs" onClick={closeNegotiationForm} disabled={negotiationSubmitting}>Cancel</Button>
+                          <Button type="button" className="h-7 bg-[var(--dynasty-navy)] px-2 text-xs text-[#F8F7F2] hover:bg-[var(--dynasty-black)]" onClick={() => submitNegotiation(item.id)} loading={negotiationSubmitting}>Log Negotiation</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button type="button" variant="ghost" className="mt-3 h-7 w-full px-2 text-xs" onClick={() => openNegotiationForm(item.id)}>Log Negotiation</Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mb-5 border-0 bg-[#F8F7F2] shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 font-display text-2xl text-[var(--dynasty-navy)]">
+            <AlertTriangle className="h-5 w-5 text-[var(--dynasty-gold)]" /> Seller Negotiations
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {negotiationsLoading ? (
+            <div className="flex items-center gap-2 rounded-lg bg-white/75 p-4 text-sm text-[var(--dynasty-black)]/55"><Loader2 className="h-4 w-4 animate-spin" /> Loading negotiation history...</div>
+          ) : (negotiations?.items ?? []).length === 0 ? (
+            <div className="rounded-lg bg-white/75 p-6 text-center">
+              <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-[var(--dynasty-gold)]" />
+              <p className="font-display text-xl font-black text-[var(--dynasty-navy)]">No negotiations logged yet.</p>
+              <p className="mt-2 text-sm text-[var(--dynasty-black)]/60">Log a negotiation from a Seller Offer above to build the auditable history.</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {negotiations?.items.map((item) => (
+                <div key={item.id} className="rounded-lg bg-white/75 p-4 shadow-sm">
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    <Badge className="border-0 bg-[var(--dynasty-gold)]/18 text-[var(--dynasty-navy)]">{item.negotiationStage}</Badge>
+                    {item.resolution && <Badge className={`border-0 ${toneForOfferStatus(item.resolution === 'WALKED_AWAY' ? 'REJECTED' : item.resolution)}`}>{item.resolution.replace(/_/g, ' ')}</Badge>}
+                  </div>
+                  <p className="font-display text-lg font-black text-[var(--dynasty-navy)]">{item.property?.address}</p>
+                  <p className="mt-1 text-sm text-[var(--dynasty-black)]/60">Offer {formatCurrency(item.offer?.offerAmount ?? 0)}{item.counterAmount ? ` - Counter ${formatCurrency(item.counterAmount)}` : ''}</p>
+                  {item.sellerResponse && <p className="mt-2 line-clamp-2 text-xs text-[var(--dynasty-black)]/50">{item.sellerResponse}</p>}
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
@@ -689,18 +1582,70 @@ export function AcquisitionCommandCenterClient() {
                     <p className="font-display text-xl font-black text-[var(--dynasty-navy)]">No ownership research tasks yet.</p>
                     <p className="mt-2 text-sm text-[var(--dynasty-black)]/60">Generate tasks from ownership-research skip trace rows.</p>
                   </div>
-                ) : ownershipResearch?.tasks.map((task) => (
-                  <Link key={task.id} href={`/properties/${task.propertyId}`} className="rounded-lg bg-white/75 p-4 shadow-sm transition hover:shadow-md">
-                    <div className="mb-2 flex flex-wrap gap-2">
-                      <Badge className="border-0 bg-[var(--dynasty-gold)]/18 text-[var(--dynasty-navy)]">{task.recommendedSource}</Badge>
-                      <Badge className="border-0 bg-sky-100 text-sky-800">{task.county ?? 'Unknown county'}</Badge>
-                      <Badge className="border-0 bg-emerald-100 text-emerald-800">{task.researchStatus}</Badge>
+                ) : ownershipResearch?.tasks.map((task) => {
+                  const isCompleted = task.researchStatus === 'COMPLETED'
+                  const isCompleting = completingTaskId === task.id
+                  return (
+                    <div key={task.id} className="rounded-lg bg-white/75 p-4 shadow-sm transition hover:shadow-md">
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap gap-2">
+                          <Badge className="border-0 bg-[var(--dynasty-gold)]/18 text-[var(--dynasty-navy)]">{task.recommendedSource}</Badge>
+                          <Badge className="border-0 bg-sky-100 text-sky-800">{task.county ?? 'Unknown county'}</Badge>
+                          <Badge className={`border-0 ${isCompleted ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{task.researchStatus}</Badge>
+                        </div>
+                        <Link href={`/properties/${task.propertyId}`} className="text-xs font-bold text-[var(--dynasty-navy)] underline-offset-2 hover:underline">Open property</Link>
+                      </div>
+                      <p className="font-display text-lg font-black text-[var(--dynasty-navy)]">{task.propertyAddress}</p>
+                      <p className="mt-1 text-sm text-[var(--dynasty-black)]/60">{task.mailingAddress ?? 'Mailing address missing'}</p>
+                      <p className="mt-2 line-clamp-2 text-xs text-[var(--dynasty-black)]/50">Priority {task.sourcePriority} - {task.researchReason}</p>
+
+                      {isCompleted ? (
+                        <div className="mt-3 rounded-md bg-emerald-50 p-3 text-xs text-emerald-800">
+                          <p className="font-bold">{task.recoveredOwnerName}</p>
+                          <p className="mt-1 text-emerald-800/70">Confidence {task.confidence ?? 0}/100{task.sourceUrl ? ` - ${task.sourceUrl}` : ''}</p>
+                          {task.researchNotes && <p className="mt-1 text-emerald-800/70">{task.researchNotes}</p>}
+                        </div>
+                      ) : isCompleting ? (
+                        <div className="mt-3 space-y-2 rounded-md bg-[#F8F7F2] p-3">
+                          <Input
+                            value={completionForm.ownerName}
+                            onChange={(event) => setCompletionForm((prev) => ({ ...prev, ownerName: event.target.value }))}
+                            placeholder="Recovered owner name / entity"
+                          />
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={completionForm.confidence}
+                            onChange={(event) => setCompletionForm((prev) => ({ ...prev, confidence: event.target.value }))}
+                            placeholder="Confidence (0-100)"
+                          />
+                          <Input
+                            value={completionForm.sourceUrl}
+                            onChange={(event) => setCompletionForm((prev) => ({ ...prev, sourceUrl: event.target.value }))}
+                            placeholder="Source URL"
+                          />
+                          <Textarea
+                            value={completionForm.notes}
+                            onChange={(event) => setCompletionForm((prev) => ({ ...prev, notes: event.target.value }))}
+                            placeholder="Notes"
+                            rows={2}
+                          />
+                          <div className="flex justify-end gap-2">
+                            <Button type="button" variant="ghost" onClick={closeCompletion} disabled={completionSubmitting}>Cancel</Button>
+                            <Button type="button" onClick={() => submitCompletion(task.id)} loading={completionSubmitting} className="bg-[var(--dynasty-navy)] text-[#F8F7F2] hover:bg-[var(--dynasty-black)]">
+                              Save &amp; Promote
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button type="button" variant="ghost" className="mt-3 h-8 px-2 text-xs" onClick={() => openCompletion(task.id)}>
+                          Complete Research
+                        </Button>
+                      )}
                     </div>
-                    <p className="font-display text-lg font-black text-[var(--dynasty-navy)]">{task.propertyAddress}</p>
-                    <p className="mt-1 text-sm text-[var(--dynasty-black)]/60">{task.mailingAddress ?? 'Mailing address missing'}</p>
-                    <p className="mt-2 line-clamp-2 text-xs text-[var(--dynasty-black)]/50">Priority {task.sourcePriority} - {task.researchReason}</p>
-                  </Link>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}

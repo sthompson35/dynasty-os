@@ -29,7 +29,7 @@ function yearsSince(value: string | undefined) {
   return Number.isFinite(years) && years >= 0 ? Math.round(years * 10) / 10 : null
 }
 
-function ownerType(ownerName: string | null): OwnerType {
+export function ownerType(ownerName: string | null): OwnerType {
   const value = String(ownerName ?? '').toUpperCase()
   if (!value) return 'UNKNOWN'
   if (/\b(LLC|L\.L\.C\.|INC|CORP|COMPANY|CO\.|LP|LTD)\b/.test(value)) return 'LLC'
