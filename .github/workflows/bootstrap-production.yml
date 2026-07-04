@@ -1,0 +1,67 @@
+name: Bootstrap Production Database
+
+# One-time (or safe-to-repeat) manual trigger to apply database/migrations/*.sql
+# directly against PROD_DATABASE_URL. This is the only workflow in the repo
+# that WRITES to production - everything else (production-gate.yml) is
+# strictly read-only via assertSelectOnly().
+#
+# Safety:
+#  - workflow_dispatch only, with a required "confirm" input that must be
+#    typed exactly - guards against an accidental click.
+#  - Every migration file uses `create table if not exists` /
+#    `add column if not exists`, so this is safe to re-run and safe against a
+#    partially-migrated database.
+#  - Runs the same read-only production-gate check immediately after, so the
+#    run's own log proves whether the bootstrap actually left the database in
+#    the state schema.prisma expects.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type BOOTSTRAP-PRODUCTION to proceed'
+        required: true
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm == 'BOOTSTRAP-PRODUCTION'
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Apply SQL migrations to production
+        env:
+          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -z "$PROD_DATABASE_URL" ]; then
+            echo "PROD_DATABASE_URL secret is not set."
+            exit 1
+          fi
+          for f in $(ls ../database/migrations/*.sql | sort); do
+            echo "Applying $(basename "$f")"
+            npx prisma db execute --url "$PROD_DATABASE_URL" --file "$f"
+          done
+
+      - name: Verify production now matches schema.prisma (read-only)
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: npx tsx scripts/verify_migration_state.ts --compare-url="${{ secrets.PROD_DATABASE_URL }}" --readonly
