@@ -312,7 +312,7 @@ export function CommandCenterClient({ capital, leads, deals, operations, disposi
     },
     {
       title: 'Disposition Engine',
-      href: '/engines/disposition',
+      href: '/disposition-command-center',
       icon: ShoppingBag,
       color: 'bg-orange-600',
       status: disposition.totalProfit > 0 ? 'healthy' : 'warning',
@@ -426,7 +426,7 @@ export function CommandCenterClient({ capital, leads, deals, operations, disposi
                 { label: 'Capital Engine', sublabel: 'Funds Opportunities', icon: DollarSign, href: '/engines/capital', active: capital.deployed > 0 },
                 { label: 'Land + Build UW', sublabel: 'Tests Buildable Land', icon: Home, href: '/engines/land-build', active: true },
                 { label: 'Operations Engine', sublabel: 'Executes Projects', icon: Layers, href: '/engines/operations', active: operations.activeProjects > 0 },
-                { label: 'Disposition Engine', sublabel: 'Monetizes Assets', icon: ShoppingBag, href: '/engines/disposition', active: disposition.capitalRecovered > 0 },
+                { label: 'Disposition Engine', sublabel: 'Monetizes Assets', icon: ShoppingBag, href: '/disposition-command-center', active: disposition.capitalRecovered > 0 },
               ].map((step, i) => {
                 const Icon = step.icon
                 return (

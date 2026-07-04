@@ -1,8 +1,11 @@
 """Dynasty AI API - ATLAS recommendations and engine orchestration."""
 from __future__ import annotations
 
-from fastapi import APIRouter
+from typing import Any
 
+from fastapi import APIRouter, HTTPException
+
+from app.db import get_supabase
 from app.dynasty_ai import DynastyAIOrchestrator, DynastyAIRequest, DynastyAIResponse, rank_deals
 from app.dynasty_ai.core import BatchRankRequest
 
@@ -47,3 +50,64 @@ def orchestrate(payload: DynastyAIRequest) -> DynastyAIResponse:
 @router.post("/rank", response_model=list[DynastyAIResponse])
 def rank(payload: BatchRankRequest) -> list[DynastyAIResponse]:
     return rank_deals(payload.deals)
+
+
+# Deals table columns that map straight across (Supabase name -> DynastyAIRequest
+# field). Same "deals" table Deal Engine's TrooperCharlie reads (see
+# _deal_row_to_dealdata_dict in app/api/deal_engine.py) - not every
+# DynastyAIRequest field has a column here (no address/holding_costs/
+# lot_size/vacant/inherited/... on this table), so those keep their
+# DynastyAIRequest default rather than being guessed at.
+_DEAL_ROW_FIELD_MAP = {
+    "purchase_price": "asking_price",
+    "arv": "arv",
+    "repair_costs": "repairs",
+    "beds": "beds",
+    "baths": "baths",
+    "sqft": "sqft",
+    "monthly_rent": "rent",
+}
+
+
+def _deal_row_to_request(row: dict[str, Any]) -> DynastyAIRequest:
+    fields: dict[str, Any] = {"property_id": row.get("property_id")}
+    for request_field, column in _DEAL_ROW_FIELD_MAP.items():
+        value = row.get(column)
+        if value is not None:
+            fields[request_field] = value
+
+    # title_status/flood_status are free-text columns ("Unknown" default),
+    # not booleans - treat anything other than a clear/unknown/empty value
+    # as a positive signal for ATLAS's risk scoring.
+    title_status = str(row.get("title_status") or "").strip().lower()
+    if title_status and title_status not in {"unknown", "clear", "clean"}:
+        fields["title_issues"] = True
+    flood_status = str(row.get("flood_status") or "").strip().lower()
+    if flood_status and flood_status not in {"unknown", "none", "no"}:
+        fields["flood_zone"] = True
+
+    return DynastyAIRequest(**fields)
+
+
+@router.get("/trace/{deal_id}")
+def trace(deal_id: str) -> dict[str, dict[str, Any]]:
+    """Engine-by-engine reasoning for a stored deal, keyed by engine name -
+    the same 11-engine pipeline behind /analyze-deal, reshaped for direct
+    lookup instead of a display-ordered list."""
+    try:
+        db = get_supabase()
+        row = db.table("deals").select("*").eq("deal_id", deal_id).single().execute()
+    except Exception as error:  # Supabase client/connectivity/credential failure
+        raise HTTPException(
+            status_code=503,
+            detail=f"Deal store unavailable ({error}). This endpoint reads the same Supabase `deals` "
+                   "table as /api/deal - if that route is also failing, this is a pre-existing "
+                   "Supabase connectivity/credential gap, not specific to this endpoint.",
+        ) from error
+
+    if not row.data:
+        raise HTTPException(status_code=404, detail=f"No deal found for deal_id={deal_id}")
+
+    payload = _deal_row_to_request(row.data)
+    result = DynastyAIOrchestrator().analyze(payload)
+    return {entry.engine: {"score": entry.score, "summary": entry.summary} for entry in result.engine_trace}

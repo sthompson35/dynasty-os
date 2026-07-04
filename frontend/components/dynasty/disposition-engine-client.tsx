@@ -1,5 +1,9 @@
 'use client'
 
+// Deprecated: superseded by disposition-command-center-client.tsx (BuyerProfile /
+// DispositionPackage / AssignmentPipeline / ClosingTracker). Kept live and unlinked
+// from nav as a read/write fallback for the legacy Buyer/Disposition rows this
+// component still owns — do not build new features against it.
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ShoppingBag, PlusCircle, Users, TrendingUp, ArrowRight, Star } from 'lucide-react'

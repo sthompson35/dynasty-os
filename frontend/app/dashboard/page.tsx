@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { PROPERTY_STATUS_OPTIONS, PROPERTY_TYPE_OPTIONS, PropertyDTO, calculateDealMetrics, getStatusLabel, getTypeLabel, serializeProperty, toNumber } from '@/lib/property-utils'
+import { PROPERTY_STATUS_OPTIONS, PROPERTY_TYPE_OPTIONS, PropertyDTO, getStatusLabel, getTypeLabel, serializeProperty } from '@/lib/property-utils'
+import { getAcquisitionPipelineMetrics, getOwnedPortfolioMetrics } from '@/lib/portfolio-metrics'
 import { AppNavigation } from '@/components/dynasty/app-navigation'
 import { DashboardClient } from '@/components/dynasty/dashboard-client'
 import type { ChartDatum } from '@/components/dynasty/property-type-chart'
@@ -25,11 +26,12 @@ export default async function DashboardPage() {
   })
 
   const properties = rawProperties?.map?.((property: unknown) => serializeProperty(property)) ?? []
-  const portfolioValue = properties?.reduce?.((total: number, property: PropertyDTO) => total + toNumber(property?.currentValue ?? property?.purchasePrice), 0) ?? 0
-  const totalBasis = properties?.reduce?.((total: number, property: PropertyDTO) => total + toNumber(property?.purchasePrice), 0) ?? 0
-  const totalEquity = portfolioValue - totalBasis
-  const roiValues = properties?.map?.((property: PropertyDTO) => calculateDealMetrics(property)?.roi ?? 0)?.filter?.((roi: number) => Number.isFinite(roi)) ?? []
-  const averageRoi = (roiValues?.length ?? 0) > 0 ? (roiValues?.reduce?.((sum: number, roi: number) => sum + roi, 0) ?? 0) / (roiValues?.length ?? 1) : 0
+
+  // Portfolio metrics (owned assets only) and acquisition metrics (everything
+  // still a prospect/lead) are computed by the same shared helpers used across
+  // every dashboard, so this split can't silently drift back apart per page.
+  const { portfolioValue, totalEquity, averageRoi } = getOwnedPortfolioMetrics(properties)
+  const { totalProspects, totalPipelineValue } = getAcquisitionPipelineMetrics(properties)
 
   const typeData: ChartDatum[] = PROPERTY_TYPE_OPTIONS?.map?.((option, index: number) => ({
     name: getTypeLabel(option?.value),
@@ -52,6 +54,8 @@ export default async function DashboardPage() {
           portfolioValue,
           totalEquity,
           averageRoi,
+          totalProspects,
+          totalPipelineValue,
         }}
         recentProperties={properties?.slice?.(0, 4) ?? []}
         typeData={typeData}

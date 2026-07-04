@@ -1,3 +1,7 @@
+// Deprecated: superseded by /disposition-command-center. No longer linked from
+// nav (see components/dynasty/app-navigation.tsx). Left live, not deleted, so the
+// legacy Buyer/Disposition rows it manages stay reachable; new work belongs in
+// the Disposition Command Center instead.
 import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -6,7 +10,7 @@ import { AppNavigation } from '@/components/dynasty/app-navigation'
 import { DispositionEngineClient } from '@/components/dynasty/disposition-engine-client'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Disposition Engine' }
+export const metadata = { title: 'Disposition Engine (Legacy)' }
 
 export default async function DispositionEnginePage() {
   const session = await getServerSession(authOptions)

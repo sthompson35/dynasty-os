@@ -69,12 +69,14 @@ def check_workflow_file(path: Path) -> Tuple[bool, List[str]]:
     hardcoded_url_fields = re.findall(r'"url"\s*:\s*"http://localhost:8010', content)
     if hardcoded_url_fields:
         warnings.append(
-            "Found hardcoded http://localhost:8010 in operational url fields. Use Dynasty Config variable instead."
+            "Found hardcoded http://localhost:8010 in operational url fields. Use a Config node instead."
         )
 
+    # Each trigger branch has its own "<Branch>: Config" Set node (n8n node
+    # references only resolve for actual DAG ancestors, so a single shared
+    # config node can't fan out to independent webhook branches).
     required_patterns = [
-        r"\$env\.N8N_DYNASTY_API_URL",
-        r"\$\('Dynasty Config'\)\.first\(\)\.json\.dynastyApiUrl",
+        r"\$\('[^']+Config'\)\.item\.json\.dynastyApiUrl",
     ]
     for pattern in required_patterns:
         if not re.search(pattern, content):
@@ -88,7 +90,7 @@ def main() -> int:
     parser.add_argument("--env-file", default=".env", help="Path to env file to validate")
     parser.add_argument(
         "--workflow-file",
-        default="ultimate-dynasty-os-v2.json",
+        default="n8n/dynasty-os-v3-cloud-no-code.json",
         help="Path to n8n workflow JSON",
     )
     args = parser.parse_args()

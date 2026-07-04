@@ -1,3 +1,6 @@
+// Deprecated: superseded by /api/disposition-packages + /api/assignment-pipeline
+// + /api/closing-tracker. Kept for the legacy /engines/disposition page — do not
+// build new features against it.
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'

@@ -1,6 +1,6 @@
 ---
 description: "Use when building, updating, or validating DynastyOS dashboards and KPI outputs. Enforces consistent formulas, denominator rules, and missing-data handling across lead, deal, capital, operations, and disposition reporting."
-applyTo: ["frontend/**", "dynasty_app/**", "backend/**", "docs/**", "realtor_agent/**"]
+applyTo: ["frontend/**", "backend/**", "docs/**"]
 ---
 
 # Dynasty KPI Formula And Denominator Standards

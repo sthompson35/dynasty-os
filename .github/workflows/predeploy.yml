@@ -1,0 +1,106 @@
+name: Pre-Deploy Gate
+
+# Mirrors `npm run verify:predeploy`, but split into sequenced steps instead of
+# one shell invocation. Reason: `verify_migration_state.ts --base-url=...`
+# needs a live `next dev` server for its API-route auth-check gate, but `next
+# build` writes to the same `.next/` directory `next dev` uses — running both
+# at once corrupts the build (confirmed locally: had to stop the dev container
+# before running `next build` for the same reason). So this workflow starts
+# the dev server, runs the checks that need it, stops it, then builds.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  predeploy:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      NEXTAUTH_SECRET: ci-predeploy-secret-not-for-production
+      NEXTAUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:3000
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      # database/migrations/*.sql applied in filename order against a fresh
+      # Postgres — the same bootstrap sequence a new environment or a
+      # disaster-recovery restore would run. 000_dynasty_core_foundation.sql
+      # covers auth + core property tables that predate the per-feature
+      # migration workflow (discovered while building this workflow: those
+      # tables had never been captured as migration files at all).
+      - name: Apply SQL migrations
+        run: |
+          for f in $(ls ../database/migrations/*.sql | sort); do
+            echo "Applying $(basename "$f")"
+            npx prisma db execute --url "$DATABASE_URL" --file "$f"
+          done
+
+      - name: Seed baseline data (test user + sample properties)
+        run: npx prisma db seed
+
+      - name: Run portfolio metrics regression test
+        run: npm run test:portfolio-metrics
+
+      - name: Start dev server and wait for readiness
+        run: |
+          npx next dev -H 0.0.0.0 -p 3000 > /tmp/next-dev.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000 > /dev/null; then
+              echo "Dev server is up."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Dev server did not become ready in time."
+          cat /tmp/next-dev.log
+          exit 1
+
+      - name: Run migration governance gate
+        run: npx tsx scripts/verify_migration_state.ts --base-url=http://localhost:3000
+
+      - name: Stop dev server
+        if: always()
+        run: pkill -f "next dev" || true
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Production build
+        run: npx next build
