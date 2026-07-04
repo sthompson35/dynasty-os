@@ -3,7 +3,22 @@
 import { useEffect, useRef, useState } from 'react'
 import { Bot, Send, X, Minimize2, Loader2, MessageSquare } from 'lucide-react'
 
-const N8N_CHAT_URL = 'https://ultimate-dynasty-os.app.n8n.cloud/webhook/eb99c858-ecfc-429b-81ee-8f57e932681f/chat'
+const N8N_CHAT_URL = 'https://ultimate-dynasty-os.app.n8n.cloud/webhook/dynasty-chat'
+
+// The n8n "Chat" webhook currently just echoes ATLAS's static manifest
+// (status/agent/engine list) rather than running a real conversation - there's
+// no LLM node wired into that flow yet. Detect that shape and show something
+// honest instead of dumping the raw JSON as if it were a reply.
+function describeReply(data: unknown): string {
+  if (typeof (data as { output?: unknown })?.output === 'string') {
+    return (data as { output: string }).output
+  }
+  const manifestReply = data as { status?: string; agent?: string; message?: string } | null
+  if (manifestReply?.status === 'online' && manifestReply?.agent) {
+    return `${manifestReply.agent} is online, but this widget isn't wired up to real conversation yet - it can only confirm the engines are reachable for now. ${manifestReply.message ?? ''}`.trim()
+  }
+  return JSON.stringify(data)
+}
 
 type Message = {
   id: string
@@ -23,7 +38,7 @@ export function DynastyChatWidget() {
     {
       id: 'welcome',
       role: 'assistant',
-      text: "Hey — I'm your Dynasty PropertyOS AI. Ask me to analyze a flip deal, pull a market snapshot, or check the API health.",
+      text: "Hey — this is a status link to ATLAS, not a live conversation yet. Send anything and I'll confirm the engines are online.",
       ts: Date.now(),
     },
   ])
@@ -62,7 +77,7 @@ export function DynastyChatWidget() {
       })
       if (!res.ok) throw new Error(`n8n returned ${res.status}`)
       const data = await res.json()
-      const reply = typeof data?.output === 'string' ? data.output : JSON.stringify(data)
+      const reply = describeReply(data)
       setMessages((prev) => [...prev, { id: generateId(), role: 'assistant', text: reply, ts: Date.now() }])
     } catch (err) {
       setMessages((prev) => [
@@ -110,7 +125,7 @@ export function DynastyChatWidget() {
               </div>
               <div>
                 <p className="text-sm font-bold text-[#F8F7F2]">Dynasty AI</p>
-                {!minimized && <p className="text-[10px] text-[#F8F7F2]/60">Powered by n8n + GPT-4o</p>}
+                {!minimized && <p className="text-[10px] text-[#F8F7F2]/60">Powered by n8n · ATLAS status</p>}
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -197,7 +212,7 @@ export function DynastyChatWidget() {
                     {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                   </button>
                 </div>
-                <p className="mt-1.5 text-center text-[10px] text-[var(--dynasty-black)]/30">Dynasty AI · n8n + GPT-4o-mini</p>
+                <p className="mt-1.5 text-center text-[10px] text-[var(--dynasty-black)]/30">Dynasty AI · n8n status link</p>
               </div>
             </>
           )}
