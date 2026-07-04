@@ -571,7 +571,8 @@ async function main() {
       comparePass = await compareEnvironments(compareUrlArg, models, readonly);
     } catch (error) {
       comparePass = false;
-      console.log(`\n=== Production Migration Gate ===\n  Could not complete comparison: ${error instanceof Error ? error.message.split("\n")[0] : String(error)}`);
+      const detail = error instanceof Error ? error.message.trim() : String(error);
+      console.log(`\n=== Production Migration Gate ===\n  Could not complete comparison:\n${detail}`);
     }
   } else {
     console.log("\nNote: no --compare-url provided — skipping production migration gate.");
