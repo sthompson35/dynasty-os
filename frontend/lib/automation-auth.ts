@@ -24,13 +24,20 @@ async function resolveAutomationUserId() {
   if (configuredUserId) return configuredUserId
 
   const email = process.env.AUTOMATION_USER_EMAIL || process.env.DYNASTY_AUTOMATION_USER_EMAIL || process.env.NOTIFICATION_EMAIL
-  if (!email) return ''
+  if (email) {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    })
+    if (user?.id) return user.id
+  }
 
-  const user = await prisma.user.findUnique({
-    where: { email },
+  const [inventoryOwner] = await prisma.user.findMany({
     select: { id: true },
+    orderBy: { properties: { _count: 'desc' } },
+    take: 1,
   })
-  return user?.id ?? ''
+  return inventoryOwner?.id ?? ''
 }
 
 export async function requireAutomationAuth(request: Request): Promise<AutomationAuthResult> {
