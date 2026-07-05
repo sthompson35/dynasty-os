@@ -3,8 +3,28 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { buildPropertyMutationData, serializeProperty } from '@/lib/property-utils'
+import { enrichPropertyGis } from '@/lib/gis-enrichment'
 
 export const dynamic = 'force-dynamic'
+
+const GIS_ENRICHMENT_BUDGET_MS = 5000
+
+async function tryEnrichNewProperty(property: { id: string; address: string; city: string; state: string; zip: string | null }) {
+  const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), GIS_ENRICHMENT_BUDGET_MS))
+
+  try {
+    const result = await Promise.race([enrichPropertyGis(property), timeout])
+    if (!result) return property // timed out - leave unenriched, don't block creation
+
+    return await prisma.property.update({
+      where: { id: property.id },
+      data: { ...result, gisEnrichedAt: new Date() },
+    })
+  } catch (error: unknown) {
+    console.error('GIS enrichment failed for new property', property.id, error)
+    return property
+  }
+}
 
 async function readBody(request: Request): Promise<Record<string, unknown>> {
   try {
@@ -61,7 +81,9 @@ export async function POST(request: Request) {
       },
     })
 
-    return NextResponse.json({ property: serializeProperty(property) }, { status: 201 })
+    const enrichedProperty = await tryEnrichNewProperty(property)
+
+    return NextResponse.json({ property: serializeProperty(enrichedProperty) }, { status: 201 })
   } catch (error: unknown) {
     console.error('Unable to create property', error)
     return NextResponse.json({ error: 'Unable to create property.' }, { status: 500 })

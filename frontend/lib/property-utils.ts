@@ -39,6 +39,15 @@ export type PropertyDTO = {
   repairCosts: number | null
   holdingCosts: number | null
   closingCosts: number | null
+  latitude: number | null
+  longitude: number | null
+  censusTract: string | null
+  censusGeoid: string | null
+  floodZone: string | null
+  floodZoneSource: string | null
+  zoningDistrict: string | null
+  zoningSource: string | null
+  gisEnrichedAt: string | null
   createdAt: string
   updatedAt: string
 }
@@ -238,6 +247,15 @@ export function serializeProperty(property: unknown): PropertyDTO {
     repairCosts: toNullableNumber(raw?.repairCosts),
     holdingCosts: toNullableNumber(raw?.holdingCosts),
     closingCosts: toNullableNumber(raw?.closingCosts),
+    latitude: toNullableNumber(raw?.latitude),
+    longitude: toNullableNumber(raw?.longitude),
+    censusTract: normalizeString(raw?.censusTract) || null,
+    censusGeoid: normalizeString(raw?.censusGeoid) || null,
+    floodZone: normalizeString(raw?.floodZone) || null,
+    floodZoneSource: normalizeString(raw?.floodZoneSource) || null,
+    zoningDistrict: normalizeString(raw?.zoningDistrict) || null,
+    zoningSource: normalizeString(raw?.zoningSource) || null,
+    gisEnrichedAt: raw?.gisEnrichedAt ? safeDateToIso(raw.gisEnrichedAt) : null,
     createdAt: safeDateToIso(raw?.createdAt),
     updatedAt: safeDateToIso(raw?.updatedAt),
   }

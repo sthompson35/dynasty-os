@@ -53,6 +53,13 @@ async function safeJson(response: Response): Promise<Record<string, unknown>> {
   }
 }
 
+const HIGH_RISK_FLOOD_ZONES = new Set(['A', 'AE', 'AH', 'AO', 'AR', 'V', 'VE'])
+
+function floodZoneBadgeClass(floodZone: string | null): string {
+  if (!floodZone) return 'border-0 bg-[var(--dynasty-tan)]/22 text-[var(--dynasty-navy)]'
+  return HIGH_RISK_FLOOD_ZONES.has(floodZone) ? 'border-0 bg-red-100 text-red-800' : 'border-0 bg-emerald-100 text-emerald-800'
+}
+
 function Fact(props: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="rounded-lg bg-white/75 p-4 shadow-sm">
@@ -132,6 +139,7 @@ export function PropertyDetailClient(props: {
   const [activeTab, setActiveTab] = useState('record')
   const [headerLightbox, setHeaderLightbox] = useState<number | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isEnriching, setIsEnriching] = useState(false)
   const metrics = calculateDealMetrics(property)
 
   const coverUrl = images[0]?.url ?? property?.photoUrl ?? null
@@ -163,6 +171,29 @@ export function PropertyDetailClient(props: {
       toast.error(error instanceof Error ? error.message : 'Unable to delete property.')
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  const handleReEnrich = async () => {
+    setIsEnriching(true)
+
+    try {
+      const response = await fetch(`/api/properties/${encodeURIComponent(property?.id ?? '')}/gis-enrich`, { method: 'POST' })
+      const payload = await safeJson(response)
+
+      if (!response?.ok) {
+        throw new Error(typeof payload?.error === 'string' ? payload.error : 'Unable to run GIS enrichment.')
+      }
+
+      if (payload?.property) {
+        setProperty(payload.property as PropertyDTO)
+      }
+      toast.success('Flood zone and zoning data refreshed.')
+    } catch (error: unknown) {
+      console.error('GIS enrichment failed', error)
+      toast.error(error instanceof Error ? error.message : 'Unable to run GIS enrichment.')
+    } finally {
+      setIsEnriching(false)
     }
   }
 
@@ -247,6 +278,20 @@ export function PropertyDetailClient(props: {
                 <p className="text-sm leading-6 text-[var(--dynasty-black)]/72">{property?.notes}</p>
               </div>
             )}
+            <div className="mt-4 rounded-lg bg-white/75 p-4 shadow-sm">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[var(--dynasty-black)]/50">
+                  <MapPin className="h-4 w-4 text-[var(--dynasty-gold)]" /> Flood zone &amp; zoning
+                </p>
+                <Button type="button" variant="ghost" size="sm" onClick={handleReEnrich} loading={isEnriching} className="h-auto px-2 py-1 text-xs text-[var(--dynasty-navy)] hover:bg-[var(--dynasty-tan)]/18">
+                  Re-run enrichment
+                </Button>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className={floodZoneBadgeClass(property?.floodZone)}>{property?.floodZone ? `Flood zone ${property.floodZone}` : 'Flood zone unknown'}</Badge>
+                <Badge className="border-0 bg-[var(--dynasty-tan)]/22 text-[var(--dynasty-navy)]">{property?.zoningDistrict ? `Zoning: ${property.zoningDistrict}` : (property?.zoningSource ?? 'Zoning: verify locally')}</Badge>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
