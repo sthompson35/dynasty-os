@@ -76,5 +76,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unable to save the imported properties.' }, { status: 500 })
   }
 
-  return NextResponse.json({ created, skipped, errors })
+  // Cheap data-quality signal: if an import path silently drops a field
+  // (e.g. purchasePrice) for most/all rows, this surfaces it in the response
+  // and server logs immediately instead of only showing up later as "why
+  // does this account have zero GO decisions."
+  const pct = (count: number) => (toCreate.length > 0 ? Math.round((count / toCreate.length) * 100) : 0)
+  const completeness = {
+    purchasePrice: pct(toCreate.filter((row) => Boolean(row.purchasePrice)).length),
+    currentValue: pct(toCreate.filter((row) => Boolean(row.currentValue)).length),
+    notes: pct(toCreate.filter((row) => Boolean(row.notes)).length),
+  }
+  if (toCreate.length >= 20 && completeness.purchasePrice < 10) {
+    console.warn(`Property import completeness warning: ${completeness.purchasePrice}% of ${toCreate.length} imported rows have a purchasePrice - check the source file's column headers against FIELD_ALIASES in lib/property-import-utils.ts.`)
+  }
+
+  return NextResponse.json({ created, skipped, errors, completeness })
 }
