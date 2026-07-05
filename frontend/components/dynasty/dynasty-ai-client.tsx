@@ -138,7 +138,7 @@ function OutlookStat(props: { label: string; value: string }) {
 }
 
 export function DynastyAIClient({ data }: { data: DynastyAICommandCenterData }) {
-  const [chatValue, setChatValue] = useState(commandExamples[0])
+  const [chatValue, setChatValue] = useState('')
   const [approved, setApproved] = useState<Set<string>>(new Set())
   const [atlasResponse, setAtlasResponse] = useState<string | null>(null)
   const [isQuerying, setIsQuerying] = useState(false)
@@ -378,7 +378,9 @@ export function DynastyAIClient({ data }: { data: DynastyAICommandCenterData }) 
             <textarea
               value={chatValue}
               onChange={(event) => setChatValue(event.target.value)}
-              className="min-h-28 w-full resize-none rounded-lg border border-[var(--dynasty-navy)]/10 bg-white p-3 text-sm text-[var(--dynasty-black)] outline-none focus:border-[var(--dynasty-gold)]"
+              placeholder="Ask ATLAS about a deal, market, or portfolio decision - e.g. one of the examples below."
+              disabled={isQuerying}
+              className="min-h-28 w-full resize-none rounded-lg border border-[var(--dynasty-navy)]/10 bg-white p-3 text-sm text-[var(--dynasty-black)] outline-none placeholder-[var(--dynasty-black)]/40 focus:border-[var(--dynasty-gold)] disabled:opacity-50"
             />
             <div className="mt-3 flex flex-wrap gap-2">
               {commandExamples.map((example) => (
