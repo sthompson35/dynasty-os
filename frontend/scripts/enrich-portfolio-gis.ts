@@ -38,10 +38,23 @@ async function main() {
         });
       })
     );
-    for (const result of results) {
-      if (result.status === "fulfilled") enriched += 1;
-      else failed += 1;
-    }
+    results.forEach((result, batchIndex) => {
+      if (result.status === "fulfilled") {
+        enriched += 1;
+        return;
+      }
+      failed += 1;
+      const property = batch[batchIndex];
+      const error = result.reason as { code?: string; message?: string } | undefined;
+      console.error(JSON.stringify({
+        propertyId: property.id,
+        address: property.address,
+        stage: "prisma.update",
+        timestamp: new Date().toISOString(),
+        errorCode: error?.code ?? null,
+        errorMessage: error?.message ?? String(result.reason),
+      }));
+    });
     console.log(`Processed ${Math.min(index + CONCURRENCY, properties.length)}/${properties.length} (${enriched} enriched, ${failed} failed)`);
   }
 
