@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import type { Prisma } from '@prisma/client'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { buildPropertyMutationData } from '@/lib/property-utils'
 import { propertyDuplicateKey } from '@/lib/property-import-utils'
+import { buildImportCompletedActivity } from '@/lib/property-activity'
 
 export const dynamic = 'force-dynamic'
 
@@ -66,10 +68,27 @@ export async function POST(request: Request) {
   let created = 0
   try {
     if (toCreate.length > 0) {
+      const importStartedAt = new Date()
       const result = await prisma.property.createMany({
         data: toCreate.map((data) => ({ ...data, userId })),
       })
       created = result.count
+
+      // createMany doesn't return the created rows' ids, so the just-created
+      // batch is identified by createdAt >= a timestamp captured immediately
+      // before the insert - cheap, and reliable for a single request's batch.
+      const createdProperties = await prisma.property.findMany({
+        where: { userId, createdAt: { gte: importStartedAt } },
+        select: { id: true },
+      })
+      if (createdProperties.length > 0) {
+        await prisma.propertyActivity.createMany({
+          data: createdProperties.map((property) => {
+            const draft = buildImportCompletedActivity()
+            return { propertyId: property.id, userId, eventType: draft.eventType, summary: draft.summary, metadata: draft.metadata as Prisma.InputJsonValue }
+          }),
+        })
+      }
     }
   } catch (error: unknown) {
     console.error('Unable to bulk-create properties', error)

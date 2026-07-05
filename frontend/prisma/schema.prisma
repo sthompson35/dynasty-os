@@ -52,6 +52,7 @@ model User {
   projects             Project[]
   buyers               Buyer[]
   dispositions         Disposition[]
+  propertyActivities   PropertyActivity[]
 
   @@index([email])
   @@schema("dynasty")
@@ -155,6 +156,7 @@ model Property {
   sellerNegotiations SellerNegotiation[]
   buyerMatches   BuyerMatch[]
   dispositionPackages DispositionPackage[]
+  activities     PropertyActivity[]
 
   @@index([userId])
   @@index([userId, status])
@@ -1072,5 +1074,28 @@ model ClosingTracker {
   @@index([userId])
   @@index([userId, status])
   @@map("closing_tracker")
+  @@schema("dynasty")
+}
+
+// Investment Intelligence Slice 3 ("what changed that I need to pay
+// attention to?"). A small, user-facing activity stream - not an audit log,
+// not event sourcing. Only records changes that affect an acquisition
+// decision (score/decision changes, enrichment completing, a price finally
+// being added, a new property arriving via import), not every CRUD write.
+model PropertyActivity {
+  id         String   @id @default(cuid())
+  propertyId String   @map("property_id")
+  userId     String   @map("user_id")
+  eventType  String   @map("event_type")
+  summary    String
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@index([propertyId])
+  @@map("property_activity")
   @@schema("dynasty")
 }

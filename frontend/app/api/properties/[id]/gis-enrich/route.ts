@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { serializeProperty } from '@/lib/property-utils'
 import { enrichPropertyGis } from '@/lib/gis-enrichment'
+import { buildGisEnrichedActivity, buildFemaUpdatedActivity, recordPropertyActivities } from '@/lib/property-activity'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,6 +46,11 @@ export async function POST(_request: Request, context: RouteContext) {
       where: { id: existingProperty.id },
       data: { ...result, gisEnrichedAt: new Date() },
     })
+
+    await recordPropertyActivities(prisma, property.id, userId, [
+      buildGisEnrichedActivity({ wasEnriched: Boolean(existingProperty.gisEnrichedAt), isEnriched: true }),
+      buildFemaUpdatedActivity({ previousFemaDisasterCount: existingProperty.femaDisasterCount, femaDisasterCount: property.femaDisasterCount }),
+    ])
 
     return NextResponse.json({ property: serializeProperty(property) })
   } catch (error: unknown) {

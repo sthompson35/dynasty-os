@@ -4,22 +4,33 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { buildPropertyMutationData, serializeProperty } from '@/lib/property-utils'
 import { enrichPropertyGis } from '@/lib/gis-enrichment'
+import { buildGisEnrichedActivity, buildFemaUpdatedActivity, recordPropertyActivities } from '@/lib/property-activity'
 
 export const dynamic = 'force-dynamic'
 
 const GIS_ENRICHMENT_BUDGET_MS = 5000
 
-async function tryEnrichNewProperty(property: { id: string; address: string; city: string; state: string; zip: string | null }) {
+async function tryEnrichNewProperty(property: { id: string; userId: string; address: string; city: string; state: string; zip: string | null }) {
   const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), GIS_ENRICHMENT_BUDGET_MS))
 
   try {
     const result = await Promise.race([enrichPropertyGis(property), timeout])
     if (!result) return property // timed out - leave unenriched, don't block creation
 
-    return await prisma.property.update({
+    const updated = await prisma.property.update({
       where: { id: property.id },
       data: { ...result, gisEnrichedAt: new Date() },
     })
+
+    // A brand-new property has no "previous" enrichment state by definition -
+    // this only ever fires the GIS_ENRICHED/FEMA_UPDATED activities, never
+    // PURCHASE_PRICE_ADDED (that's an update-time event, not a creation-time one).
+    await recordPropertyActivities(prisma, property.id, property.userId, [
+      buildGisEnrichedActivity({ wasEnriched: false, isEnriched: true }),
+      buildFemaUpdatedActivity({ previousFemaDisasterCount: null, femaDisasterCount: updated.femaDisasterCount }),
+    ])
+
+    return updated
   } catch (error: unknown) {
     console.error('GIS enrichment failed for new property', property.id, error)
     return property

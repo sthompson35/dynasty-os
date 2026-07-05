@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { scoreProperty } from "../lib/portfolio-scoring/score-property";
+import { scoreBatchAndRecordActivity } from "../lib/portfolio-scoring/score-and-record";
 
 const prisma = new PrismaClient();
 
@@ -23,48 +23,7 @@ async function main() {
     ...(limit ? { take: limit } : {}),
   });
 
-  let scored = 0;
-  const batchSize = 250;
-  for (let index = 0; index < properties.length; index += batchSize) {
-    const batch = properties.slice(index, index + batchSize);
-    await prisma.$transaction(batch.map((property) => {
-      const result = scoreProperty({ ...property, userId: user.id });
-
-      return prisma.dealScore.upsert({
-        where: {
-          userId_propertyId: {
-            userId: user.id,
-            propertyId: property.id,
-          },
-        },
-        update: {
-          dealScore: result.dealScore,
-          riskScore: result.riskScore,
-          arvConfidence: result.arvConfidence,
-          capitalScore: result.capitalScore,
-          strategy: result.strategy,
-          decision: result.decision,
-          scoreBucket: result.scoreBucket,
-          reasons: result.reasons,
-          inputs: result.inputs,
-        },
-        create: {
-          propertyId: property.id,
-          userId: user.id,
-          dealScore: result.dealScore,
-          riskScore: result.riskScore,
-          arvConfidence: result.arvConfidence,
-          capitalScore: result.capitalScore,
-          strategy: result.strategy,
-          decision: result.decision,
-          scoreBucket: result.scoreBucket,
-          reasons: result.reasons,
-          inputs: result.inputs,
-        },
-      });
-    }));
-    scored += batch.length;
-  }
+  const scored = await scoreBatchAndRecordActivity(prisma, properties, user.id);
 
   const [totalScores, decisions, buckets, top] = await Promise.all([
     prisma.dealScore.count({ where: { userId: user.id } }),

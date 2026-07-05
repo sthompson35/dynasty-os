@@ -11,7 +11,8 @@
     "test:portfolio-metrics": "tsx lib/portfolio-metrics.test.ts",
     "test:portfolio-scoring": "tsx lib/portfolio-scoring/score-property.test.ts",
     "test:next-best-action": "tsx lib/portfolio-scoring/next-best-action.test.ts",
-    "verify:predeploy": "npm run test:portfolio-metrics && npm run test:portfolio-scoring && npm run test:next-best-action && tsx scripts/verify_migration_state.ts --base-url=http://localhost:3000 && tsc --noEmit && next build"
+    "test:property-activity": "tsx lib/property-activity.test.ts",
+    "verify:predeploy": "npm run test:portfolio-metrics && npm run test:portfolio-scoring && npm run test:next-best-action && npm run test:property-activity && tsx scripts/verify_migration_state.ts --base-url=http://localhost:3000 && tsc --noEmit && next build"
   },
   "prisma": {
     "seed": "tsx --require dotenv/config scripts/safe-seed.ts"

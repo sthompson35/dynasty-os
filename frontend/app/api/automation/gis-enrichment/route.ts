@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { readAutomationBody, requireAutomationAuth } from '@/lib/automation-auth'
 import { enrichPropertyGis } from '@/lib/gis-enrichment'
+import { buildGisEnrichedActivity, buildFemaUpdatedActivity, recordPropertyActivities } from '@/lib/property-activity'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,10 +36,14 @@ export async function POST(request: Request) {
     const results = await Promise.allSettled(
       batch.map(async (property) => {
         const result = await enrichPropertyGis(property)
-        await prisma.property.update({
+        const updated = await prisma.property.update({
           where: { id: property.id },
           data: { ...result, gisEnrichedAt: new Date() },
         })
+        await recordPropertyActivities(prisma, property.id, property.userId, [
+          buildGisEnrichedActivity({ wasEnriched: false, isEnriched: true }),
+          buildFemaUpdatedActivity({ previousFemaDisasterCount: property.femaDisasterCount, femaDisasterCount: updated.femaDisasterCount }),
+        ])
       })
     )
     results.forEach((result, batchIndex) => {

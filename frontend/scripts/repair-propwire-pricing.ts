@@ -13,6 +13,7 @@ import fs from "fs";
 import path from "path";
 import { parse } from "csv-parse/sync";
 import { PrismaClient } from "@prisma/client";
+import { buildPurchasePriceActivity, recordPropertyActivity } from "../lib/property-activity";
 
 type CsvRow = Record<string, string | undefined>;
 
@@ -137,6 +138,11 @@ async function main() {
       await prisma.property.update({
         where: { id: property.id },
         data: { purchasePrice, notes },
+      });
+      await recordPropertyActivity(prisma, {
+        propertyId: property.id,
+        userId: user.id,
+        draft: buildPurchasePriceActivity({ previousPurchasePrice: null, purchasePrice: Number(purchasePrice) }),
       });
     }
     updated += 1;

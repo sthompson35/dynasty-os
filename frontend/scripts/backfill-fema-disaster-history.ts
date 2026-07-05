@@ -3,6 +3,7 @@
 // each row instead of re-running Census/flood/zoning lookups.
 import { PrismaClient } from "@prisma/client";
 import { lookupFemaDisasterHistory } from "../lib/gis-enrichment";
+import { buildFemaUpdatedActivity, recordPropertyActivities } from "../lib/property-activity";
 
 const prisma = new PrismaClient();
 const CONCURRENCY = 5;
@@ -10,7 +11,7 @@ const CONCURRENCY = 5;
 async function main() {
   const properties = await prisma.property.findMany({
     where: { censusGeoid: { not: null }, femaDisasterCount: null },
-    select: { id: true, censusGeoid: true },
+    select: { id: true, userId: true, censusGeoid: true },
   });
 
   let updated = 0;
@@ -29,6 +30,9 @@ async function main() {
             femaDisasterSource: result?.femaDisasterSource ?? null,
           },
         });
+        await recordPropertyActivities(prisma, property.id, property.userId, [
+          buildFemaUpdatedActivity({ previousFemaDisasterCount: null, femaDisasterCount: result?.femaDisasterCount ?? null }),
+        ]);
       })
     );
     results.forEach((result, batchIndex) => {

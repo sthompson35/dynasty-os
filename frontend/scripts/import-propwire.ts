@@ -1,7 +1,8 @@
 import fs from "fs";
 import path from "path";
 import { parse } from "csv-parse/sync";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
+import { buildImportCompletedActivity } from "../lib/property-activity";
 
 type CsvRow = Record<string, string | undefined>;
 
@@ -230,8 +231,28 @@ async function main() {
   const batchSize = 500;
   for (let index = 0; index < data.length; index += batchSize) {
     const batch = data.slice(index, index + batchSize);
+    const batchStartedAt = new Date();
     const result = await prisma.property.createMany({ data: batch });
     inserted += result.count;
+
+    // createMany doesn't return created ids - identify the just-created rows
+    // by createdAt >= a timestamp captured immediately before the insert.
+    const createdProperties = await prisma.property.findMany({
+      where: { userId: user.id, createdAt: { gte: batchStartedAt } },
+      select: { id: true },
+    });
+    if (createdProperties.length > 0) {
+      const draft = buildImportCompletedActivity();
+      await prisma.propertyActivity.createMany({
+        data: createdProperties.map((property) => ({
+          propertyId: property.id,
+          userId: user.id,
+          eventType: draft.eventType,
+          summary: draft.summary,
+          metadata: draft.metadata as Prisma.InputJsonValue,
+        })),
+      });
+    }
   }
 
   console.log(JSON.stringify({

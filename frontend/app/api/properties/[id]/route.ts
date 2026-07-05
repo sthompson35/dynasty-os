@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { buildPropertyMutationData, serializeProperty } from '@/lib/property-utils'
+import { buildPropertyMutationData, serializeProperty, toNumber } from '@/lib/property-utils'
+import { buildPurchasePriceActivity, recordPropertyActivity } from '@/lib/property-activity'
 
 export const dynamic = 'force-dynamic'
 
@@ -76,7 +77,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const existingProperty = await prisma.property.findFirst({
       where: { id, userId },
-      select: { id: true },
+      select: { id: true, purchasePrice: true },
     })
 
     if (!existingProperty?.id) {
@@ -86,6 +87,15 @@ export async function PATCH(request: Request, context: RouteContext) {
     const property = await prisma.property.update({
       where: { id: existingProperty.id },
       data,
+    })
+
+    await recordPropertyActivity(prisma, {
+      propertyId: property.id,
+      userId,
+      draft: buildPurchasePriceActivity({
+        previousPurchasePrice: toNumber(existingProperty.purchasePrice),
+        purchasePrice: toNumber(property.purchasePrice),
+      }),
     })
 
     return NextResponse.json({ property: serializeProperty(property) })

@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { enrichPropertyGis } from "../lib/gis-enrichment";
+import { buildGisEnrichedActivity, buildFemaUpdatedActivity, recordPropertyActivities } from "../lib/property-activity";
 
 const prisma = new PrismaClient();
 const CONCURRENCY = 5;
@@ -32,10 +33,14 @@ async function main() {
     const results = await Promise.allSettled(
       batch.map(async (property) => {
         const result = await enrichPropertyGis(property);
-        await prisma.property.update({
+        const updated = await prisma.property.update({
           where: { id: property.id },
           data: { ...result, gisEnrichedAt: new Date() },
         });
+        await recordPropertyActivities(prisma, property.id, property.userId, [
+          buildGisEnrichedActivity({ wasEnriched: Boolean(property.gisEnrichedAt), isEnriched: true }),
+          buildFemaUpdatedActivity({ previousFemaDisasterCount: property.femaDisasterCount, femaDisasterCount: updated.femaDisasterCount }),
+        ]);
       })
     );
     results.forEach((result, batchIndex) => {

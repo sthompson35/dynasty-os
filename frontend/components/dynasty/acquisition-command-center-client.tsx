@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, BarChart3, ClipboardList, Download, FileText, Filter, HandCoins, Home, Loader2, Mail, MessageSquare, Phone, Radar, RefreshCcw, Search, Send, SkipForward, Target, UserRound } from 'lucide-react'
+import { AlertTriangle, BarChart3, ClipboardList, Download, FileText, Filter, HandCoins, History, Home, Loader2, Mail, MessageSquare, Phone, Radar, RefreshCcw, Search, Send, SkipForward, Target, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -108,6 +108,20 @@ type CampaignPayload = {
       zip: string | null
     } | null
   }[]
+}
+
+type ActivityItemPayload = {
+  id: string
+  propertyId: string
+  eventType: string
+  summary: string
+  createdAt: string
+  address: string | null
+  count: number
+}
+
+type ActivityPayload = {
+  items: ActivityItemPayload[]
 }
 
 type OwnerIntelligencePayload = {
@@ -394,6 +408,20 @@ function countSkipTrace(items: { recommendedChannel: string; count: number }[], 
   return items.find((item) => item.recommendedChannel === key)?.count ?? 0
 }
 
+// Only ever called client-side, after the activity feed loads via useEffect -
+// never during the initial (server-rendered) paint, so there's no risk of the
+// SSR/CSR clock-skew hydration mismatch a relative-time computation would
+// otherwise create.
+function relativeTime(iso: string): string {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000))
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.round(hours / 24)
+  return `${days}d ago`
+}
+
 function toneForDecision(decision: string) {
   if (decision === 'GO') return 'bg-emerald-100 text-emerald-800'
   if (decision === 'RENEGOTIATE') return 'bg-amber-100 text-amber-800'
@@ -448,6 +476,9 @@ export function AcquisitionCommandCenterClient() {
 
   const [negotiations, setNegotiations] = useState<SellerNegotiationsPayload | null>(null)
   const [negotiationsLoading, setNegotiationsLoading] = useState(true)
+
+  const [activity, setActivity] = useState<ActivityPayload | null>(null)
+  const [activityLoading, setActivityLoading] = useState(true)
   const [negotiationFormOfferId, setNegotiationFormOfferId] = useState<string | null>(null)
   const [negotiationForm, setNegotiationForm] = useState<NegotiationForm>(emptyNegotiationForm())
   const [negotiationSubmitting, setNegotiationSubmitting] = useState(false)
@@ -503,6 +534,18 @@ export function AcquisitionCommandCenterClient() {
       setError(prev => prev ?? String(payload.error ?? 'Unable to load campaign batches.'))
     }
     setCampaignLoading(false)
+  }, [])
+
+  const loadActivity = useCallback(async () => {
+    setActivityLoading(true)
+    const response = await fetch('/api/property-activity', { cache: 'no-store' })
+    const payload = await safeJson(response)
+    if (response.ok) {
+      setActivity(payload as unknown as ActivityPayload)
+    } else {
+      setError(prev => prev ?? String(payload.error ?? 'Unable to load recent activity.'))
+    }
+    setActivityLoading(false)
   }, [])
 
   const loadOwners = useCallback(async () => {
@@ -1000,7 +1043,8 @@ export function AcquisitionCommandCenterClient() {
     void loadFollowups()
     void loadOffers()
     void loadNegotiations()
-  }, [loadQueue, loadCampaigns, loadOwners, loadSkipTrace, loadOwnershipResearch, loadLeadIntake, loadConversations, loadFollowups, loadOffers, loadNegotiations])
+    void loadActivity()
+  }, [loadQueue, loadCampaigns, loadOwners, loadSkipTrace, loadOwnershipResearch, loadLeadIntake, loadConversations, loadFollowups, loadOffers, loadNegotiations, loadActivity])
 
   const buckets = summary?.buckets ?? []
   const decisions = summary?.decisions ?? []
@@ -1228,6 +1272,40 @@ export function AcquisitionCommandCenterClient() {
                     </div>
                   </div>
                 </Link>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mb-5 border-0 bg-[#F8F7F2] shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 font-display text-2xl text-[var(--dynasty-navy)]">
+            <History className="h-5 w-5 text-[var(--dynasty-gold)]" /> Recent changes
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {activityLoading ? (
+            <div className="flex items-center gap-2 rounded-lg bg-white/75 p-4 text-sm text-[var(--dynasty-black)]/55"><Loader2 className="h-4 w-4 animate-spin" /> Loading recent changes...</div>
+          ) : (activity?.items.length ?? 0) === 0 ? (
+            <p className="rounded-lg bg-white/75 px-3 py-3 text-sm text-[var(--dynasty-black)]/60">Nothing has changed since the portfolio was last scored or enriched.</p>
+          ) : (
+            <div className="divide-y divide-[var(--dynasty-tan)]/20">
+              {activity!.items.map((item) => {
+                const body = (
+                  <div className="flex items-start justify-between gap-3 py-2.5">
+                    <div className="min-w-0">
+                      {item.address && <p className="truncate text-xs font-bold text-[var(--dynasty-navy)]">{item.address}</p>}
+                      <p className="mt-0.5 text-sm text-[var(--dynasty-black)]/70">{item.summary}</p>
+                    </div>
+                    <span className="flex-shrink-0 text-xs text-[var(--dynasty-black)]/40">{relativeTime(item.createdAt)}</span>
+                  </div>
+                )
+                return item.propertyId ? (
+                  <Link key={item.id} href={`/properties/${item.propertyId}`} className="block px-1 transition hover:bg-white/60">{body}</Link>
+                ) : (
+                  <div key={item.id} className="px-1">{body}</div>
                 )
               })}
             </div>
