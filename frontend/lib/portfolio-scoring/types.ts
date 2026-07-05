@@ -24,6 +24,9 @@ export type PortfolioScoringProperty = {
   holdingCosts: unknown
   closingCosts: unknown
   notes: string | null
+  floodZone: string | null
+  femaDisasterCount: number | null
+  femaLastDisasterType: string | null
 }
 
 export type PortfolioScoreResult = {
@@ -46,5 +49,6 @@ export type PortfolioScoreResult = {
     vacant: boolean
     absentee: boolean
     ownerOccupied: boolean
+    floodZone: string | null
   }
 }

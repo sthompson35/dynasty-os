@@ -29,6 +29,9 @@ function makeProperty(overrides: Partial<PortfolioScoringProperty>): PortfolioSc
     holdingCosts: null,
     closingCosts: null,
     notes: null,
+    floodZone: null,
+    femaDisasterCount: null,
+    femaLastDisasterType: null,
     ...overrides,
   }
 }
@@ -115,6 +118,49 @@ test('equity spread uses purchase price + repairs, not purchase price alone', ()
     repairCosts: 10000, // all-in basis 30,000 -> genuinely high equity (85%)
   }))
   assert.ok(sameCheapPurchaseCheapRepair.reasons.includes('High equity spread'))
+})
+
+test('high county-wide FEMA disaster count alone does not raise risk when flood zone is minimal (Zone X)', () => {
+  const property = makeProperty({
+    arv: 300000,
+    purchasePrice: 150000,
+    repairCosts: 20000,
+    floodZone: 'X',
+    femaDisasterCount: 40, // county has extensive disaster history
+  })
+
+  const withoutDisasterHistory = scoreProperty(makeProperty({
+    arv: 300000,
+    purchasePrice: 150000,
+    repairCosts: 20000,
+    floodZone: 'X',
+    femaDisasterCount: null,
+  }))
+
+  const result = scoreProperty(property)
+  assert.equal(result.riskScore, withoutDisasterHistory.riskScore, 'a high county disaster count must not change risk score when the property itself is outside the flood hazard area')
+  assert.ok(result.reasons.some((r) => /outside fema flood hazard area/i.test(r)))
+})
+
+test('a property-specific high-risk flood zone raises risk even with a low county-wide disaster count', () => {
+  const lowDisasterCount = scoreProperty(makeProperty({
+    arv: 300000,
+    purchasePrice: 150000,
+    repairCosts: 20000,
+    floodZone: 'AE',
+    femaDisasterCount: 3,
+  }))
+
+  const noFloodZoneData = scoreProperty(makeProperty({
+    arv: 300000,
+    purchasePrice: 150000,
+    repairCosts: 20000,
+    floodZone: null,
+    femaDisasterCount: 3,
+  }))
+
+  assert.ok(lowDisasterCount.riskScore > noFloodZoneData.riskScore, 'Zone AE must raise risk regardless of a low county disaster count')
+  assert.ok(lowDisasterCount.reasons.some((r) => /fema high-risk flood zone \(ae\)/i.test(r)))
 })
 
 if (failed) {

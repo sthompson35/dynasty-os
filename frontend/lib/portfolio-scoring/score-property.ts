@@ -5,6 +5,15 @@ function clamp(value: number, min = 0, max = 100): number {
   return Math.min(max, Math.max(min, Math.round(value)))
 }
 
+// FEMA Special Flood Hazard Area zone codes. VE is coastal high-velocity
+// (most severe); the rest are the standard 100-year floodplain designations.
+const SEVERE_FLOOD_ZONES = new Set(['VE'])
+const HIGH_RISK_FLOOD_ZONES = new Set(['A', 'AE', 'AH', 'AO', 'AR', 'V'])
+// Rough threshold for "notably above portfolio average" (observed avg ~25,
+// max 40) - informational only, see note at the call site on why this never
+// moves the score.
+const NOTABLE_DISASTER_COUNT = 30
+
 function textIncludes(notes: string, pattern: RegExp): boolean {
   return pattern.test(notes.toLowerCase())
 }
@@ -95,6 +104,26 @@ export function scoreProperty(property: PortfolioScoringProperty): PortfolioScor
   if (!property.city || !property.state) riskScore += 20
   if (basisExceedsArv) { riskScore += 25; reasons.push('All-in basis exceeds ARV - deal loses money before financing') }
 
+  // Property-specific flood zone is the primary geographic risk signal -
+  // county-wide FEMA disaster counts are informational context only (see
+  // reason string below) and never move the score. A county with decades of
+  // severe-storm/tornado/pandemic declarations does not make an individual
+  // Zone X property risky, and a low county count does not make a Zone AE
+  // property safe.
+  const floodZone = property.floodZone
+  if (floodZone && SEVERE_FLOOD_ZONES.has(floodZone)) {
+    riskScore += 20
+    reasons.push(`Property in FEMA severe flood zone (${floodZone})`)
+  } else if (floodZone && HIGH_RISK_FLOOD_ZONES.has(floodZone)) {
+    riskScore += 15
+    reasons.push(`Property in FEMA high-risk flood zone (${floodZone})`)
+  } else if (floodZone === 'X') {
+    reasons.push('Outside FEMA flood hazard area (Zone X)')
+  }
+  if (property.femaDisasterCount !== null && property.femaDisasterCount >= NOTABLE_DISASTER_COUNT) {
+    reasons.push(`County has ${property.femaDisasterCount} FEMA disaster declarations (context only, all hazard types - not a flood-specific signal)`)
+  }
+
   const arvConfidence = clamp((estimatedValue ? 58 : 20) + (property.sqft ? 8 : 0) + (property.yearBuilt ? 5 : 0) + (property.bedrooms !== null ? 5 : 0) + (property.lotSize ? 4 : 0) - (property.propertyType === 'land' ? 8 : 0))
   const capitalScore = clamp(100 - riskScore + (hasVerifiedPurchasePrice && equityPct >= 0.4 ? 10 : 0) - (totalBasis > 0 && estimatedValue > 0 && totalBasis > estimatedValue * 0.8 ? 12 : 0))
   const strategy = chooseStrategy(property, equitySpread, equityPct, vacant)
@@ -132,6 +161,7 @@ export function scoreProperty(property: PortfolioScoringProperty): PortfolioScor
       vacant,
       absentee,
       ownerOccupied,
+      floodZone,
     },
   }
 }
