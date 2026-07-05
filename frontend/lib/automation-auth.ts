@@ -6,7 +6,7 @@ type AutomationAuthResult =
   | { ok: false; response: NextResponse }
 
 function automationSecret() {
-  return process.env.AUTOMATION_SECRET || process.env.WEBHOOK_SECRET || ''
+  return process.env.AUTOMATION_SECRET || ''
 }
 
 function timingSafeEqual(left: string, right: string) {
