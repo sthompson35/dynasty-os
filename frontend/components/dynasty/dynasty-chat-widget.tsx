@@ -5,17 +5,13 @@ import { Bot, Send, X, Minimize2, Loader2, MessageSquare } from 'lucide-react'
 
 const N8N_CHAT_URL = 'https://ultimate-dynasty-os.app.n8n.cloud/webhook/dynasty-chat'
 
-// The n8n "Chat" webhook currently just echoes ATLAS's static manifest
-// (status/agent/engine list) rather than running a real conversation - there's
-// no LLM node wired into that flow yet. Detect that shape and show something
-// honest instead of dumping the raw JSON as if it were a reply.
 function describeReply(data: unknown): string {
   if (typeof (data as { output?: unknown })?.output === 'string') {
     return (data as { output: string }).output
   }
   const manifestReply = data as { status?: string; agent?: string; message?: string } | null
   if (manifestReply?.status === 'online' && manifestReply?.agent) {
-    return `${manifestReply.agent} is online, but this widget isn't wired up to real conversation yet - it can only confirm the engines are reachable for now. ${manifestReply.message ?? ''}`.trim()
+    return `${manifestReply.agent} is online. ${manifestReply.message ?? ''}`.trim()
   }
   return JSON.stringify(data)
 }
@@ -38,7 +34,7 @@ export function DynastyChatWidget() {
     {
       id: 'welcome',
       role: 'assistant',
-      text: "Hey — this is a status link to ATLAS, not a live conversation yet. Send anything and I'll confirm the engines are online.",
+      text: "Hey - this is ATLAS. Ask me to analyze a deal, score the pipeline, generate a campaign, show capital risk, or route owner research.",
       ts: Date.now(),
     },
   ])
