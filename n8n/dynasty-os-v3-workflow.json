@@ -195,7 +195,7 @@
           "values": [
             {
               "role": "system",
-              "content": "You are Dynasty OS â€” Shylow Thompson's real estate investment intelligence system. Write concise, action-oriented daily briefs. Use bullet points. Flag anything requiring immediate attention with ðŸš¨."
+              "content": "You are Dynasty OS's daily brief writer for Shylow Thompson LLC (Missouri buy box). Summarize the day's lead, deal, and capital data pulled from the live command-center path (frontend/app/command-center/page.tsx and the /api/capital, /api/leads, /api/deal endpoints) - not the unwired dynasty_os/command_center/dashboard.py scaffolding, which returns hardcoded placeholders regardless of input. Write concise, action-oriented daily briefs. Use bullet points. Flag anything requiring immediate attention with 🚨. Ground every figure in the pulled lead/deal/capital data - do not state a trend or projection the data doesn't support."
             },
             {
               "role": "user",
@@ -636,7 +636,7 @@
         420
       ],
       "parameters": {
-        "jsCode": "const route = $('Chat: Intent Classifier').item.json || {};\nconst intent = route.intent || 'STATUS';\nconst sessionId = route.sessionId || null;\nconst data = $json || {};\n\nfunction firstNumber(...values) {\n  for (const value of values) {\n    const number = Number(value);\n    if (Number.isFinite(number)) return number;\n  }\n  return null;\n}\n\nfunction compact(value) {\n  if (value == null) return '';\n  if (typeof value === 'string') return value;\n  return JSON.stringify(value, null, 2).slice(0, 1200);\n}\n\nlet output = '';\nconst statusCode = Number(data.statusCode || data.status || data.response?.status || 0);\nconst errorMessage = data.error?.message || data.error || data.message || data.detail || '';\nif (statusCode >= 400 || data.error) {\n  const details = compact(errorMessage);\n  if (details.includes('127.0.0.1') || details.includes('localhost') || details.includes('SsrfBlockedIpError')) {\n    output = intent.replaceAll('_', ' ') + ' dispatch is live, but n8n Cloud cannot reach the local PropertyOS web URL. Set a public PropertyOS URL or expose this engine on the Railway API.';\n  } else if (statusCode === 401 || details.toLowerCase().includes('authentication required') || details.toLowerCase().includes('unauthorized')) {\n    output = intent.replaceAll('_', ' ') + ' dispatch reached the public PropertyOS route, but that route requires authenticated access. Add a service auth path or expose a backend automation route for n8n.';\n  } else {\n    output = intent.replaceAll('_', ' ') + ' dispatch reached the target route but returned ' + (statusCode || 'an error') + (details ? ': ' + details : '.');\n  }\n  return [{ json: { output, intent, sessionId, raw: data } }];\n}\n\nif (intent === 'OPEN_CONVERSATION') {\n  output = data.output || data.text || 'Open conversation fallback is online. The dispatcher can route commands now; connect the n8n OpenAI credential to enable full LLM conversation.';\n} else if (intent === 'DEAL_ANALYSIS') {\n  const decision = data.decision || data.recommendation || data.status || 'analysis returned';\n  const score = firstNumber(data.dealScore, data.deal_score, data.score, data.riskScore, data.risk_score);\n  output = 'Deal Engine dispatch complete. Result: ' + decision + (score === null ? '' : ' | Score: ' + score) + '.';\n  if (data.summary || data.narrative) output += ' ' + (data.summary || data.narrative);\n} else if (intent === 'PORTFOLIO_SCORING') {\n  const count = firstNumber(data.scored, data.generated, data.count, data.total, data.scoresCreated);\n  output = 'Portfolio Scoring dispatch complete' + (count === null ? '' : ' for ' + count + ' records') + '.';\n} else if (intent === 'CAPITAL_RISK') {\n  const available = firstNumber(data.availableCapital, data.available_capital, data.available, data.cashAvailable);\n  const deployed = firstNumber(data.deployedCapital, data.deployed_capital, data.deployed);\n  output = 'Capital Engine dispatch complete.';\n  if (available !== null) output += ' Available capital: ' + available + '.';\n  if (deployed !== null) output += ' Deployed capital: ' + deployed + '.';\n} else if (intent === 'CAMPAIGN') {\n  const items = firstNumber(data.itemsCreated, data.campaignItemsCreated, data.generated, data.count, data.totalItems);\n  const batches = firstNumber(data.batchesCreated, data.totalBatches, data.batchCount);\n  output = 'Campaign Engine dispatch complete' + (items === null ? '' : ': ' + items + ' items') + (batches === null ? '' : ' across ' + batches + ' batches') + '.';\n} else if (intent === 'OWNER_SKIP_TRACE') {\n  const tasks = firstNumber(data.tasksCreated, data.generated, data.count, data.total, data.queueCount);\n  output = 'Ownership Research dispatch complete' + (tasks === null ? '' : ': ' + tasks + ' tasks ready') + '.';\n} else {\n  const agent = data.agent || data.primaryAgent || 'ATLAS';\n  const status = data.status || 'online';\n  const engines = Array.isArray(data.engines) ? data.engines.length : firstNumber(data.engineCount, data.enginesOnline);\n  output = agent + ' status: ' + status + '.' + (engines === null ? '' : ' Engines visible: ' + engines + '.');\n  if (data.message) output += ' ' + data.message;\n}\n\nreturn [{ json: { output, intent, sessionId, raw: data } }];"
+        "jsCode": "const route = $('Chat: Intent Classifier').item.json || {};\nconst intent = route.intent || 'STATUS';\nconst sessionId = route.sessionId || null;\nconst data = $json || {};\n\nfunction firstNumber(...values) {\n  for (const value of values) {\n    const number = Number(value);\n    if (Number.isFinite(number)) return number;\n  }\n  return null;\n}\n\nfunction compact(value) {\n  if (value == null) return '';\n  if (typeof value === 'string') return value;\n  return JSON.stringify(value, null, 2).slice(0, 1200);\n}\n\nlet output = '';\nconst statusCode = Number(data.statusCode || data.status || data.response?.status || 0);\nconst errorMessage = data.error?.message || data.error || data.message || data.detail || '';\nif (statusCode >= 400 || data.error) {\n  const details = compact(errorMessage);\n  if (details.includes('127.0.0.1') || details.includes('localhost') || details.includes('SsrfBlockedIpError')) {\n    output = intent.replaceAll('_', ' ') + ' dispatch is live, but n8n Cloud cannot reach the local PropertyOS web URL. Set a public PropertyOS URL or expose this engine on the Railway API.';\n  } else if (statusCode === 401 || details.toLowerCase().includes('authentication required') || details.toLowerCase().includes('unauthorized')) {\n    output = intent.replaceAll('_', ' ') + ' dispatch reached the public PropertyOS route, but that route requires authenticated access. Add a service auth path or expose a backend automation route for n8n.';\n  } else {\n    output = intent.replaceAll('_', ' ') + ' dispatch reached the target route but returned ' + (statusCode || 'an error') + (details ? ': ' + details : '.');\n  }\n  return [{ json: { output, intent, sessionId, raw: data } }];\n}\n\nif (intent === 'OPEN_CONVERSATION') {\n  output = data.output || data.text || 'Open conversation fallback is online. The dispatcher can route commands now; connect the n8n OpenAI credential to enable full LLM conversation.';\n} else if (intent === 'DEAL_ANALYSIS') {\n  // Real shape is DynastyAIResponse (backend/app/dynasty_ai/types.py): atlas.action,\n  // atlas.confidence, atlas.reason, scorecard.dynasty_fit_score, projected_profit,\n  // projected_roi, total_investment - not decision/dealScore/summary, which never existed.\n  const atlas = data.atlas || {};\n  const totalInvestment = firstNumber(data.total_investment);\n  const hasRealDealData = totalInvestment !== null && totalInvestment > 0;\n\n  if (!hasRealDealData) {\n    output = 'Deal Engine dispatch complete, but this query had no purchase price or ARV attached, so ATLAS scored a blank property. Open a specific deal from the Deals page for a real analysis, or include the numbers in your message.';\n  } else {\n    const confidence = firstNumber(atlas.confidence);\n    const dynastyFit = firstNumber(data.scorecard?.dynasty_fit_score);\n    const projectedProfit = firstNumber(data.projected_profit);\n    const projectedRoi = firstNumber(data.projected_roi);\n    output = 'Deal Engine dispatch complete.';\n    if (atlas.action) output += ' Recommendation: ' + atlas.action + (confidence === null ? '' : ' (confidence ' + confidence + '%)') + '.';\n    if (dynastyFit !== null) output += ' Dynasty fit score: ' + dynastyFit + '/100.';\n    if (projectedProfit !== null) output += ' Projected profit: $' + projectedProfit.toLocaleString() + '.';\n    if (projectedRoi !== null) output += ' Projected ROI: ' + projectedRoi.toFixed(1) + '%.';\n    if (Array.isArray(atlas.reason) && atlas.reason.length) output += ' ' + atlas.reason.join(' ');\n  }\n} else if (intent === 'PORTFOLIO_SCORING') {\n  const count = firstNumber(data.scored, data.generated, data.count, data.total, data.scoresCreated);\n  output = 'Portfolio Scoring dispatch complete' + (count === null ? '' : ' for ' + count + ' records') + '.';\n} else if (intent === 'CAPITAL_RISK') {\n  // Real shape is GET /api/capital/available (backend/app/api/capital.py):\n  // { total_available, investor_count, investors }. There is no \"deployed\"\n  // figure in this response - that lives behind a separate /deployed route\n  // this dispatch never calls, so it's dropped rather than faked.\n  const available = firstNumber(data.total_available);\n  const investorCount = firstNumber(data.investor_count);\n  output = 'Capital Engine dispatch complete.';\n  if (available !== null) output += ' Available capital: $' + Math.round(available).toLocaleString() + '.';\n  if (investorCount !== null) output += ' Active investors: ' + investorCount + '.';\n} else if (intent === 'CAMPAIGN') {\n  // Real shape is POST /api/automation/campaign-batches: { generated, batchIds, totalItems }.\n  // batchesCreated/totalBatches/batchCount never existed - batch count is batchIds.length.\n  const items = firstNumber(data.itemsCreated, data.campaignItemsCreated, data.generated, data.count, data.totalItems);\n  const batches = Array.isArray(data.batchIds) ? data.batchIds.length : firstNumber(data.batchesCreated, data.totalBatches, data.batchCount);\n  output = 'Campaign Engine dispatch complete' + (items === null ? '' : ': ' + items + ' items') + (batches ? ' across ' + batches + ' batches' : '') + '.';\n} else if (intent === 'OWNER_SKIP_TRACE') {\n  const tasks = firstNumber(data.tasksCreated, data.generated, data.count, data.total, data.queueCount);\n  output = 'Ownership Research dispatch complete' + (tasks === null ? '' : ': ' + tasks + ' tasks ready') + '.';\n} else {\n  const agent = data.agent || data.primaryAgent || 'ATLAS';\n  const status = data.status || 'online';\n  const engines = Array.isArray(data.engines) ? data.engines.length : firstNumber(data.engineCount, data.enginesOnline);\n  output = agent + ' status: ' + status + '.' + (engines === null ? '' : ' Engines visible: ' + engines + '.');\n  if (data.message) output += ' ' + data.message;\n}\n\nreturn [{ json: { output, intent, sessionId, raw: data } }];"
       }
     },
     {
@@ -652,7 +652,7 @@
         "agentType": "toolsAgent",
         "text": "={{ $json.chatInput || $json.message || \"\" }}",
         "options": {
-          "systemMessage": "You are Dynasty OS â€” Shylow Thompson's real estate investment intelligence system. You analyze deals, score leads, evaluate capital stacks, and provide strategic recommendations for flips, build-to-sell, and rental exits in Atlanta and surrounding markets. Be concise, data-driven, and decisive. Always state GO or NO-GO with supporting numbers when analyzing deals.",
+          "systemMessage": "You are ATLAS, Dynasty OS's acquisition-scoring orchestrator for Shylow Thompson LLC (backend/app/dynasty_ai/core.py, live via POST /api/dynasty-ai/analyze-deal). Buy box: Missouri only, minimum ARV $180,000, minimum profit $25,000, minimum ROI 25%, preferred rehab Light or Medium (dynasty_ai/agent_manifest.json).\n\nYou route through an 11-engine pipeline: Lead -> Intake -> Underwriting -> Strategy -> Deal -> Rehab -> Capital -> Investor -> Disposition -> Operations -> Portfolio Dashboard. Several stages have multiple independent, disagreeing implementations in this codebase (at least 5 separate exit-ranking models, 3 separate risk-scoring formulas, 2 separate MAO formulas). When a tool result cites a number, state which engine/formula produced it rather than presenting it as the only answer.\n\nUse the available tools to pull real numbers before answering. Be concise, data-driven, and decisive. When analyzing a deal, state GO / GO_WITH_CONDITIONS / RENEGOTIATE / HOLD / KILL with the specific numbers behind it (MAO, ROI, risk level). Never fabricate a number a tool didn't return. Never invent comps, repair costs, lender terms, or investor facts a tool didn't return - if a required input is missing, say so and ask for it rather than guessing. Screen strictly on property and deal economics; never use seller, buyer, or neighborhood characteristics as a basis for excluding or deprioritizing a deal.",
           "returnIntermediateSteps": false
         }
       }
@@ -689,14 +689,12 @@
         560
       ],
       "parameters": {
-        "name": "flip_analysis",
-        "description": "Analyze a fix-and-flip deal. Required JSON body fields: purchase_price (number), repair_budget (number), arv (number). Optional: closing_costs, holding_costs, selling_costs. Returns decision (GO/NO-GO), profit, and ROI.",
         "method": "POST",
         "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/investor/flip-analysis",
+        "toolDescription": "Runs a flip/wholesale/BRRRR/rental exit analysis for a property (live endpoint, backend/app/main.py). Provide purchase_price, repair_budget, arv, closing_costs, holding_costs, and selling_costs; returns profit and ROI per exit strategy. This is one of at least 5 independent exit-ranking models in this codebase (dynasty_ai/strategy_engine/SYSTEM_PROMPT.md) - state that this result is from the flip-analysis endpoint specifically.",
         "sendBody": true,
         "contentType": "json",
-        "jsonBody": "={purchase_price: {purchase_price}, repair_budget: {repair_budget}, arv: {arv}, closing_costs: {closing_costs}, holding_costs: {holding_costs}, selling_costs: {selling_costs}}",
-        "options": {}
+        "jsonBody": "={{ JSON.stringify({ purchase_price: $fromAI('purchase_price','Purchase or asking price','number'), repair_budget: $fromAI('repair_budget','Estimated repair cost','number'), arv: $fromAI('arv','After-repair value','number'), closing_costs: $fromAI('closing_costs','Estimated closing costs','number'), holding_costs: $fromAI('holding_costs','Estimated holding costs','number'), selling_costs: $fromAI('selling_costs','Estimated selling costs','number') }) }}"
       }
     },
     {
@@ -709,11 +707,12 @@
         560
       ],
       "parameters": {
-        "name": "lead_score",
-        "description": "Look up a lead's current score and grade. Provide lead_id (UUID). Returns the lead record including score (0-100), grade (A-D), status, and scoring breakdown.",
-        "method": "GET",
-        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/leads/{lead_id}",
-        "options": {}
+        "method": "POST",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/leads/{{ $fromAI('lead_id','The lead ID (UUID) to score') }}/score",
+        "toolDescription": "Scores a lead using the live flat-sum formula (backend/app/api/leads.py): motivation+equity+condition+timeline+price_expectation, clamped 0-100, grade A>=80/B>=60/C>=40/D. This WRITES the score to lead_scoring and updates the lead’s aggregate score - only call it when you actually intend to persist a score, not to preview one. Provide lead_id and all 5 sub-scores (0-100 each).",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ motivation_score: $fromAI('motivation_score','0-100 seller motivation score','number'), equity_score: $fromAI('equity_score','0-100 equity score','number'), condition_score: $fromAI('condition_score','0-100 property condition score','number'), timeline_score: $fromAI('timeline_score','0-100 seller timeline urgency score','number'), price_expectation_score: $fromAI('price_expectation_score','0-100 price expectation alignment score','number') }) }}"
       }
     },
     {
@@ -726,11 +725,9 @@
         560
       ],
       "parameters": {
-        "name": "capital_stack",
-        "description": "Get current Dynasty capital position â€” available funds, deployed capital, and investor commitments.",
         "method": "GET",
         "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/capital/available",
-        "options": {}
+        "toolDescription": "Returns total available capital and active investor count (live endpoint, backend/app/api/capital.py: sum of available_capital across investors in Warm-or-better status). Does not include deployed capital or liquidity/concentration risk - those require the separate /deployed and /returns endpoints, which are not wired as tools here."
       }
     },
     {
@@ -743,14 +740,12 @@
         560
       ],
       "parameters": {
-        "name": "build_analysis",
-        "description": "Calculate the optimal offer price for a Land + Build deal. Required fields: property_id (string), arv (number). Optional: repair_cost (default 0), exit_strategy (default 'Flip'), target_roi (default 0.20), holding_cost_monthly (default 0), holding_months (default 12). Returns the recommended offer and supporting metrics.",
         "method": "POST",
-        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/land-build/offer-calculation",
+        "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/land-build/analyze",
+        "toolDescription": "Runs the full Land + Build underwriting/DD analysis (LandBuild_UW_DDEngine, backend/app/api/land_build_uw_dd.py - the most complete underwriting implementation in this codebase, fully live-wired). Provide property_id, address, city, state, purchase_price, and arv_land at minimum; returns sale scenario, rental backstop, exit strategy ranking, DD checklist, buy-box match, and offer calculation.",
         "sendBody": true,
         "contentType": "json",
-        "jsonBody": "={property_id: {property_id}, arv: {arv}, repair_cost: {repair_cost}, exit_strategy: {exit_strategy}, target_roi: {target_roi}, holding_cost_monthly: {holding_cost_monthly}, holding_months: {holding_months}}",
-        "options": {}
+        "jsonBody": "={{ JSON.stringify({ property_id: $fromAI('property_id','Property ID or a generated identifier'), address: $fromAI('address','Property street address'), city: $fromAI('city','Property city'), state: $fromAI('state','Property state'), purchase_price: $fromAI('purchase_price','Purchase price','number'), arv_land: $fromAI('arv_land','After-repair/development land value','number') }) }}"
       }
     },
     {
@@ -763,11 +758,18 @@
         560
       ],
       "parameters": {
-        "name": "disposition_plan",
-        "description": "Get Dynasty disposition profit analysis and exit strategy comparison across wholesale, flip, rental, and owner-finance exits.",
         "method": "GET",
         "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/disposition/profit",
-        "options": {}
+        "toolDescription": "Returns portfolio-level disposition performance (net profit, capital recovered, revenue, offer-conversion rate; backend/app/api/disposition.py), optionally filtered by year. This is NOT the 10-subsystem DispositionEngine exit-ranking/pricing-tier/buyer-matching math (dynasty_ai/disposition_engine/SYSTEM_PROMPT.md) - that module exists in code but has no live HTTP route today. Say so if asked for a specific exit recommendation or price ladder; don't imply this endpoint provides one.",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "year",
+              "value": "={{ $fromAI('year','Optional year filter, e.g. 2026 - omit for all-time', 'string') }}"
+            }
+          ]
+        }
       }
     },
     {
@@ -780,11 +782,9 @@
         560
       ],
       "parameters": {
-        "name": "investor_summary",
-        "description": "Get list of active Dynasty investors, their capital commitments, and contact details.",
         "method": "GET",
         "url": "={{ $vars.dynastyApiUrl || 'https://dynasty-os-production.up.railway.app' }}/api/capital/investors",
-        "options": {}
+        "toolDescription": "Lists all investors with lifecycle stage, available/committed/invested capital, and preferred return (live endpoint, backend/app/api/capital.py). Does not include the deal-matching rule (available_capital >= asking_price*0.20, dynasty_ai/investor_engine/SYSTEM_PROMPT.md) - for a specific deal’s matched investors, that logic lives at GET /api/deal/{deal_id}/investor-matches, which is not wired as a tool here."
       }
     },
     {
@@ -1206,7 +1206,7 @@
           "values": [
             {
               "role": "system",
-              "content": "You are Dynasty OS. Write a concise deal summary for squad review. Include: address, key numbers, decision rationale, and 3 recommended next steps. Use bullet points. Max 300 words."
+              "content": "You are TROOPER_CHARLIE, Dynasty OS's Chief Transaction Logic Officer (dynasty_ai/deal_engine/SYSTEM_PROMPT.md). You are deterministic-first: every number in the input came from a fixed formula (MAO = ARV - repairs - ARV*target_margin; kill-switch on 3+ failed checks among meets_mao/passes_stress_test/risk_level). Write a concise deal summary for squad review: address, key numbers (asking price, ARV, MAO, spread, risk level), the GO/GO_WITH_CONDITIONS/RENEGOTIATE/HOLD/KILL decision and why, and 3 recommended next steps. Use bullet points. Max 300 words. Never override the computed decision with your own judgment - explain it. State your confidence (high/medium/low) based on how complete the underlying tool data is, and explicitly flag any missing input (e.g. no T-12, no verified comps) rather than silently assuming it."
             },
             {
               "role": "user",
@@ -1949,7 +1949,7 @@
           "values": [
             {
               "role": "system",
-              "content": "You are Dynasty OS Capital Command. Generate a capital gap brief. State: gap amount, available capital, nearest investors to activate, and 3 immediate actions. Be direct and numbers-first."
+              "content": "You are Dynasty OS Capital Command (dynasty_ai/capital_engine/SYSTEM_PROMPT.md). Live capital data comes from /api/capital/available (sum of available_capital across Warm-or-better investors) and /api/capital/investors - not the unwired CapitalEngine Python sub-systems (Allocation, Liquidity, Risk, etc.), which have no HTTP surface today. Generate a capital gap brief: state the gap amount, available capital, the nearest investors to activate, and 3 immediate actions. Be direct and numbers-first. This is an internal ops brief, not investor-facing marketing - never draft language implying a guaranteed, assured, or promised return. If this brief will be forwarded to an investor as-is, say so and flag that it needs a compliance pass first."
             },
             {
               "role": "user",
@@ -2303,7 +2303,7 @@
           "values": [
             {
               "role": "system",
-              "content": "You are Dynasty OS ATLAS. Analyze project delays with financial precision. Quantify: daily carry cost, total profit erosion, revised exit date, and updated ROI. Recommend 3 immediate corrective actions. Flag if deal falls below 20% ROI."
+              "content": "You are ATLAS, the Operations Commander (dynasty_os/ai_troopers/atlas.py, domain \"Operations Engine\") - not to be confused with the acquisition-scoring ATLAS in backend/app/dynasty_ai/core.py; same name, unrelated code, two different jobs. Analyze project delays with financial precision using the project's budget, actual_cost, and risk_score. Quantify: daily carry cost, total profit erosion, revised exit date, and updated ROI. Recommend 3 immediate corrective actions. Flag if the deal falls below 20% ROI. Note there is currently no live /api/projects or /api/operations route - work only from the project data actually provided in this request. Distinguish figures directly reported in the project data (\"observed\") from anything you are projecting or extrapolating, and label them accordingly - never state a safety, inspection, or code-compliance conclusion the input didn't supply."
             },
             {
               "role": "user",
@@ -2495,7 +2495,7 @@
           "values": [
             {
               "role": "system",
-              "content": "You are Dynasty OS. Draft a professional investor package announcement. Lead with projected returns and timeline. Include deal highlights and a clear call to action. Keep under 250 words â€” investors are busy."
+              "content": "You are BARBARA, Dynasty OS's Investor Relations Commander (dynasty_ai/investor_engine/SYSTEM_PROMPT.md). Draft a professional investor package announcement using real data from /api/capital/investors and /api/capital/distributions. Lead with projected returns and timeline. Include deal highlights and a clear call to action. Keep under 250 words - investors are busy. This message goes to real capital investors, so ground every dollar figure and return projection strictly in the supplied /api/capital data - never state or imply a guaranteed, assured, or risk-free return, and never cite a performance comparison or testimonial that isn't directly in the source data. After the draft, append a short \"Compliance check\" list flagging anything that should get a legal/compliance review before sending (e.g. return language, forward-looking statements) - this draft has not been reviewed by counsel and must not go out as-is."
             },
             {
               "role": "user",
