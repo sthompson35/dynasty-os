@@ -704,20 +704,43 @@ function DDChecklistView({ checklist }: { checklist: DDChecklist }) {
     categories.get(category)!.push(item)
   })
 
+  const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set())
+
+  function toggleItem(key: string) {
+    setCheckedItems(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+      }
+      return next
+    })
+  }
+
   return (
     <div className="space-y-4">
       {Array.from(categories.entries()).map(([category, categoryItems]) => (
         <div key={category}>
           <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2">{category}</h4>
           <div className="space-y-2">
-            {categoryItems.map((item: ChecklistItem, idx: number) => (
-              <div key={idx} className="flex items-start space-x-3 p-2 border rounded">
-                <input type="checkbox" className="mt-1" />
-                <div className="flex-1">
-                  <p className="text-sm">{item.description}</p>
+            {categoryItems.map((item: ChecklistItem, idx: number) => {
+              const key = `${category}-${idx}-${item.description ?? ''}`
+              const checked = checkedItems.has(key)
+              return (
+                <div key={idx} className="flex items-start space-x-3 p-2 border rounded">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={checked}
+                    onChange={() => toggleItem(key)}
+                  />
+                  <div className="flex-1">
+                    <p className={`text-sm ${checked ? 'text-gray-400 line-through' : ''}`}>{item.description}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       ))}
