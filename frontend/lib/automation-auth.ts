@@ -25,8 +25,14 @@ async function resolveAutomationUserId() {
 
   const email = process.env.AUTOMATION_USER_EMAIL || process.env.DYNASTY_AUTOMATION_USER_EMAIL || process.env.NOTIFICATION_EMAIL
   if (email) {
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.upsert({
       where: { email },
+      update: {},
+      create: {
+        email,
+        name: 'Dynasty Automation',
+        role: 'ADMIN',
+      },
       select: { id: true },
     })
     if (user?.id) return user.id
