@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "test:portfolio-metrics": "tsx lib/portfolio-metrics.test.ts",
-    "verify:predeploy": "npm run test:portfolio-metrics && tsx scripts/verify_migration_state.ts --base-url=http://localhost:3000 && tsc --noEmit && next build"
+    "test:portfolio-scoring": "tsx lib/portfolio-scoring/score-property.test.ts",
+    "verify:predeploy": "npm run test:portfolio-metrics && npm run test:portfolio-scoring && tsx scripts/verify_migration_state.ts --base-url=http://localhost:3000 && tsc --noEmit && next build"
   },
   "prisma": {
     "seed": "tsx --require dotenv/config scripts/safe-seed.ts"
@@ -61,6 +62,7 @@
     "cmdk": "1.0.0",
     "cookie": "1.0.2",
     "csv": "6.3.11",
+    "csv-parse": "^7.0.1",
     "date-fns": "3.6.0",
     "dayjs": "1.11.13",
     "dotenv": "16.5.0",
@@ -77,6 +79,7 @@
     "next": "14.2.35",
     "next-auth": "4.24.11",
     "next-themes": "0.3.0",
+    "pdf-parse": "^2.4.5",
     "plotly.js": "2.35.3",
     "react": "18.2.0",
     "react-chartjs-2": "5.3.0",

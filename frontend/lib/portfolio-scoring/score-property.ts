@@ -25,9 +25,13 @@ function chooseStrategy(property: PortfolioScoringProperty, spread: number, equi
   return 'Rental'
 }
 
-function bucketFor(score: number, decision: PortfolioDecision): PortfolioScoreBucket {
+function bucketFor(score: number, decision: PortfolioDecision, hasVerifiedPurchasePrice: boolean): PortfolioScoreBucket {
   if (decision === 'KILL') return 'Kill'
   if (decision === 'RENEGOTIATE') return 'Renegotiate'
+  // Elite Deals / Strong GO require a verified basis - an unpriced property
+  // can never look like a top-tier deal just because its "spread" defaulted
+  // to 100% when there was no purchase price to subtract in the first place.
+  if (!hasVerifiedPurchasePrice) return 'GO With Conditions'
   if (score >= 85) return 'Elite Deals'
   if (score >= 72) return 'Strong GO'
   return 'GO With Conditions'
@@ -46,9 +50,15 @@ export function scoreProperty(property: PortfolioScoringProperty): PortfolioScor
   const repairCosts = toNumber(property.repairCosts)
   const holdingCosts = toNumber(property.holdingCosts)
   const closingCosts = toNumber(property.closingCosts)
+  const hasVerifiedPurchasePrice = purchasePrice > 0
+  // Equity spread must reflect the full cost of getting to ARV, not just the
+  // sticker price - a cheap purchase with repairs that consume the ARV is not
+  // equity, and an unknown purchase price is not "0 cost", it's unverified.
+  const allInBasis = purchasePrice + repairCosts
   const totalBasis = purchasePrice + repairCosts + holdingCosts + closingCosts
-  const equitySpread = Math.max(0, estimatedValue - purchasePrice)
+  const equitySpread = Math.max(0, estimatedValue - allInBasis)
   const equityPct = estimatedValue > 0 ? equitySpread / estimatedValue : 0
+  const basisExceedsArv = estimatedValue > 0 && allInBasis >= estimatedValue
   const vacant = textIncludes(notes, /vacant:\s*(yes|true|1)|vacant\?:\s*(yes|true|1)|vacant owner|property vacant/)
   const absentee = textIncludes(notes, /absentee owner:\s*(yes|true|1)|absentee:\s*(yes|true|1)/)
   const ownerOccupied = textIncludes(notes, /owner occupied:\s*(yes|true|1)/)
@@ -56,11 +66,17 @@ export function scoreProperty(property: PortfolioScoringProperty): PortfolioScor
 
   let dealScore = 35
   if (estimatedValue > 0) dealScore += 8
-  if (purchasePrice > 0) dealScore += 6
-  if (equityPct >= 0.65) { dealScore += 24; reasons.push('High equity spread') }
+  if (hasVerifiedPurchasePrice) dealScore += 6
+
+  if (!hasVerifiedPurchasePrice) {
+    reasons.push('No verified purchase price - equity spread cannot be confirmed')
+  } else if (basisExceedsArv) {
+    dealScore -= 20
+    reasons.push('All-in basis (purchase + repairs) meets or exceeds ARV')
+  } else if (equityPct >= 0.65) { dealScore += 24; reasons.push('High equity spread') }
   else if (equityPct >= 0.4) { dealScore += 17; reasons.push('Strong equity spread') }
   else if (equityPct >= 0.2) { dealScore += 8; reasons.push('Moderate equity spread') }
-  else if (estimatedValue > 0 && purchasePrice > 0) { dealScore -= 14; reasons.push('Thin equity spread') }
+  else { dealScore -= 14; reasons.push('Thin equity spread') }
 
   if (vacant) { dealScore += 8; reasons.push('Vacancy signal') }
   if (absentee) { dealScore += 6; reasons.push('Absentee owner signal') }
@@ -72,19 +88,27 @@ export function scoreProperty(property: PortfolioScoringProperty): PortfolioScor
 
   let riskScore = 18
   if (!estimatedValue) { riskScore += 22; reasons.push('Missing value signal') }
-  if (!purchasePrice) { riskScore += 12; reasons.push('Missing price/basis signal') }
+  if (!hasVerifiedPurchasePrice) { riskScore += 12; reasons.push('Missing price/basis signal') }
   if (estimatedValue > 0 && purchasePrice > estimatedValue * 0.82) { riskScore += 20; reasons.push('Basis too close to value') }
   if (property.propertyType === 'commercial') riskScore += 8
   if (repairCosts > estimatedValue * 0.35 && estimatedValue > 0) { riskScore += 12; reasons.push('Repair cost risk') }
   if (!property.city || !property.state) riskScore += 20
+  if (basisExceedsArv) { riskScore += 25; reasons.push('All-in basis exceeds ARV - deal loses money before financing') }
 
   const arvConfidence = clamp((estimatedValue ? 58 : 20) + (property.sqft ? 8 : 0) + (property.yearBuilt ? 5 : 0) + (property.bedrooms !== null ? 5 : 0) + (property.lotSize ? 4 : 0) - (property.propertyType === 'land' ? 8 : 0))
-  const capitalScore = clamp(100 - riskScore + (equityPct >= 0.4 ? 10 : 0) - (totalBasis > 0 && estimatedValue > 0 && totalBasis > estimatedValue * 0.8 ? 12 : 0))
+  const capitalScore = clamp(100 - riskScore + (hasVerifiedPurchasePrice && equityPct >= 0.4 ? 10 : 0) - (totalBasis > 0 && estimatedValue > 0 && totalBasis > estimatedValue * 0.8 ? 12 : 0))
   const strategy = chooseStrategy(property, equitySpread, equityPct, vacant)
   dealScore = clamp(dealScore + (capitalScore - 50) * 0.18 + (arvConfidence - 50) * 0.12 - riskScore * 0.12)
   riskScore = clamp(riskScore)
-  const decision = decisionFor(dealScore, riskScore)
-  const scoreBucket = bucketFor(dealScore, decision)
+
+  let decision = decisionFor(dealScore, riskScore)
+  // Hard caps: these are underwriting integrity constraints, not score-derived
+  // preferences, so they're applied after decisionFor() rather than folded
+  // into the score itself.
+  if (!hasVerifiedPurchasePrice && decision === 'GO') decision = 'RENEGOTIATE'
+  if (basisExceedsArv && decision !== 'KILL') decision = 'RENEGOTIATE'
+
+  const scoreBucket = bucketFor(dealScore, decision, hasVerifiedPurchasePrice)
 
   if (reasons.length === 0) reasons.push('Baseline score from available property record')
 
