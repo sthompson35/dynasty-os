@@ -13,6 +13,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency, getTypeLabel } from '@/lib/property-utils'
 import { getNextBestAction } from '@/lib/portfolio-scoring/next-best-action'
 
+type BiggestAssumptionPayload = {
+  kind: 'threshold' | 'price-needed-for-go'
+  leverLabel: string | null
+  summary: string
+} | null
+
 type ScorePayload = {
   id: string
   propertyId: string
@@ -25,6 +31,7 @@ type ScorePayload = {
   scoreBucket: string
   reasons: string[]
   updatedAt: string
+  biggestAssumption: BiggestAssumptionPayload
   property: {
     address: string
     city: string
@@ -1269,6 +1276,14 @@ export function AcquisitionCommandCenterClient() {
                         <p className="mt-0.5 text-xs font-bold text-[var(--dynasty-navy)]">{nextAction.action}</p>
                         <p className="mt-0.5 text-xs leading-relaxed text-[var(--dynasty-black)]/60">{nextAction.rationale}</p>
                       </div>
+                      {score.biggestAssumption && (
+                        <div className="mt-2 rounded-md bg-sky-50 px-2.5 py-2 ring-1 ring-sky-100">
+                          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-sky-700">
+                            {score.biggestAssumption.kind === 'threshold' ? 'Biggest assumption' : 'Price needed for GO'}
+                          </p>
+                          <p className="mt-0.5 text-xs leading-relaxed text-[var(--dynasty-black)]/65">{score.biggestAssumption.summary}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Link>

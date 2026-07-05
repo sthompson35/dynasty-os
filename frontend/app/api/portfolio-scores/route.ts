@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { scoreBatchAndRecordActivity } from '@/lib/portfolio-scoring/score-and-record'
+import { getBiggestAssumption } from '@/lib/portfolio-scoring/biggest-assumption'
+import type { PortfolioDecision } from '@/lib/portfolio-scoring/types'
 import { toNumber } from '@/lib/property-utils'
 
 export const dynamic = 'force-dynamic'
@@ -20,7 +22,7 @@ async function requireUserId() {
   return session?.user?.id ?? ''
 }
 
-function serializeScore(score: {
+function serializeScore(userId: string, score: {
   id: string
   propertyId: string
   dealScore: number
@@ -41,11 +43,50 @@ function serializeScore(score: {
     purchasePrice: unknown
     currentValue: unknown
     arv: unknown
+    repairCosts: unknown
+    holdingCosts: unknown
+    closingCosts: unknown
+    notes: string | null
     lotSize: number | null
     floodZone: string | null
+    femaDisasterCount: number | null
+    femaLastDisasterType: string | null
     gisEnrichedAt: Date | null
   } | null
 }) {
+  const purchasePrice = toNumber(score.property?.purchasePrice)
+  const hasVerifiedPurchasePrice = purchasePrice > 0
+  const biggestAssumption = score.property
+    ? getBiggestAssumption(
+        {
+          id: score.propertyId,
+          userId,
+          address: score.property.address,
+          city: score.property.city,
+          state: score.property.state,
+          zip: score.property.zip,
+          propertyType: score.property.propertyType,
+          bedrooms: null,
+          bathrooms: null,
+          sqft: null,
+          lotSize: score.property.lotSize,
+          yearBuilt: null,
+          purchasePrice: score.property.purchasePrice,
+          currentValue: score.property.currentValue,
+          arv: score.property.arv,
+          repairCosts: score.property.repairCosts,
+          holdingCosts: score.property.holdingCosts,
+          closingCosts: score.property.closingCosts,
+          notes: score.property.notes,
+          floodZone: score.property.floodZone,
+          femaDisasterCount: score.property.femaDisasterCount,
+          femaLastDisasterType: score.property.femaLastDisasterType,
+        },
+        score.decision as PortfolioDecision,
+        hasVerifiedPurchasePrice
+      )
+    : null
+
   return {
     id: score.id,
     propertyId: score.propertyId,
@@ -58,13 +99,14 @@ function serializeScore(score: {
     scoreBucket: score.scoreBucket,
     reasons: Array.isArray(score.reasons) ? score.reasons.map(String) : [],
     updatedAt: score.updatedAt.toISOString(),
+    biggestAssumption,
     property: score.property ? {
       address: score.property.address,
       city: score.property.city,
       state: score.property.state,
       zip: score.property.zip,
       propertyType: score.property.propertyType,
-      purchasePrice: toNumber(score.property.purchasePrice),
+      purchasePrice,
       currentValue: toNumber(score.property.currentValue),
       arv: toNumber(score.property.arv),
       lotSize: score.property.lotSize,
@@ -129,8 +171,14 @@ export async function GET(request: Request) {
             purchasePrice: true,
             currentValue: true,
             arv: true,
+            repairCosts: true,
+            holdingCosts: true,
+            closingCosts: true,
+            notes: true,
             lotSize: true,
             floodZone: true,
+            femaDisasterCount: true,
+            femaLastDisasterType: true,
             gisEnrichedAt: true,
           },
         },
@@ -144,7 +192,7 @@ export async function GET(request: Request) {
     outstanding: Math.max(0, totalProperties - totalScores),
     buckets: bucketCounts.map((item) => ({ bucket: item.scoreBucket, count: item._count._all })),
     decisions: decisionCounts.map((item) => ({ decision: item.decision, count: item._count._all })),
-    scores: topScores.map(serializeScore),
+    scores: topScores.map((score) => serializeScore(userId, score)),
   })
 }
 
