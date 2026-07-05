@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency, getTypeLabel } from '@/lib/property-utils'
+import { getNextBestAction } from '@/lib/portfolio-scoring/next-best-action'
 
 type ScorePayload = {
   id: string
@@ -34,6 +35,8 @@ type ScorePayload = {
     currentValue: number
     arv: number
     lotSize: number | null
+    floodZone: string | null
+    gisEnrichedAt: string | null
   } | null
 }
 
@@ -1192,7 +1195,14 @@ export function AcquisitionCommandCenterClient() {
             </div>
           ) : (
             <div className="space-y-2">
-              {topPriorityScores.map((score, index) => (
+              {topPriorityScores.map((score, index) => {
+                const nextAction = getNextBestAction({
+                  decision: score.decision,
+                  hasVerifiedPurchasePrice: (score.property?.purchasePrice ?? 0) > 0,
+                  floodZone: score.property?.floodZone ?? null,
+                  gisEnrichedAt: score.property?.gisEnrichedAt ?? null,
+                })
+                return (
                 <Link key={score.id} href={`/properties/${score.propertyId}`} className="block rounded-lg bg-white/75 p-3 shadow-sm transition hover:shadow-md">
                   <div className="flex items-start gap-3">
                     <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[var(--dynasty-navy)] font-display text-sm font-black text-[var(--dynasty-gold)]">{index + 1}</span>
@@ -1210,10 +1220,16 @@ export function AcquisitionCommandCenterClient() {
                           ))}
                         </ul>
                       )}
+                      <div className="mt-2 rounded-md bg-[var(--dynasty-gold)]/12 px-2.5 py-2">
+                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--dynasty-gold)]">Next best action</p>
+                        <p className="mt-0.5 text-xs font-bold text-[var(--dynasty-navy)]">{nextAction.action}</p>
+                        <p className="mt-0.5 text-xs leading-relaxed text-[var(--dynasty-black)]/60">{nextAction.rationale}</p>
+                      </div>
                     </div>
                   </div>
                 </Link>
-              ))}
+                )
+              })}
             </div>
           )}
         </CardContent>

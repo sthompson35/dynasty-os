@@ -42,6 +42,8 @@ function serializeScore(score: {
     currentValue: unknown
     arv: unknown
     lotSize: number | null
+    floodZone: string | null
+    gisEnrichedAt: Date | null
   } | null
 }) {
   return {
@@ -66,6 +68,8 @@ function serializeScore(score: {
       currentValue: toNumber(score.property.currentValue),
       arv: toNumber(score.property.arv),
       lotSize: score.property.lotSize,
+      floodZone: score.property.floodZone,
+      gisEnrichedAt: score.property.gisEnrichedAt ? score.property.gisEnrichedAt.toISOString() : null,
     } : null,
   }
 }
@@ -126,6 +130,8 @@ export async function GET(request: Request) {
             currentValue: true,
             arv: true,
             lotSize: true,
+            floodZone: true,
+            gisEnrichedAt: true,
           },
         },
       },
