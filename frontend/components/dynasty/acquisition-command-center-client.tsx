@@ -1002,6 +1002,11 @@ export function AcquisitionCommandCenterClient() {
   const buckets = summary?.buckets ?? []
   const decisions = summary?.decisions ?? []
   const scores = summary?.scores ?? []
+  // Already ordered by dealScore desc from the API - a KILL decision means
+  // ATLAS has already resolved the question, so it doesn't belong in a
+  // "what should I look at first" queue even if its dealScore is high enough
+  // to otherwise rank near the top.
+  const topPriorityScores = scores.filter((score) => score.decision !== 'KILL').slice(0, 20)
   const actionCounts = queue?.actions ?? []
   const queueItems = queue?.items ?? []
   const campaignCounts = campaigns?.types ?? []
@@ -1169,6 +1174,50 @@ export function AcquisitionCommandCenterClient() {
           </Card>
         ))}
       </div>
+
+      <Card className="mb-5 border-0 bg-[#F8F7F2] shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 font-display text-2xl text-[var(--dynasty-navy)]">
+            <Target className="h-5 w-5 text-[var(--dynasty-gold)]" /> Top {topPriorityScores.length} to review today
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center gap-2 rounded-lg bg-white/75 p-4 text-sm text-[var(--dynasty-black)]/55"><Loader2 className="h-4 w-4 animate-spin" /> Loading priority queue...</div>
+          ) : topPriorityScores.length === 0 ? (
+            <div className="rounded-lg bg-white/75 p-6 text-center">
+              <Target className="mx-auto mb-3 h-8 w-8 text-[var(--dynasty-gold)]" />
+              <p className="font-display text-xl font-black text-[var(--dynasty-navy)]">Nothing to review yet.</p>
+              <p className="mt-2 text-sm text-[var(--dynasty-black)]/60">Run scoring to generate a ranked review queue.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {topPriorityScores.map((score, index) => (
+                <Link key={score.id} href={`/properties/${score.propertyId}`} className="block rounded-lg bg-white/75 p-3 shadow-sm transition hover:shadow-md">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[var(--dynasty-navy)] font-display text-sm font-black text-[var(--dynasty-gold)]">{index + 1}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate text-sm font-bold text-[var(--dynasty-navy)]">{score.property?.address ?? 'Unknown property'}</p>
+                        <Badge className={`border-0 text-[10px] ${toneForDecision(score.decision)}`}>{score.decision}</Badge>
+                        <Badge className="border-0 bg-[var(--dynasty-tan)]/22 text-[10px] text-[var(--dynasty-navy)]">{score.strategy}</Badge>
+                      </div>
+                      <p className="mt-0.5 text-xs text-[var(--dynasty-black)]/55">{score.property?.city}, {score.property?.state} - Deal score {score.dealScore}</p>
+                      {score.reasons.length > 0 && (
+                        <ul className="mt-1.5 space-y-0.5">
+                          {score.reasons.map((reason, reasonIndex) => (
+                            <li key={reasonIndex} className="text-xs leading-relaxed text-[var(--dynasty-black)]/60">- {reason}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="mb-5 border-0 bg-[#F8F7F2] shadow-md">
         <CardHeader>
