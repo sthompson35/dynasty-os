@@ -54,7 +54,11 @@ function currency(value: number): string {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString();
+  // Explicit UTC avoids a server/client hydration mismatch: date-only strings
+  // ('YYYY-MM-DD') parse as UTC midnight, and the server (Docker, UTC) vs the
+  // browser (host-local timezone) would otherwise format that instant as two
+  // different calendar days.
+  return new Date(iso).toLocaleDateString('en-US', { timeZone: 'UTC' });
 }
 
 function makeId(prefix: string): string {

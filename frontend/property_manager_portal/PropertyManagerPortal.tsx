@@ -67,7 +67,11 @@ function currency(value: number): string {
 }
 
 function formatDate(isoDate: string): string {
-  return new Date(isoDate).toLocaleDateString();
+  // Explicit UTC avoids a server/client hydration mismatch: date-only strings
+  // ('YYYY-MM-DD') parse as UTC midnight, and the server (Docker, UTC) vs the
+  // browser (host-local timezone) would otherwise format that instant as two
+  // different calendar days.
+  return new Date(isoDate).toLocaleDateString('en-US', { timeZone: 'UTC' });
 }
 
 function hoursSince(isoTimestamp: string): number {
@@ -122,7 +126,11 @@ export default function PropertyManagerPortal() {
       property: '101 Verification Way',
       title: 'AC airflow imbalance',
       priority: 'high',
-      createdAt: new Date(Date.now() - 16 * 60 * 60 * 1000).toISOString(),
+      // Fixed timestamp (not Date.now()-relative): a relative computation
+      // inside a useState initializer runs once during SSR and again during
+      // client hydration, at genuinely different instants, which can flip
+      // the formatted calendar day and cause a hydration mismatch.
+      createdAt: '2026-07-05T05:00:00.000Z',
       dueByHours: 24,
       status: 'in_progress',
       assignedVendorId: 'ven-1'
@@ -132,7 +140,7 @@ export default function PropertyManagerPortal() {
       property: '77 Pine Hollow Dr',
       title: 'Leaking under-sink valve',
       priority: 'urgent',
-      createdAt: new Date(Date.now() - 31 * 60 * 60 * 1000).toISOString(),
+      createdAt: '2026-07-04T14:00:00.000Z',
       dueByHours: 24,
       status: 'open',
       assignedVendorId: 'ven-2'
@@ -142,7 +150,7 @@ export default function PropertyManagerPortal() {
       property: '14 Brookline Ct',
       title: 'Exterior lighting outage',
       priority: 'normal',
-      createdAt: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(),
+      createdAt: '2026-07-05T11:00:00.000Z',
       dueByHours: 48,
       status: 'open',
       assignedVendorId: 'ven-3'
