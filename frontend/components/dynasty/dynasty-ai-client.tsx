@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   AlertTriangle,
@@ -25,6 +25,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { FadeIn, Stagger, StaggerItem } from '@/components/ui/animate'
+import { generateSessionId, sendDynastyAIMessage } from '@/lib/dynasty-ai-chat'
+import type { AgentArchitectureEntry } from '@/lib/dynasty-architecture'
 
 export type AtlasRecommendationCommand = {
   id: string
@@ -79,6 +81,7 @@ export type DynastyAICommandCenterData = {
       projectedProfit: number
     }
   }
+  architecture: AgentArchitectureEntry[]
 }
 
 const commandExamples = [
@@ -86,21 +89,6 @@ const commandExamples = [
   'How much capital will I need in August?',
   'Which deals should I wholesale instead of flip?',
   'Show me projects running over budget.',
-]
-
-const longTermAgents = [
-  'Lead Agent',
-  'Intake Agent',
-  'Underwriting Agent',
-  'Strategy Agent',
-  'Deal Agent',
-  'Rehab Agent',
-  'Capital Agent',
-  'Investor Agent',
-  'Disposition Agent',
-  'Operations Agent',
-  'Portfolio Agent',
-  'Executive Agent',
 ]
 
 function fmt(n: number, mode: 'currency' | 'percent' | 'integer' = 'currency'): string {
@@ -152,6 +140,9 @@ function OutlookStat(props: { label: string; value: string }) {
 export function DynastyAIClient({ data }: { data: DynastyAICommandCenterData }) {
   const [chatValue, setChatValue] = useState(commandExamples[0])
   const [approved, setApproved] = useState<Set<string>>(new Set())
+  const [atlasResponse, setAtlasResponse] = useState<string | null>(null)
+  const [isQuerying, setIsQuerying] = useState(false)
+  const sessionId = useRef(generateSessionId())
 
   const activeRecommendations = useMemo(() => {
     if (data.recommendations.length > 0) return data.recommendations
@@ -175,8 +166,26 @@ export function DynastyAIClient({ data }: { data: DynastyAICommandCenterData }) 
     toast.success(`${command.command} command approved for ${command.address}.`)
   }
 
-  function runAtlasQuery() {
-    toast.success('ATLAS query staged. SQL + workflow execution is the next integration step.')
+  async function runAtlasQuery() {
+    const query = chatValue.trim()
+    if (!query) {
+      toast.error('Enter a command for ATLAS first.')
+      return
+    }
+
+    setIsQuerying(true)
+    setAtlasResponse(null)
+    try {
+      const reply = await sendDynastyAIMessage(query, sessionId.current)
+      setAtlasResponse(reply)
+      toast.success('ATLAS responded.')
+    } catch (error: unknown) {
+      console.error('ATLAS query failed', error)
+      setAtlasResponse(null)
+      toast.error('Unable to reach ATLAS. Make sure the n8n workflow is active.')
+    } finally {
+      setIsQuerying(false)
+    }
   }
 
   return (
@@ -378,9 +387,15 @@ export function DynastyAIClient({ data }: { data: DynastyAICommandCenterData }) 
                 </button>
               ))}
             </div>
-            <Button type="button" onClick={runAtlasQuery} className="mt-4 bg-[var(--dynasty-gold)] text-[var(--dynasty-navy)] hover:bg-[#D8B65B]">
+            <Button type="button" onClick={runAtlasQuery} loading={isQuerying} className="mt-4 bg-[var(--dynasty-gold)] text-[var(--dynasty-navy)] hover:bg-[#D8B65B]">
               <Route className="h-4 w-4" /> Stage ATLAS Query
             </Button>
+            {atlasResponse && (
+              <div className="mt-4 rounded-lg bg-white p-4 text-sm leading-relaxed text-[var(--dynasty-black)] shadow-sm ring-1 ring-black/5">
+                <p className="mb-1 text-xs font-black uppercase tracking-[0.14em] text-[var(--dynasty-gold)]">ATLAS response</p>
+                {atlasResponse}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -391,13 +406,28 @@ export function DynastyAIClient({ data }: { data: DynastyAICommandCenterData }) 
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-              {longTermAgents.map((agent) => (
-                <div key={agent} className="rounded-lg bg-[#F8F7F2] px-3 py-2 text-sm font-bold text-[var(--dynasty-navy)]">
-                  {agent}
-                </div>
-              ))}
-            </div>
+            {data.architecture.length === 0 ? (
+              <p className="rounded-lg bg-[#F8F7F2] px-3 py-3 text-sm text-[var(--dynasty-black)]/60">
+                Agent roster unavailable — check the Supabase connection for the ATLAS agent directory.
+              </p>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                {data.architecture.map((agent) => (
+                  <div key={agent.id} className="rounded-lg bg-[#F8F7F2] px-3 py-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-bold text-[var(--dynasty-navy)]">{agent.agentName}</p>
+                      <Badge className={`border-0 text-[10px] ${agent.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-[var(--dynasty-black)]/10 text-[var(--dynasty-black)]/60'}`}>
+                        {agent.status}
+                      </Badge>
+                    </div>
+                    <p className="mt-0.5 text-xs text-[var(--dynasty-black)]/55">{agent.agentRole}</p>
+                    {agent.ownedEngines.length > 0 && (
+                      <p className="mt-1 text-xs font-semibold text-[var(--dynasty-gold)]">Owns: {agent.ownedEngines.join(', ')}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
             <p className="mt-4 text-sm leading-6 text-[var(--dynasty-black)]/62">
               Every engine becomes both a human workspace and an AI workspace. ATLAS coordinates actions, monitors health, and learns from portfolio outcomes.
             </p>

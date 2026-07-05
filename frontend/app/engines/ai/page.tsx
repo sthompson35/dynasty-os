@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { AppNavigation } from '@/components/dynasty/app-navigation'
 import { DynastyAIClient, type DynastyAICommandCenterData } from '@/components/dynasty/dynasty-ai-client'
 import { ExistingDealSignal, analyzePropertyForIntake, buildIntakeSummary } from '@/lib/intake-analysis'
+import { getAgentArchitecture } from '@/lib/dynasty-architecture'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Dynasty AI' }
@@ -32,7 +33,7 @@ export default async function DynastyAIPage() {
   // Buyer/disposition stats are sourced from the Disposition Command Center's
   // BuyerProfile / DispositionPackage / ClosingTracker pipeline, not the legacy
   // Buyer/Disposition CRM behind /engines/disposition.
-  const [properties, deals, leads, investors, buyerProfiles, projects, capitalTransactions, dispositionPackages, closingRecords] = await Promise.all([
+  const [properties, deals, leads, investors, buyerProfiles, projects, capitalTransactions, dispositionPackages, closingRecords, architecture] = await Promise.all([
     prisma.property.findMany({ where: { userId }, orderBy: [{ updatedAt: 'desc' }] }).catch(() => []),
     prisma.deal.findMany({ where: { userId }, orderBy: [{ updatedAt: 'desc' }] }).catch(() => []),
     prisma.lead.findMany({ where: { userId }, orderBy: [{ updatedAt: 'desc' }] }).catch(() => []),
@@ -42,6 +43,7 @@ export default async function DynastyAIPage() {
     prisma.capitalTransaction.findMany({ where: { userId }, orderBy: [{ updatedAt: 'desc' }] }).catch(() => []),
     prisma.dispositionPackage.findMany({ where: { userId }, orderBy: [{ updatedAt: 'desc' }] }).catch(() => []),
     prisma.closingTracker.findMany({ where: { userId }, orderBy: [{ updatedAt: 'desc' }] }).catch(() => []),
+    getAgentArchitecture(),
   ])
 
   const propertyIds = properties.map((property) => property.id)
@@ -161,6 +163,7 @@ export default async function DynastyAIPage() {
         projectedProfit: Math.round(profit90),
       },
     },
+    architecture,
   }
 
   return (
