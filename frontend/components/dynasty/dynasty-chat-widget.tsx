@@ -2,19 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Bot, Send, X, Minimize2, Loader2, MessageSquare } from 'lucide-react'
-
-const N8N_CHAT_URL = 'https://ultimate-dynasty-os.app.n8n.cloud/webhook/dynasty-chat'
-
-function describeReply(data: unknown): string {
-  if (typeof (data as { output?: unknown })?.output === 'string') {
-    return (data as { output: string }).output
-  }
-  const manifestReply = data as { status?: string; agent?: string; message?: string } | null
-  if (manifestReply?.status === 'online' && manifestReply?.agent) {
-    return `${manifestReply.agent} is online. ${manifestReply.message ?? ''}`.trim()
-  }
-  return JSON.stringify(data)
-}
+import { sendDynastyAIMessage } from '@/lib/dynasty-ai-chat'
 
 type Message = {
   id: string
@@ -66,14 +54,7 @@ export function DynastyChatWidget() {
     setLoading(true)
 
     try {
-      const res = await fetch(N8N_CHAT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'sendMessage', chatInput: text, sessionId: sessionId.current }),
-      })
-      if (!res.ok) throw new Error(`n8n returned ${res.status}`)
-      const data = await res.json()
-      const reply = describeReply(data)
+      const reply = await sendDynastyAIMessage(text, sessionId.current)
       setMessages((prev) => [...prev, { id: generateId(), role: 'assistant', text: reply, ts: Date.now() }])
     } catch {
       setMessages((prev) => [
