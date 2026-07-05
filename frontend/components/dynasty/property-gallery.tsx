@@ -15,7 +15,7 @@ const MAX_PHOTO_BYTES = 15 * 1024 * 1024
 async function safeJson(response: Response): Promise<Record<string, unknown>> {
   try {
     return (await response.json()) as Record<string, unknown>
-  } catch (error: unknown) {
+  } catch {
     return {}
   }
 }

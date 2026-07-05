@@ -80,7 +80,7 @@ export default async function PropertyDetailPage(props: PropertyDetailPageProps)
     }),
   ])
 
-  const initialContacts = contactLinks?.map?.((link: Record<string, any>) => {
+  const initialContacts = contactLinks?.map?.((link: Record<string, unknown>) => {
     const serializedLink = serializePropertyContactLink(link)
     return {
       ...serializeContact(link?.contact),
@@ -108,7 +108,7 @@ export default async function PropertyDetailPage(props: PropertyDetailPageProps)
         initialDocuments={documents?.map?.((doc: unknown) => serializeDocument(doc)) ?? []}
         initialContacts={initialContacts}
         initialDraws={draws?.map?.((draw: unknown) => serializeDraw(draw)) ?? []}
-        initialImages={propertyImages?.map?.((image: Record<string, any>) => serializePropertyImage(image)) ?? []}
+        initialImages={propertyImages?.map?.((image: Record<string, unknown>) => serializePropertyImage(image)) ?? []}
       />
     </main>
   )

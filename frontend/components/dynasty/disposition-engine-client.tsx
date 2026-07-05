@@ -6,7 +6,7 @@
 // component still owns — do not build new features against it.
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ShoppingBag, PlusCircle, Users, TrendingUp, ArrowRight, Star } from 'lucide-react'
+import { ShoppingBag, PlusCircle, Users, ArrowRight, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -74,9 +74,6 @@ export function DispositionEngineClient({ buyers: initialBuyers, dispositions: i
   const capitalRecovered = dispositions.filter(d => d.status === 'closed').reduce((s, d) => s + (d.salePrice ?? 0), 0)
   const forSale = dispositions.filter(d => ['marketing', 'offers'].includes(d.status)).length
   const pendingClosings = dispositions.filter(d => d.status === 'under_contract').length
-  const avgDaysToExit = dispositions.filter(d => d.daysToExit).length > 0
-    ? Math.round(dispositions.filter(d => d.daysToExit).reduce((s, d) => s + (d.daysToExit ?? 0), 0) / dispositions.filter(d => d.daysToExit).length)
-    : 0
 
   async function saveBuyer() {
     setSaving(true)

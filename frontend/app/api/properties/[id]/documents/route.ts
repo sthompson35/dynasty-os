@@ -16,7 +16,7 @@ type RouteContext = {
 async function readBody(request: Request): Promise<Record<string, unknown>> {
   try {
     return (await request.json()) as Record<string, unknown>
-  } catch (error: unknown) {
+  } catch {
     return {}
   }
 }

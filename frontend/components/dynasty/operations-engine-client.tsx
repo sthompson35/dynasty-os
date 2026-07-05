@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Layers, PlusCircle, CheckCircle2, AlertTriangle, Clock, XCircle } from 'lucide-react'
+import { Layers, PlusCircle, CheckCircle2, AlertTriangle, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -149,16 +149,16 @@ export function OperationsEngineClient({ projects: initialProjects }: { projects
       {/* Metric cards */}
       <Stagger className="mb-6 grid gap-4 md:grid-cols-4">
         {[
-          { label: 'Total Budget', value: fmt(totalBudget), helper: 'Approved capital' },
-          { label: 'Actual Cost', value: fmt(totalActual), helper: 'Capital deployed' },
+          { label: 'Total Budget', value: fmt(totalBudget), helper: 'Approved capital', bad: false },
+          { label: 'Actual Cost', value: fmt(totalActual), helper: 'Capital deployed', bad: false },
           { label: 'Budget Variance', value: (variance >= 0 ? '+' : '') + fmt(variance), helper: variance >= 0 ? 'Under budget' : 'Over budget', bad: variance < 0 },
-          { label: 'Projects Complete', value: `${projects.filter(p => p.status === 'complete').length}`, helper: 'Ready for disposition' },
+          { label: 'Projects Complete', value: `${projects.filter(p => p.status === 'complete').length}`, helper: 'Ready for disposition', bad: false },
         ].map(m => (
           <StaggerItem key={m.label}>
             <Card className="border-0 bg-[#F8F7F2] shadow-md">
               <CardContent className="p-5">
                 <p className="text-xs font-semibold text-[var(--dynasty-black)]/55">{m.label}</p>
-                <p className={`mt-1 font-display text-2xl font-black ${(m as any).bad ? 'text-red-600' : 'text-[var(--dynasty-navy)]'}`}>{m.value}</p>
+                <p className={`mt-1 font-display text-2xl font-black ${m.bad ? 'text-red-600' : 'text-[var(--dynasty-navy)]'}`}>{m.value}</p>
                 <p className="mt-1 text-xs text-[var(--dynasty-black)]/45">{m.helper}</p>
               </CardContent>
             </Card>

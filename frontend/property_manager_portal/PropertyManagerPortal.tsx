@@ -46,6 +46,18 @@ type MonthlyOps = {
   occupancyRate: number;
 };
 
+// Static demo data — hoisted so it's a stable reference across renders
+// (a component-local const literal would be recreated every render, defeating
+// the useMemo hooks below that depend on it).
+const MONTHLY_OPS: MonthlyOps[] = [
+  { month: 'Jan', operatingCost: 18400, incidentCount: 18, occupancyRate: 94.2 },
+  { month: 'Feb', operatingCost: 17600, incidentCount: 14, occupancyRate: 95.0 },
+  { month: 'Mar', operatingCost: 19150, incidentCount: 19, occupancyRate: 93.4 },
+  { month: 'Apr', operatingCost: 16980, incidentCount: 12, occupancyRate: 96.1 },
+  { month: 'May', operatingCost: 20500, incidentCount: 22, occupancyRate: 92.7 },
+  { month: 'Jun', operatingCost: 18840, incidentCount: 16, occupancyRate: 94.8 }
+];
+
 function currency(value: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -170,14 +182,7 @@ export default function PropertyManagerPortal() {
     }
   ]);
 
-  const monthlyOps: MonthlyOps[] = [
-    { month: 'Jan', operatingCost: 18400, incidentCount: 18, occupancyRate: 94.2 },
-    { month: 'Feb', operatingCost: 17600, incidentCount: 14, occupancyRate: 95.0 },
-    { month: 'Mar', operatingCost: 19150, incidentCount: 19, occupancyRate: 93.4 },
-    { month: 'Apr', operatingCost: 16980, incidentCount: 12, occupancyRate: 96.1 },
-    { month: 'May', operatingCost: 20500, incidentCount: 22, occupancyRate: 92.7 },
-    { month: 'Jun', operatingCost: 18840, incidentCount: 16, occupancyRate: 94.8 }
-  ];
+  const monthlyOps = MONTHLY_OPS;
 
   const [notice, setNotice] = useState<string>('');
 

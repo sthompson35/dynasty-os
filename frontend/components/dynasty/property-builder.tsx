@@ -97,6 +97,9 @@ export function PropertyBuilder(props: {
       /* ignore corrupt storage */
     }
     setHydrated(true)
+    // storageKey already encodes props.property.id; re-running on every
+    // props.property reference change would re-hydrate and discard in-progress edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey])
 
   useEffect(() => {
@@ -108,7 +111,7 @@ export function PropertyBuilder(props: {
     } catch {
       /* storage may be unavailable */
     }
-  }, [hydrated, storageKey, mode, blocksByMode, proForma])
+  }, [hydrated, storageKey, mode, blocksByMode, proForma, props.property.id])
 
   // --- responsive grid sizing ----------------------------------------------
   useEffect(() => {

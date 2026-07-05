@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { AlertTriangle, BarChart3, ClipboardList, Download, FileText, Filter, HandCoins, Home, Loader2, Mail, MessageSquare, Phone, Radar, RefreshCcw, Search, Send, SkipForward, Target, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
@@ -465,7 +465,7 @@ export function AcquisitionCommandCenterClient() {
     return params.toString()
   }, [bucket, decision, propertyType, city])
 
-  async function loadScores() {
+  const loadScores = useCallback(async () => {
     setLoading(true)
     setError(null)
     const response = await fetch(`/api/portfolio-scores?${queryString}`, { cache: 'no-store' })
@@ -476,127 +476,127 @@ export function AcquisitionCommandCenterClient() {
       setError(String(payload.error ?? 'Unable to load portfolio scores.'))
     }
     setLoading(false)
-  }
+  }, [queryString])
 
-  async function loadQueue() {
+  const loadQueue = useCallback(async () => {
     setQueueLoading(true)
     const response = await fetch('/api/lead-action-queue?limit=180', { cache: 'no-store' })
     const payload = await safeJson(response)
     if (response.ok) {
       setQueue(payload as unknown as QueuePayload)
-    } else if (!error) {
-      setError(String(payload.error ?? 'Unable to load lead action queue.'))
+    } else {
+      setError(prev => prev ?? String(payload.error ?? 'Unable to load lead action queue.'))
     }
     setQueueLoading(false)
-  }
+  }, [])
 
-  async function loadCampaigns() {
+  const loadCampaigns = useCallback(async () => {
     setCampaignLoading(true)
     const response = await fetch('/api/campaign-batches?limit=10', { cache: 'no-store' })
     const payload = await safeJson(response)
     if (response.ok) {
       setCampaigns(payload as unknown as CampaignPayload)
-    } else if (!error) {
-      setError(String(payload.error ?? 'Unable to load campaign batches.'))
+    } else {
+      setError(prev => prev ?? String(payload.error ?? 'Unable to load campaign batches.'))
     }
     setCampaignLoading(false)
-  }
+  }, [])
 
-  async function loadOwners() {
+  const loadOwners = useCallback(async () => {
     setOwnerLoading(true)
     const response = await fetch('/api/owner-intelligence?limit=8', { cache: 'no-store' })
     const payload = await safeJson(response)
     if (response.ok) {
       setOwners(payload as unknown as OwnerIntelligencePayload)
-    } else if (!error) {
-      setError(String(payload.error ?? 'Unable to load owner intelligence.'))
+    } else {
+      setError(prev => prev ?? String(payload.error ?? 'Unable to load owner intelligence.'))
     }
     setOwnerLoading(false)
-  }
+  }, [])
 
-  async function loadSkipTrace() {
+  const loadSkipTrace = useCallback(async () => {
     setSkipTraceLoading(true)
     const response = await fetch('/api/skip-trace-export-queue?limit=8', { cache: 'no-store' })
     const payload = await safeJson(response)
     if (response.ok) {
       setSkipTrace(payload as unknown as SkipTracePayload)
-    } else if (!error) {
-      setError(String(payload.error ?? 'Unable to load skip trace export queue.'))
+    } else {
+      setError(prev => prev ?? String(payload.error ?? 'Unable to load skip trace export queue.'))
     }
     setSkipTraceLoading(false)
-  }
+  }, [])
 
-  async function loadOwnershipResearch() {
+  const loadOwnershipResearch = useCallback(async () => {
     setOwnershipResearchLoading(true)
     const response = await fetch('/api/ownership-research-tasks?limit=8', { cache: 'no-store' })
     const payload = await safeJson(response)
     if (response.ok) {
       setOwnershipResearch(payload as unknown as OwnershipResearchPayload)
-    } else if (!error) {
-      setError(String(payload.error ?? 'Unable to load ownership research tasks.'))
+    } else {
+      setError(prev => prev ?? String(payload.error ?? 'Unable to load ownership research tasks.'))
     }
     setOwnershipResearchLoading(false)
-  }
+  }, [])
 
-  async function loadLeadIntake() {
+  const loadLeadIntake = useCallback(async () => {
     setLeadIntakeLoading(true)
     const response = await fetch('/api/lead-intake-artifacts?limit=8', { cache: 'no-store' })
     const payload = await safeJson(response)
     if (response.ok) {
       setLeadIntake(payload as unknown as LeadIntakePayload)
-    } else if (!error) {
-      setError(String(payload.error ?? 'Unable to load lead intake artifacts.'))
+    } else {
+      setError(prev => prev ?? String(payload.error ?? 'Unable to load lead intake artifacts.'))
     }
     setLeadIntakeLoading(false)
-  }
+  }, [])
 
-  async function loadConversations() {
+  const loadConversations = useCallback(async () => {
     setConversationsLoading(true)
     const response = await fetch('/api/seller-conversations?limit=8', { cache: 'no-store' })
     const payload = await safeJson(response)
     if (response.ok) {
       setConversations(payload as unknown as SellerConversationsPayload)
-    } else if (!error) {
-      setError(String(payload.error ?? 'Unable to load seller conversations.'))
+    } else {
+      setError(prev => prev ?? String(payload.error ?? 'Unable to load seller conversations.'))
     }
     setConversationsLoading(false)
-  }
+  }, [])
 
-  async function loadFollowups() {
+  const loadFollowups = useCallback(async () => {
     setFollowupsLoading(true)
     const response = await fetch('/api/seller-followups?limit=8', { cache: 'no-store' })
     const payload = await safeJson(response)
     if (response.ok) {
       setFollowups(payload as unknown as SellerFollowupsPayload)
-    } else if (!error) {
-      setError(String(payload.error ?? 'Unable to load seller follow-ups.'))
+    } else {
+      setError(prev => prev ?? String(payload.error ?? 'Unable to load seller follow-ups.'))
     }
     setFollowupsLoading(false)
-  }
+  }, [])
 
-  async function loadOffers() {
+  const loadOffers = useCallback(async () => {
     setOffersLoading(true)
     const response = await fetch('/api/seller-offers?limit=8', { cache: 'no-store' })
     const payload = await safeJson(response)
     if (response.ok) {
       setOffers(payload as unknown as SellerOffersPayload)
-    } else if (!error) {
-      setError(String(payload.error ?? 'Unable to load seller offers.'))
+    } else {
+      setError(prev => prev ?? String(payload.error ?? 'Unable to load seller offers.'))
     }
     setOffersLoading(false)
-  }
+  }, [])
 
-  async function loadNegotiations() {
+  const loadNegotiations = useCallback(async () => {
     setNegotiationsLoading(true)
     const response = await fetch('/api/seller-negotiations?limit=8', { cache: 'no-store' })
     const payload = await safeJson(response)
     if (response.ok) {
       setNegotiations(payload as unknown as SellerNegotiationsPayload)
-    } else if (!error) {
-      setError(String(payload.error ?? 'Unable to load seller negotiations.'))
+    } else {
+      setError(prev => prev ?? String(payload.error ?? 'Unable to load seller negotiations.'))
     }
     setNegotiationsLoading(false)
-  }
+  }, [])
 
   async function runBatch() {
     setRunning(true)
@@ -984,6 +984,9 @@ export function AcquisitionCommandCenterClient() {
 
   useEffect(() => {
     void loadScores()
+  }, [loadScores])
+
+  useEffect(() => {
     void loadQueue()
     void loadCampaigns()
     void loadOwners()
@@ -994,7 +997,7 @@ export function AcquisitionCommandCenterClient() {
     void loadFollowups()
     void loadOffers()
     void loadNegotiations()
-  }, [queryString])
+  }, [loadQueue, loadCampaigns, loadOwners, loadSkipTrace, loadOwnershipResearch, loadLeadIntake, loadConversations, loadFollowups, loadOffers, loadNegotiations])
 
   const buckets = summary?.buckets ?? []
   const decisions = summary?.decisions ?? []

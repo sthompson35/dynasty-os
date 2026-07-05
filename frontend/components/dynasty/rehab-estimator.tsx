@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   REHAB_CATEGORY_OPTIONS,
   REHAB_ROOM_OPTIONS,
-  REHAB_STATUS_OPTIONS,
   RehabItemDTO,
   getRehabStatusLabel,
   serializeRehabItem,
@@ -66,6 +65,10 @@ const statusBadgeClass: Record<string, string> = {
   complete: 'border-0 bg-emerald-100 text-emerald-800',
 }
 
+// Stable reference so the `items` fallback doesn't create a new array every
+// render, which would defeat the useMemo below when props.items is empty/undefined.
+const EMPTY_ITEMS: RehabItemDTO[] = []
+
 export function RehabEstimator(props: {
   property: PropertyDTO
   items: RehabItemDTO[]
@@ -74,7 +77,7 @@ export function RehabEstimator(props: {
 }) {
   const propertyId = props?.property?.id ?? ''
   // Controlled by the parent so builder pushes and the estimator stay in sync.
-  const items = props?.items ?? []
+  const items = props?.items ?? EMPTY_ITEMS
   const setItems = props?.onItemsChange ?? (() => {})
   const [form, setForm] = useState<RehabFormState>(() => emptyForm())
   const [isAdding, setIsAdding] = useState(false)

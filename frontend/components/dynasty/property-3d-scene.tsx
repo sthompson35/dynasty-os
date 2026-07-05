@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, RoundedBox, ContactShadows, Html } from '@react-three/drei'
 import * as THREE from 'three'
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { GRID, getBlockType } from '@/lib/builder-utils'
 import { PropertyDTO, formatCompactCurrency, formatCurrency, formatPercent } from '@/lib/property-utils'
 import { TwinModel, TwinOverlayMode } from '@/lib/twin-utils'
@@ -506,7 +507,7 @@ type Property3DSceneProps = {
 }
 
 function Rig(props: { resetSignal: number; autoRotate: boolean }) {
-  const controlsRef = useRef<any>(null)
+  const controlsRef = useRef<OrbitControlsImpl>(null)
   useEffect(() => {
     if (controlsRef.current?.reset) {
       controlsRef.current.reset()

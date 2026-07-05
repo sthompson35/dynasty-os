@@ -129,6 +129,10 @@ export function PropertyForm(props: PropertyFormProps) {
 
   useEffect(() => {
     setForm(createFormState(props?.property ?? null))
+    // Reset only when switching to a different property record (id change), not on
+    // every parent re-render that creates a new props.property reference with the
+    // same values — that would discard whatever the user is currently typing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props?.property?.id])
 
   const updateField = (field: keyof PropertyFormState, value: string) => {

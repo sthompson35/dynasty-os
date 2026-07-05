@@ -59,7 +59,6 @@ export function CapitalEngineClient({ investors: initialInvestors, transactions:
 
   const totalAvailable = investors.reduce((s, i) => s + (i.availableCapital ?? 0), 0)
   const totalCommitted = investors.reduce((s, i) => s + (i.committedCapital ?? 0), 0)
-  const totalInvested = investors.reduce((s, i) => s + (i.investedCapital ?? 0), 0)
   const dryPowder = totalAvailable - totalCommitted
   const deployed = transactions.filter(t => t.type === 'investment' && t.status === 'completed').reduce((s, t) => s + t.amount, 0)
   const returned = transactions.filter(t => t.type === 'return' && t.status === 'completed').reduce((s, t) => s + t.amount, 0)

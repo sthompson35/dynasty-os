@@ -7,7 +7,7 @@
     "dev:turbo": "next dev --turbo -H 0.0.0.0 -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint . --max-warnings=0",
     "test:portfolio-metrics": "tsx lib/portfolio-metrics.test.ts",
     "verify:predeploy": "npm run test:portfolio-metrics && tsx scripts/verify_migration_state.ts --base-url=http://localhost:3000 && tsc --noEmit && next build"
   },

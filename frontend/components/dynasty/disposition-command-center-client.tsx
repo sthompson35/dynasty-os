@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { AlertTriangle, Building2, CheckCircle2, ClipboardList, FileText, Loader2, Package, RefreshCcw, ShoppingBag, Users, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
@@ -194,58 +194,58 @@ export function DispositionCommandCenterClient() {
   const [closings, setClosings] = useState<ClosingsPayload | null>(null)
   const [closingsLoading, setClosingsLoading] = useState(true)
 
-  async function loadProfiles() {
+  const loadProfiles = useCallback(async () => {
     setProfilesLoading(true)
     const response = await fetch('/api/buyer-profiles?limit=20', { cache: 'no-store' })
     const payload = await safeJson(response)
     if (response.ok) setProfiles(payload as unknown as BuyerProfilesPayload)
-    else if (!error) setError(String(payload.error ?? 'Unable to load buyer profiles.'))
+    else setError(prev => prev ?? String(payload.error ?? 'Unable to load buyer profiles.'))
     setProfilesLoading(false)
-  }
+  }, [])
 
-  async function loadMatches() {
+  const loadMatches = useCallback(async () => {
     setMatchesLoading(true)
     const response = await fetch('/api/buyer-matches?limit=20', { cache: 'no-store' })
     const payload = await safeJson(response)
     if (response.ok) setMatches(payload as unknown as BuyerMatchesPayload)
-    else if (!error) setError(String(payload.error ?? 'Unable to load buyer matches.'))
+    else setError(prev => prev ?? String(payload.error ?? 'Unable to load buyer matches.'))
     setMatchesLoading(false)
-  }
+  }, [])
 
-  async function loadDeals() {
+  const loadDeals = useCallback(async () => {
     setDealsLoading(true)
     const response = await fetch('/api/deals', { cache: 'no-store' })
     const payload = await response.json().catch(() => [])
     if (response.ok && Array.isArray(payload)) setDeals(payload as DealSummary[])
     setDealsLoading(false)
-  }
+  }, [])
 
-  async function loadPackages() {
+  const loadPackages = useCallback(async () => {
     setPackagesLoading(true)
     const response = await fetch('/api/disposition-packages?limit=20', { cache: 'no-store' })
     const payload = await safeJson(response)
     if (response.ok) setPackages(payload as unknown as PackagesPayload)
-    else if (!error) setError(String(payload.error ?? 'Unable to load disposition packages.'))
+    else setError(prev => prev ?? String(payload.error ?? 'Unable to load disposition packages.'))
     setPackagesLoading(false)
-  }
+  }, [])
 
-  async function loadPipeline() {
+  const loadPipeline = useCallback(async () => {
     setPipelineLoading(true)
     const response = await fetch('/api/assignment-pipeline?limit=20', { cache: 'no-store' })
     const payload = await safeJson(response)
     if (response.ok) setPipeline(payload as unknown as PipelinePayload)
-    else if (!error) setError(String(payload.error ?? 'Unable to load assignment pipeline.'))
+    else setError(prev => prev ?? String(payload.error ?? 'Unable to load assignment pipeline.'))
     setPipelineLoading(false)
-  }
+  }, [])
 
-  async function loadClosings() {
+  const loadClosings = useCallback(async () => {
     setClosingsLoading(true)
     const response = await fetch('/api/closing-tracker?limit=20', { cache: 'no-store' })
     const payload = await safeJson(response)
     if (response.ok) setClosings(payload as unknown as ClosingsPayload)
-    else if (!error) setError(String(payload.error ?? 'Unable to load closing tracker.'))
+    else setError(prev => prev ?? String(payload.error ?? 'Unable to load closing tracker.'))
     setClosingsLoading(false)
-  }
+  }, [])
 
   useEffect(() => {
     void loadProfiles()
@@ -254,7 +254,7 @@ export function DispositionCommandCenterClient() {
     void loadPackages()
     void loadPipeline()
     void loadClosings()
-  }, [])
+  }, [loadProfiles, loadMatches, loadDeals, loadPackages, loadPipeline, loadClosings])
 
   async function generateMatches() {
     setMatchesGenerating(true)
@@ -559,7 +559,7 @@ export function DispositionCommandCenterClient() {
             <div className="rounded-lg bg-white/75 p-6 text-center">
               <ClipboardList className="mx-auto mb-3 h-8 w-8 text-[var(--dynasty-gold)]" />
               <p className="font-display text-xl font-black text-[var(--dynasty-navy)]">No matches yet.</p>
-              <p className="mt-2 text-sm text-[var(--dynasty-black)]/60">Click Generate Matches to score every active deal against every active buyer's criteria.</p>
+              <p className="mt-2 text-sm text-[var(--dynasty-black)]/60">Click Generate Matches to score every active deal against every active buyer&apos;s criteria.</p>
             </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">

@@ -49,6 +49,10 @@ export function DealAnalyzer(props: { property: PropertyDTO; onSaved: (property:
 
   useEffect(() => {
     setForm(createDealState(props?.property ?? null))
+    // Depend on the individual fields createDealState reads, not props.property itself:
+    // the parent may pass a new object reference on every render, and resetting the
+    // form on reference churn (instead of real value changes) would wipe in-progress edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props?.property?.id, props?.property?.purchasePrice, props?.property?.arv, props?.property?.repairCosts, props?.property?.holdingCosts, props?.property?.closingCosts])
 
   const projectedProperty = useMemo<PropertyDTO>(() => ({

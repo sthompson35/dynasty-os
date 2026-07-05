@@ -29,7 +29,7 @@ function safeDateToIso(value: unknown): string | null {
       return null
     }
     return date.toISOString()
-  } catch (error: unknown) {
+  } catch {
     return null
   }
 }
@@ -67,7 +67,7 @@ export function buildPropertyImageMutationData(input: Record<string, unknown> | 
   return data
 }
 
-export function serializePropertyImage(raw: Record<string, any> | null | undefined): PropertyImageDTO {
+export function serializePropertyImage(raw: Record<string, unknown> | null | undefined): PropertyImageDTO {
   return {
     id: String(raw?.id ?? ''),
     propertyId: String(raw?.propertyId ?? ''),

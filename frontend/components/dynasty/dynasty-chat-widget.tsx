@@ -75,7 +75,7 @@ export function DynastyChatWidget() {
       const data = await res.json()
       const reply = describeReply(data)
       setMessages((prev) => [...prev, { id: generateId(), role: 'assistant', text: reply, ts: Date.now() }])
-    } catch (err) {
+    } catch {
       setMessages((prev) => [
         ...prev,
         { id: generateId(), role: 'assistant', text: 'Unable to reach the Dynasty AI. Make sure the n8n workflow is active.', ts: Date.now() },

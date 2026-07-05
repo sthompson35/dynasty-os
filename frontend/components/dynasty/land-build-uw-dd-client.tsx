@@ -32,16 +32,63 @@ interface PropertyInput {
   notes: string
 }
 
+interface ExitStrategyOption {
+  strategy?: string
+  timeline_months?: number
+  estimated_profit?: number
+  capital_required?: number
+  risk_level?: string
+}
+
+interface SaleScenario {
+  arv_sale?: number
+  holding_months?: number
+  projected_profit?: number
+}
+
+interface RentalBackstop {
+  est_monthly_rent?: number
+  annual_cash_flow?: number
+  total_profit?: number
+}
+
+interface ExitStrategyResult {
+  recommended_exit?: string
+  exit_strategies?: ExitStrategyOption[]
+}
+
+interface OfferCalculation {
+  recommended_purchase_price?: number
+  projected_profit?: number
+}
+
+interface ChecklistItem {
+  category?: string
+  description?: string
+}
+
+interface DDChecklist {
+  item_count?: number
+  items?: ChecklistItem[]
+}
+
+interface BuyBoxEvaluation {
+  match_score?: number
+  meets_criteria?: boolean
+  passed?: number
+  total?: number
+}
+
 interface AnalysisResult {
   success: boolean
   address: string
-  property_input: any
-  sale_scenario: any
-  rental_backstop: any
-  exit_strategy: any
-  offer_calculation: any
-  dd_checklist: any
-  buybox_evaluation?: any
+  property_input: Record<string, unknown>
+  sale_scenario: SaleScenario
+  rental_backstop: RentalBackstop
+  exit_strategy: ExitStrategyResult
+  offer_calculation: OfferCalculation
+  dd_checklist: DDChecklist
+  buybox_evaluation?: BuyBoxEvaluation
 }
 
 export function LandBuildUWDDClient() {
@@ -74,7 +121,7 @@ export function LandBuildUWDDClient() {
     notes: '',
   })
 
-  const handlePropertyInputChange = (field: keyof PropertyInput, value: any) => {
+  const handlePropertyInputChange = (field: keyof PropertyInput, value: string | number) => {
     setPropertyData(prev => ({ ...prev, [field]: value }))
   }
 
@@ -427,7 +474,7 @@ function ScenarioResults({ result }: { result: AnalysisResult }) {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {exits?.exit_strategies?.map((exit: any, idx: number) => (
+            {exits?.exit_strategies?.map((exit: ExitStrategyOption, idx: number) => (
               <div key={idx} className="flex items-center justify-between p-3 border rounded bg-gray-50 dark:bg-gray-900">
                 <div>
                   <p className="font-semibold">{exit.strategy}</p>
@@ -452,7 +499,7 @@ function BuyBoxPanel({
   result,
 }: {
   propertyData: PropertyInput
-  onChange: (field: keyof PropertyInput, value: any) => void
+  onChange: (field: keyof PropertyInput, value: string | number) => void
   result: AnalysisResult | null
 }) {
   const purchaseToArv = propertyData.arv_land ? propertyData.purchase_price / propertyData.arv_land : 0
@@ -528,7 +575,7 @@ function ExitLadderPanel({ result }: { result: AnalysisResult | null }) {
                 </tr>
               </thead>
               <tbody>
-                {exits.map((exit: any, index: number) => (
+                {exits.map((exit: ExitStrategyOption, index: number) => (
                   <tr key={`${exit.strategy}-${index}`} className="border-b last:border-0">
                     <td className="py-3 pr-3 font-bold">{index + 1}</td>
                     <td className="py-3 pr-3">{exit.strategy}</td>
@@ -554,7 +601,7 @@ function UnderwritingInputsPanel({
   onChange,
 }: {
   propertyData: PropertyInput
-  onChange: (field: keyof PropertyInput, value: any) => void
+  onChange: (field: keyof PropertyInput, value: string | number) => void
 }) {
   return (
     <Card>
@@ -614,7 +661,7 @@ function EngineFeedPanel({
 }: {
   title: string
   description: string
-  rows: [string, any][]
+  rows: [string, string | number][]
 }) {
   return (
     <Card>
@@ -645,24 +692,25 @@ function MetricTile({ label, value }: { label: string; value: string }) {
   )
 }
 
-function DDChecklistView({ checklist }: { checklist: any }) {
+function DDChecklistView({ checklist }: { checklist: DDChecklist }) {
   const items = checklist.items || []
-  const categories = new Map()
+  const categories = new Map<string, ChecklistItem[]>()
 
-  items.forEach((item: any) => {
-    if (!categories.has(item.category)) {
-      categories.set(item.category, [])
+  items.forEach((item: ChecklistItem) => {
+    const category = item.category ?? 'Other'
+    if (!categories.has(category)) {
+      categories.set(category, [])
     }
-    categories.get(item.category).push(item)
+    categories.get(category)!.push(item)
   })
 
   return (
     <div className="space-y-4">
-      {Array.from(categories.entries()).map(([category, categoryItems]: [string, any]) => (
+      {Array.from(categories.entries()).map(([category, categoryItems]) => (
         <div key={category}>
           <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2">{category}</h4>
           <div className="space-y-2">
-            {categoryItems.map((item: any, idx: number) => (
+            {categoryItems.map((item: ChecklistItem, idx: number) => (
               <div key={idx} className="flex items-start space-x-3 p-2 border rounded">
                 <input type="checkbox" className="mt-1" />
                 <div className="flex-1">
@@ -691,7 +739,7 @@ function formatAddress(input: PropertyInput): string {
   return [input.address, input.city, input.state, input.zipcode].filter(Boolean).join(', ') || 'Not set'
 }
 
-function money(value: any): string {
+function money(value: unknown): string {
   const numeric = Number(value ?? 0)
   return `$${Math.round(numeric).toLocaleString()}`
 }
