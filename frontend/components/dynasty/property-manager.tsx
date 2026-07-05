@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Building2, Filter, PlusCircle, Search, Trash2 } from 'lucide-react'
+import { ArrowRight, Building2, FileText, FileSpreadsheet, Filter, PlusCircle, Search, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PropertyPhoto } from '@/components/dynasty/property-photo'
+import { PropertyImportCsvDialog } from '@/components/dynasty/property-import-csv-dialog'
+import { PropertyImportPdfDialog } from '@/components/dynasty/property-import-pdf-dialog'
 import { PROPERTY_STATUS_OPTIONS, PROPERTY_TYPE_OPTIONS, PropertyDTO, calculateDealMetrics, formatCurrency, formatPercent, getPropertyDisplayName, getStatusLabel, getTypeLabel } from '@/lib/property-utils'
 
 type PropertyManagerProps = {
@@ -31,6 +33,8 @@ export function PropertyManager(props: PropertyManagerProps) {
   const [typeFilter, setTypeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [csvDialogOpen, setCsvDialogOpen] = useState(false)
+  const [pdfDialogOpen, setPdfDialogOpen] = useState(false)
 
   const filteredProperties = useMemo(() => {
     const normalizedQuery = query?.toLowerCase?.().trim?.() ?? ''
@@ -80,6 +84,18 @@ export function PropertyManager(props: PropertyManagerProps) {
     setStatusFilter('all')
   }
 
+  const handleImported = async () => {
+    try {
+      const response = await fetch('/api/properties', { cache: 'no-store' })
+      const payload = await safeJson(response)
+      if (response.ok && Array.isArray(payload?.properties)) {
+        setProperties(payload.properties as PropertyDTO[])
+      }
+    } catch (error: unknown) {
+      console.error('Unable to refresh properties after import', error)
+    }
+  }
+
   return (
     <div className="mx-auto w-[calc(100%-1.5rem)] max-w-[1200px] py-8">
       <div className="mb-8 flex flex-col gap-4 rounded-lg bg-[var(--dynasty-navy)] p-6 text-[#F8F7F2] shadow-lg md:flex-row md:items-end md:justify-between">
@@ -92,10 +108,21 @@ export function PropertyManager(props: PropertyManagerProps) {
             Add, edit, delete, search, and filter properties while preserving each deal model inside the property record.
           </p>
         </div>
-        <Button asChild className="bg-[var(--dynasty-gold)] text-[var(--dynasty-navy)] hover:bg-[#D8B65B]">
-          <Link href="/properties/new"><PlusCircle className="h-4 w-4" /> Add property</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" className="border-white/25 bg-transparent text-[#F8F7F2] hover:bg-white/10" onClick={() => setCsvDialogOpen(true)}>
+            <FileSpreadsheet className="h-4 w-4" /> Import CSV
+          </Button>
+          <Button type="button" variant="outline" className="border-white/25 bg-transparent text-[#F8F7F2] hover:bg-white/10" onClick={() => setPdfDialogOpen(true)}>
+            <FileText className="h-4 w-4" /> Import PDF
+          </Button>
+          <Button asChild className="bg-[var(--dynasty-gold)] text-[var(--dynasty-navy)] hover:bg-[#D8B65B]">
+            <Link href="/properties/new"><PlusCircle className="h-4 w-4" /> Add property</Link>
+          </Button>
+        </div>
       </div>
+
+      <PropertyImportCsvDialog open={csvDialogOpen} onOpenChange={setCsvDialogOpen} onImported={handleImported} />
+      <PropertyImportPdfDialog open={pdfDialogOpen} onOpenChange={setPdfDialogOpen} onImported={handleImported} />
 
       <Card className="mb-6 border-0 bg-[#F8F7F2] shadow-md">
         <CardContent className="grid gap-4 p-4 lg:grid-cols-[1fr_220px_220px_auto]">

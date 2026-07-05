@@ -75,6 +75,10 @@ services:
       DATABASE_URL: ${DATABASE_URL_DOCKER:-postgresql://postgres:postgres@postgres:5432/postgres}
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3005}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-dynasty-propertyos-secret-change-in-prod}
+      LLMSTUDIO_BASE_URL: ${LLMSTUDIO_BASE_URL_DOCKER:-http://host.docker.internal:1234}
+      LLMSTUDIO_DEFAULT_MODEL: ${LLMSTUDIO_DEFAULT_MODEL:-}
+      LLMSTUDIO_API_KEY: ${LLMSTUDIO_API_KEY:-}
+      LLMSTUDIO_TIMEOUT_SECONDS: ${LLMSTUDIO_TIMEOUT_SECONDS:-5}
 
   n8n-sync:
     image: node:20-alpine

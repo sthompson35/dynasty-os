@@ -8,6 +8,11 @@ export function PropertyPhoto(props: { src?: string | null; alt: string; classNa
   const [hasError, setHasError] = useState(false)
   const hasSrc = Boolean(props?.src?.trim?.()) && !hasError
   const src = hasSrc ? props?.src ?? '/property-placeholder.svg' : '/property-placeholder.svg'
+  // Property photos come from arbitrary external sources (scraped listings, MLS,
+  // user uploads) that can't be pre-enumerated in next.config.js's image host
+  // allowlist. Skip Next's image optimizer for any external URL so an unlisted
+  // host degrades to a plain <img> instead of throwing and crashing the page.
+  const isExternal = /^https?:\/\//i.test(src)
 
   return (
     <div className={`relative overflow-hidden rounded-lg bg-[var(--dynasty-navy)] shadow-md ${props?.className ?? ''}`}>
@@ -15,6 +20,7 @@ export function PropertyPhoto(props: { src?: string | null; alt: string; classNa
         src={src}
         alt={props?.alt ?? 'Property photo'}
         fill
+        unoptimized={isExternal}
         sizes="(min-width: 1280px) 380px, (min-width: 768px) 50vw, 100vw"
         className="object-cover transition-transform duration-500 hover:scale-[1.03]"
         onError={() => setHasError(true)}
