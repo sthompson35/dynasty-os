@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Building2, FileText, FileSpreadsheet, Filter, PlusCircle, Search, Trash2 } from 'lucide-react'
+import { ArrowRight, Building2, ChevronLeft, ChevronRight, FileText, FileSpreadsheet, Filter, PlusCircle, Search, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -17,6 +17,8 @@ import { PROPERTY_STATUS_OPTIONS, PROPERTY_TYPE_OPTIONS, PropertyDTO, calculateD
 type PropertyManagerProps = {
   initialProperties: PropertyDTO[]
 }
+
+const PAGE_SIZE = 24
 
 async function safeJson(response: Response): Promise<Record<string, unknown>> {
   try {
@@ -33,6 +35,7 @@ export function PropertyManager(props: PropertyManagerProps) {
   const [typeFilter, setTypeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
   const [csvDialogOpen, setCsvDialogOpen] = useState(false)
   const [pdfDialogOpen, setPdfDialogOpen] = useState(false)
 
@@ -49,6 +52,20 @@ export function PropertyManager(props: PropertyManagerProps) {
       return matchesQuery && matchesType && matchesStatus
     }) ?? []
   }, [properties, query, typeFilter, statusFilter])
+
+  const totalPages = Math.max(1, Math.ceil(filteredProperties.length / PAGE_SIZE))
+  const safePage = Math.min(currentPage, totalPages)
+
+  const pagedProperties = useMemo(
+    () => filteredProperties.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [filteredProperties, safePage]
+  )
+
+  // Filter changes reshuffle which page 1 even means, so land back on it rather
+  // than showing a stale/likely-empty page from before the filter changed.
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [query, typeFilter, statusFilter])
 
   const handleDelete = async (property: PropertyDTO) => {
     const confirmed = window.confirm(`Delete ${property?.address ?? 'this property'}? This cannot be undone.`)
@@ -173,8 +190,9 @@ export function PropertyManager(props: PropertyManagerProps) {
           </CardContent>
         </Card>
       ) : (
+        <>
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {filteredProperties?.map?.((property: PropertyDTO) => {
+          {pagedProperties?.map?.((property: PropertyDTO) => {
             const dealMetrics = calculateDealMetrics(property)
             return (
               <Card key={property?.id} className="group overflow-hidden border-0 bg-[#F8F7F2] shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
@@ -209,6 +227,35 @@ export function PropertyManager(props: PropertyManagerProps) {
             )
           }) ?? []}
         </div>
+        {totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between gap-4 rounded-lg bg-[#F8F7F2] p-4 shadow-md">
+            <p className="text-sm text-[var(--dynasty-black)]/60">
+              Showing {(safePage - 1) * PAGE_SIZE + 1}-{Math.min(safePage * PAGE_SIZE, filteredProperties.length)} of {filteredProperties.length} properties
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={safePage <= 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              >
+                <ChevronLeft className="h-4 w-4" /> Prev
+              </Button>
+              <span className="text-sm font-semibold text-[var(--dynasty-navy)]">Page {safePage} of {totalPages}</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={safePage >= totalPages}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              >
+                Next <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+        </>
       )}
     </div>
   )
