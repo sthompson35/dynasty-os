@@ -7,6 +7,7 @@ This starter kit contains:
 - [Product vision](PRODUCT_VISION.md)
 - [Master build plan](PROPERTYOS_MASTER_BUILD_PLAN.md)
 - [Security audit policy](SECURITY_AUDIT_POLICY.md)
+- [Acquisition Intelligence + Underwriting Integrity baseline](ACQUISITION_INTELLIGENCE_BASELINE.md) — verified state as of `v1.3.0`
 
 1. `supabase/migrations/001_dynasty_propertyos_schema.sql`  
    Full database foundation for properties, plans, digital twins, rooms, components, materials, MEP, rehab, investor analytics, accounting, lender/appraiser/PM workflows, Web3 passports, and AI agent runs.
