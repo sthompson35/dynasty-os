@@ -1,4 +1,4 @@
-﻿-- Migration: 005_operations_engine.sql
+-- Migration: 005_operations_engine.sql
 -- Dynasty OS Operations Engine Tables
 
 -- Projects master table

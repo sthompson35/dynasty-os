@@ -1,4 +1,4 @@
-﻿-- Migration: 006_disposition_engine.sql
+-- Migration: 006_disposition_engine.sql
 -- Dynasty OS Disposition Engine Tables
 
 -- Buyer registry

@@ -1,4 +1,4 @@
-﻿-- Migration: 003_deal_engine.sql
+-- Migration: 003_deal_engine.sql
 -- Dynasty OS Deal Engine Tables
 
 -- Deals master table
