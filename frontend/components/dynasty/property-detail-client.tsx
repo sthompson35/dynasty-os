@@ -290,6 +290,9 @@ export function PropertyDetailClient(props: {
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className={floodZoneBadgeClass(property?.floodZone)}>{property?.floodZone ? `Flood zone ${property.floodZone}` : 'Flood zone unknown'}</Badge>
                 <Badge className="border-0 bg-[var(--dynasty-tan)]/22 text-[var(--dynasty-navy)]">{property?.zoningDistrict ? `Zoning: ${property.zoningDistrict}` : (property?.zoningSource ?? 'Zoning: verify locally')}</Badge>
+                <Badge className={property?.femaDisasterCount ? 'border-0 bg-amber-100 text-amber-800' : 'border-0 bg-[var(--dynasty-tan)]/22 text-[var(--dynasty-navy)]'}>
+                  {property?.femaDisasterCount ? `${property.femaDisasterCount} FEMA disaster declaration${property.femaDisasterCount === 1 ? '' : 's'} (county)` : 'No FEMA disaster history found'}
+                </Badge>
               </div>
             </div>
           </CardContent>

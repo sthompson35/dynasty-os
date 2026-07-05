@@ -13,6 +13,7 @@
 
 const CENSUS_GEOCODER_URL = 'https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress'
 const FEMA_NFHL_FLOOD_ZONE_LAYER_URL = 'https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query'
+const FEMA_DISASTER_DECLARATIONS_URL = 'https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries'
 const LOOKUP_TIMEOUT_MS = 5000
 
 export type GisEnrichmentInput = {
@@ -31,6 +32,10 @@ export type GisEnrichmentResult = {
   floodZoneSource: string | null
   zoningDistrict: string | null
   zoningSource: string | null
+  femaDisasterCount: number | null
+  femaLastDisasterDate: string | null
+  femaLastDisasterType: string | null
+  femaDisasterSource: string | null
 }
 
 type ZoningAdapter = (input: GisEnrichmentInput) => Promise<{ zoningDistrict: string; zoningSource: string } | null>
@@ -48,6 +53,10 @@ const EMPTY_RESULT: GisEnrichmentResult = {
   floodZoneSource: null,
   zoningDistrict: null,
   zoningSource: null,
+  femaDisasterCount: null,
+  femaLastDisasterDate: null,
+  femaLastDisasterType: null,
+  femaDisasterSource: null,
 }
 
 async function fetchJsonWithTimeout(url: string, timeoutMs: number = LOOKUP_TIMEOUT_MS): Promise<unknown | null> {
@@ -122,6 +131,49 @@ async function lookupFloodZone(latitude: number, longitude: number): Promise<{ f
   return { floodZone, floodZoneSource: 'FEMA NFHL' }
 }
 
+export type FemaDisasterHistoryResult = {
+  femaDisasterCount: number
+  femaLastDisasterDate: string | null
+  femaLastDisasterType: string | null
+  femaDisasterSource: string
+}
+
+export async function lookupFemaDisasterHistory(censusGeoid: string | null): Promise<FemaDisasterHistoryResult | null> {
+  if (!censusGeoid || censusGeoid.length < 5) return null
+
+  const stateFips = censusGeoid.slice(0, 2)
+  const countyFips = censusGeoid.slice(2, 5)
+  const filter = `fipsStateCode eq '${stateFips}' and fipsCountyCode eq '${countyFips}'`
+  const params = new URLSearchParams({
+    $filter: filter,
+    $orderby: 'declarationDate desc',
+    $top: '1',
+    $select: 'declarationDate,incidentType',
+    $format: 'json',
+  })
+  // OpenFEMA doesn't support $inlinecount cheaply for this, so fetch the count
+  // separately via $top=1 metadata rather than pulling every record.
+  const countParams = new URLSearchParams({ $filter: filter, $inlinecount: 'allpages', $top: '1', $select: 'id' })
+
+  const [latest, counted] = await Promise.all([
+    fetchJsonWithTimeout(`${FEMA_DISASTER_DECLARATIONS_URL}?${params.toString()}`),
+    fetchJsonWithTimeout(`${FEMA_DISASTER_DECLARATIONS_URL}?${countParams.toString()}`),
+  ])
+
+  const declarations = (latest as { DisasterDeclarationsSummaries?: Array<{ declarationDate?: string; incidentType?: string }> })
+    ?.DisasterDeclarationsSummaries
+  const metadata = (counted as { metadata?: { count?: number } })?.metadata
+
+  if (!declarations || declarations.length === 0) return null
+
+  return {
+    femaDisasterCount: metadata?.count ?? declarations.length,
+    femaLastDisasterDate: declarations[0]?.declarationDate ?? null,
+    femaLastDisasterType: declarations[0]?.incidentType ?? null,
+    femaDisasterSource: 'OpenFEMA',
+  }
+}
+
 function normalizeJurisdictionKey(value: string | null | undefined): string {
   return (value ?? '')
     .toLowerCase()
@@ -149,9 +201,10 @@ export async function enrichPropertyGis(input: GisEnrichmentInput): Promise<GisE
 
   const census = await lookupCensusGeography(input)
 
-  const [flood, zoning] = await Promise.all([
+  const [flood, zoning, disasterHistory] = await Promise.all([
     census?.latitude && census?.longitude ? lookupFloodZone(census.latitude, census.longitude) : Promise.resolve(null),
     lookupZoning(input, census?.county ?? null),
+    lookupFemaDisasterHistory(census?.censusGeoid ?? null),
   ])
 
   return {
@@ -163,5 +216,9 @@ export async function enrichPropertyGis(input: GisEnrichmentInput): Promise<GisE
     floodZoneSource: flood?.floodZoneSource ?? null,
     zoningDistrict: zoning?.zoningDistrict ?? null,
     zoningSource: zoning?.zoningSource ?? 'unknown - verify locally',
+    femaDisasterCount: disasterHistory?.femaDisasterCount ?? null,
+    femaLastDisasterDate: disasterHistory?.femaLastDisasterDate ?? null,
+    femaLastDisasterType: disasterHistory?.femaLastDisasterType ?? null,
+    femaDisasterSource: disasterHistory?.femaDisasterSource ?? null,
   }
 }

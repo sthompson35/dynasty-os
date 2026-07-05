@@ -48,6 +48,10 @@ export type PropertyDTO = {
   zoningDistrict: string | null
   zoningSource: string | null
   gisEnrichedAt: string | null
+  femaDisasterCount: number | null
+  femaLastDisasterDate: string | null
+  femaLastDisasterType: string | null
+  femaDisasterSource: string | null
   createdAt: string
   updatedAt: string
 }
@@ -256,6 +260,10 @@ export function serializeProperty(property: unknown): PropertyDTO {
     zoningDistrict: normalizeString(raw?.zoningDistrict) || null,
     zoningSource: normalizeString(raw?.zoningSource) || null,
     gisEnrichedAt: raw?.gisEnrichedAt ? safeDateToIso(raw.gisEnrichedAt) : null,
+    femaDisasterCount: toNullableInt(raw?.femaDisasterCount),
+    femaLastDisasterDate: raw?.femaLastDisasterDate ? safeDateToIso(raw.femaLastDisasterDate) : null,
+    femaLastDisasterType: normalizeString(raw?.femaLastDisasterType) || null,
+    femaDisasterSource: normalizeString(raw?.femaDisasterSource) || null,
     createdAt: safeDateToIso(raw?.createdAt),
     updatedAt: safeDateToIso(raw?.updatedAt),
   }
