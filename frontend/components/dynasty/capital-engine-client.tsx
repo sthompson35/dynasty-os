@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { FadeIn, Stagger, StaggerItem } from '@/components/ui/animate'
+import { computeInvestorQualification } from '@/lib/investor-qualification'
 
 function fmt(n: number): string {
   const abs = Math.abs(n)
@@ -21,7 +22,8 @@ type Investor = {
   id: string; name: string; entity: string | null; email: string | null; phone: string | null
   status: string; availableCapital: number | null; committedCapital: number | null
   investedCapital: number | null; preferredReturn: number | null; investmentType: string
-  markets: string | null; notes: string | null; createdAt: string; updatedAt: string
+  markets: string | null; notes: string | null; evidenceSource: string | null
+  createdAt: string; updatedAt: string
 }
 
 type Transaction = {
@@ -41,8 +43,16 @@ const INVEST_TYPES: Record<string, string> = {
   private_loan: 'Private Loan', equity: 'Equity', jv: 'Joint Venture', fund: 'Fund',
 }
 
-type InvForm = { name: string; entity: string; email: string; phone: string; status: string; availableCapital: string; preferredReturn: string; investmentType: string; markets: string; notes: string }
-const EMPTY_INV: InvForm = { name: '', entity: '', email: '', phone: '', status: 'prospect', availableCapital: '', preferredReturn: '8', investmentType: 'private_loan', markets: '', notes: '' }
+function qualificationTone(score: number): string {
+  if (score >= 70) return 'bg-emerald-100 text-emerald-800'
+  if (score >= 45) return 'bg-amber-100 text-amber-800'
+  return 'bg-gray-100 text-gray-600'
+}
+
+type InvForm = { name: string; entity: string; email: string; phone: string; status: string; availableCapital: string; preferredReturn: string; investmentType: string; markets: string; notes: string; evidenceSource: string }
+const EMPTY_INV: InvForm = { name: '', entity: '', email: '', phone: '', status: 'prospect', availableCapital: '', preferredReturn: '8', investmentType: 'private_loan', markets: '', notes: '', evidenceSource: '' }
+
+const EVIDENCE_SOURCES = ['REIA', 'LinkedIn', 'BiggerPockets', 'Referral', 'Website', 'Event/Meetup', 'Other']
 
 type TxForm = { investorId: string; type: string; amount: string; notes: string }
 const EMPTY_TX: TxForm = { investorId: '', type: 'investment', amount: '', notes: '' }
@@ -190,6 +200,12 @@ export function CapitalEngineClient({ investors: initialInvestors, transactions:
                 <div><label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Available Capital ($)</label><Input type="number" placeholder="250000" value={invForm.availableCapital} onChange={e => setInvForm(f => ({ ...f, availableCapital: e.target.value }))} /></div>
                 <div><label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Preferred Return (%)</label><Input type="number" placeholder="8" value={invForm.preferredReturn} onChange={e => setInvForm(f => ({ ...f, preferredReturn: e.target.value }))} /></div>
                 <div><label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Markets</label><Input placeholder="Atlanta, GA · Charlotte, NC" value={invForm.markets} onChange={e => setInvForm(f => ({ ...f, markets: e.target.value }))} /></div>
+                <div><label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Evidence Source</label>
+                  <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={invForm.evidenceSource} onChange={e => setInvForm(f => ({ ...f, evidenceSource: e.target.value }))}>
+                    <option value="">— Where did this lead come from? —</option>
+                    {EVIDENCE_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
                 <div className="md:col-span-3"><label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Notes</label><Input placeholder="Prefers short-term deals, 6-12 month hold max..." value={invForm.notes} onChange={e => setInvForm(f => ({ ...f, notes: e.target.value }))} /></div>
               </div>
               <div className="flex gap-2">
@@ -243,19 +259,39 @@ export function CapitalEngineClient({ investors: initialInvestors, transactions:
               </div>
             ) : (
               <div className="space-y-3">
-                {investors.map(inv => (
-                  <div key={inv.id} className="flex items-center justify-between rounded-lg bg-white/70 p-4 shadow-sm">
-                    <div>
-                      <p className="font-bold text-[var(--dynasty-navy)]">{inv.name}</p>
-                      <p className="text-xs text-[var(--dynasty-black)]/55">{inv.entity ?? ''}{inv.entity && inv.markets ? ' · ' : ''}{inv.markets ?? ''}</p>
-                      <p className="text-xs text-[var(--dynasty-black)]/45">{INVEST_TYPES[inv.investmentType] ?? inv.investmentType}{inv.preferredReturn ? ` · ${(inv.preferredReturn * 100).toFixed(0)}% preferred` : ''}</p>
+                {investors.map(inv => {
+                  const qualification = computeInvestorQualification({
+                    status: inv.status,
+                    availableCapital: inv.availableCapital,
+                    preferredReturn: inv.preferredReturn,
+                    markets: inv.markets,
+                    email: inv.email,
+                    phone: inv.phone,
+                    evidenceSource: inv.evidenceSource,
+                    hasPriorCapitalActivity: transactions.some(t => t.investorId === inv.id),
+                  })
+                  return (
+                  <div key={inv.id} className="rounded-lg bg-white/70 p-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-[var(--dynasty-navy)]">{inv.name}</p>
+                        <p className="text-xs text-[var(--dynasty-black)]/55">{inv.entity ?? ''}{inv.entity && inv.markets ? ' · ' : ''}{inv.markets ?? ''}</p>
+                        <p className="text-xs text-[var(--dynasty-black)]/45">{INVEST_TYPES[inv.investmentType] ?? inv.investmentType}{inv.preferredReturn ? ` · ${(inv.preferredReturn * 100).toFixed(0)}% preferred` : ''}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <p className="font-bold text-[var(--dynasty-navy)]">{inv.availableCapital ? fmt(inv.availableCapital) : '—'}</p>
+                        <div className="flex items-center gap-1.5">
+                          <Badge className={`border-0 text-xs ${qualificationTone(qualification.score)}`}>Qualification {qualification.score}</Badge>
+                          <Badge className={`border-0 text-xs ${STATUS_CONFIG[inv.status] ?? 'bg-gray-100'}`}>{inv.status}</Badge>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <p className="font-bold text-[var(--dynasty-navy)]">{inv.availableCapital ? fmt(inv.availableCapital) : '—'}</p>
-                      <Badge className={`border-0 text-xs ${STATUS_CONFIG[inv.status] ?? 'bg-gray-100'}`}>{inv.status}</Badge>
-                    </div>
+                    {qualification.reasons.length > 0 && (
+                      <p className="mt-2 text-[11px] leading-relaxed text-[var(--dynasty-black)]/45">{qualification.reasons.join(' · ')}</p>
+                    )}
                   </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </CardContent>

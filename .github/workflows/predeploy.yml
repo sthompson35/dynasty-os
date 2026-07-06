@@ -117,6 +117,9 @@ jobs:
       - name: Run biggest-assumption regression test
         run: npm run test:biggest-assumption
 
+      - name: Run investor-qualification regression test
+        run: npm run test:investor-qualification
+
       - name: Start dev server and wait for readiness
         run: |
           npx next dev -H 0.0.0.0 -p 3000 > /tmp/next-dev.log 2>&1 &

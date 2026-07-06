@@ -757,6 +757,10 @@ model Investor {
   investmentType   String    @default("private_loan")
   markets          String?
   notes            String?   @db.Text
+  // Where this investor relationship originated (REIA, LinkedIn, BiggerPockets,
+  // referral, website, event, etc.) - lets qualification/prospecting scoring
+  // reward a known-good channel the way it already rewards real capital signals.
+  evidenceSource   String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
