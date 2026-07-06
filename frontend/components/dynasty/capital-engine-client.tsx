@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { DollarSign, PlusCircle, Users, TrendingUp, ArrowUpRight, ArrowDownRight, RefreshCw } from 'lucide-react'
+import { DollarSign, PlusCircle, Users, TrendingUp, ArrowUpRight, ArrowDownRight, RefreshCw, PhoneCall } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -72,6 +72,28 @@ export function CapitalEngineClient({ investors: initialInvestors, transactions:
   const dryPowder = totalAvailable - totalCommitted
   const deployed = transactions.filter(t => t.type === 'investment' && t.status === 'completed').reduce((s, t) => s + t.amount, 0)
   const returned = transactions.filter(t => t.type === 'return' && t.status === 'completed').reduce((s, t) => s + t.amount, 0)
+
+  // Investor Intelligence Slice 2: "who should we contact first, and why?"
+  // Presentation-layer only - reuses the qualification score, excludes only
+  // "inactive" (already-resolved, same reasoning as excluding KILL-decision
+  // properties from the property Top 20), no new contacted/status machinery.
+  const contactPriority = investors
+    .filter(inv => inv.status !== 'inactive')
+    .map(inv => ({
+      investor: inv,
+      qualification: computeInvestorQualification({
+        status: inv.status,
+        availableCapital: inv.availableCapital,
+        preferredReturn: inv.preferredReturn,
+        markets: inv.markets,
+        email: inv.email,
+        phone: inv.phone,
+        evidenceSource: inv.evidenceSource,
+        hasPriorCapitalActivity: transactions.some(t => t.investorId === inv.id),
+      }),
+    }))
+    .sort((a, b) => b.qualification.score - a.qualification.score)
+    .slice(0, 5)
 
   async function saveInvestor() {
     setSaving(true)
@@ -246,6 +268,36 @@ export function CapitalEngineClient({ investors: initialInvestors, transactions:
           </Card>
         </FadeIn>
       )}
+
+      {/* Contact priority */}
+      <Card className="mb-6 border-0 bg-[#F8F7F2] shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 font-display text-lg text-[var(--dynasty-navy)]">
+            <PhoneCall className="h-5 w-5 text-[var(--dynasty-gold)]" /> Who to contact first today
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {contactPriority.length === 0 ? (
+            <p className="py-6 text-center text-sm text-[var(--dynasty-black)]/50">No active investors to prioritize yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {contactPriority.map(({ investor: inv, qualification }, index) => (
+                <div key={inv.id} className="flex items-start gap-3 rounded-lg bg-white/70 p-3 shadow-sm">
+                  <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--dynasty-navy)] font-display text-xs font-black text-[var(--dynasty-gold)]">{index + 1}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-bold text-[var(--dynasty-navy)]">{inv.name}</p>
+                      <Badge className={`border-0 text-xs ${qualificationTone(qualification.score)}`}>Qualification {qualification.score}</Badge>
+                      <Badge className={`border-0 text-xs ${STATUS_CONFIG[inv.status] ?? 'bg-gray-100'}`}>{inv.status}</Badge>
+                    </div>
+                    <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--dynasty-black)]/50">{qualification.reasons.join(' · ')}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Investor roster */}
       <div className="grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
