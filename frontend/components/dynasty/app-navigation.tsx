@@ -7,7 +7,7 @@ import { signOut } from 'next-auth/react'
 import {
   Building2, LayoutDashboard, LogOut, PlusCircle, UserCircle, Users,
   Zap, Target, DollarSign, Layers, ShoppingBag, Activity, ChevronDown, ChevronUp, Home,
-  ClipboardCheck, BrainCircuit, Radar,
+  ClipboardCheck, BrainCircuit, Radar, GraduationCap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BrandMark } from '@/components/dynasty/brand-mark'
@@ -29,6 +29,7 @@ const mainNavItems = [
   { href: '/dashboard',      label: 'Dashboard',      icon: LayoutDashboard },
   { href: '/properties',     label: 'Properties',     icon: Building2 },
   { href: '/contacts',       label: 'Contacts',       icon: Users },
+  { href: '/learning-center', label: 'Learning Center', icon: GraduationCap },
 ]
 
 function initialsOf(value: string): string {

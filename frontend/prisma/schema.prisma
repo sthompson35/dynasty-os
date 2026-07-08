@@ -761,6 +761,12 @@ model Investor {
   // referral, website, event, etc.) - lets qualification/prospecting scoring
   // reward a known-good channel the way it already rewards real capital signals.
   evidenceSource   String?
+  // Snapshot of the qualification score/reasons as of the last time it was
+  // computed (see lib/investor-qualification-change.ts) - lets a later read
+  // detect a material improvement without a full event-log table.
+  lastQualificationScore   Int?
+  lastQualificationReasons Json?
+  lastQualificationAt      DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)

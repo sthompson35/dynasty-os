@@ -120,6 +120,9 @@ jobs:
       - name: Run investor-qualification regression test
         run: npm run test:investor-qualification
 
+      - name: Run investor-qualification-change regression test
+        run: npm run test:investor-qualification-change
+
       - name: Start dev server and wait for readiness
         run: |
           npx next dev -H 0.0.0.0 -p 3000 > /tmp/next-dev.log 2>&1 &

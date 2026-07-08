@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { snapshotQualificationChange } from '@/lib/investor-qualification-snapshot'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,7 +15,15 @@ export async function GET() {
     orderBy: { updatedAt: 'desc' },
     include: { distributions: true, transactions: true },
   })
-  return NextResponse.json(investors)
+
+  const withQualificationChange = await Promise.all(
+    investors.map(async (investor) => ({
+      ...investor,
+      qualificationChange: await snapshotQualificationChange(prisma, investor, investor.transactions.length > 0),
+    }))
+  )
+
+  return NextResponse.json(withQualificationChange)
 }
 
 export async function POST(req: NextRequest) {

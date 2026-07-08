@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { AppNavigation } from '@/components/dynasty/app-navigation'
 import { CapitalEngineClient } from '@/components/dynasty/capital-engine-client'
+import { snapshotQualificationChange } from '@/lib/investor-qualification-snapshot'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Capital Engine' }
@@ -18,7 +19,11 @@ export default async function CapitalEnginePage() {
     prisma.capitalTransaction.findMany({ where: { userId }, orderBy: { date: 'desc' }, take: 50 }).catch(() => []),
   ])
 
-  const serializeInvestors = investors.map(i => ({
+  const qualificationChanges = await Promise.all(
+    investors.map((i) => snapshotQualificationChange(prisma, i, transactions.some(t => t.investorId === i.id)))
+  )
+
+  const serializeInvestors = investors.map((i, index) => ({
     ...i,
     availableCapital: i.availableCapital ? Number(i.availableCapital) : null,
     committedCapital: i.committedCapital ? Number(i.committedCapital) : null,
@@ -26,6 +31,7 @@ export default async function CapitalEnginePage() {
     preferredReturn: i.preferredReturn ? Number(i.preferredReturn) : null,
     createdAt: i.createdAt.toISOString(),
     updatedAt: i.updatedAt.toISOString(),
+    qualificationChange: qualificationChanges[index],
   }))
 
   const serializeTransactions = transactions.map(t => ({

@@ -18,12 +18,18 @@ function fmt(n: number): string {
   return `${sign}$${Math.round(abs).toLocaleString()}`
 }
 
+type QualificationChange = {
+  previousScore: number; currentScore: number; scoreDelta: number
+  gainedReasons: string[]; lostReasons: string[]; summary: string
+}
+
 type Investor = {
   id: string; name: string; entity: string | null; email: string | null; phone: string | null
   status: string; availableCapital: number | null; committedCapital: number | null
   investedCapital: number | null; preferredReturn: number | null; investmentType: string
   markets: string | null; notes: string | null; evidenceSource: string | null
   createdAt: string; updatedAt: string
+  qualificationChange?: QualificationChange | null
 }
 
 type Transaction = {
@@ -94,6 +100,14 @@ export function CapitalEngineClient({ investors: initialInvestors, transactions:
     }))
     .sort((a, b) => b.qualification.score - a.qualification.score)
     .slice(0, 5)
+
+  // Investor Intelligence Slice 3: "which investors deserve renewed attention
+  // because their qualification has materially improved?" The change itself
+  // is computed server-side (snapshot-on-read, see api/investors/route.ts) -
+  // this is presentation only, sorted by the size of the improvement.
+  const improvingInvestors = investors
+    .filter((inv): inv is Investor & { qualificationChange: QualificationChange } => Boolean(inv.qualificationChange))
+    .sort((a, b) => b.qualificationChange.scoreDelta - a.qualificationChange.scoreDelta)
 
   async function saveInvestor() {
     setSaving(true)
@@ -298,6 +312,37 @@ export function CapitalEngineClient({ investors: initialInvestors, transactions:
           )}
         </CardContent>
       </Card>
+
+      {/* Qualification changes */}
+      {improvingInvestors.length > 0 && (
+        <Card className="mb-6 border-0 bg-[#F8F7F2] shadow-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 font-display text-lg text-[var(--dynasty-navy)]">
+              <TrendingUp className="h-5 w-5 text-[var(--dynasty-gold)]" /> Getting stronger
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {improvingInvestors.map((inv) => (
+                <div key={inv.id} className="flex items-start gap-3 rounded-lg bg-white/70 p-3 shadow-sm">
+                  <ArrowUpRight className="h-5 w-5 flex-shrink-0 text-emerald-600" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-bold text-[var(--dynasty-navy)]">{inv.name}</p>
+                      <Badge className="border-0 bg-emerald-100 text-xs text-emerald-800">{inv.qualificationChange.summary}</Badge>
+                    </div>
+                    {inv.qualificationChange.gainedReasons.length > 0 && (
+                      <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--dynasty-black)]/50">
+                        Now true: {inv.qualificationChange.gainedReasons.join(' · ')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Investor roster */}
       <div className="grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
