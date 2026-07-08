@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { FadeIn, Stagger, StaggerItem } from '@/components/ui/animate'
+import { GlossaryHint } from '@/components/dynasty/glossary-hint'
 import { computeInvestorQualification } from '@/lib/investor-qualification'
 
 function fmt(n: number): string {
@@ -187,13 +188,13 @@ export function CapitalEngineClient({ investors: initialInvestors, transactions:
         {[
           { label: 'Available Capital', value: fmt(totalAvailable), helper: 'Total investor capacity', color: 'text-emerald-700' },
           { label: 'Committed Capital', value: fmt(totalCommitted), helper: 'Verbally committed', color: 'text-amber-700' },
-          { label: 'Dry Powder', value: fmt(dryPowder), helper: 'Deployable tomorrow', color: 'text-[var(--dynasty-navy)]' },
+          { label: 'Dry Powder', value: fmt(dryPowder), helper: 'Deployable tomorrow', color: 'text-[var(--dynasty-navy)]', term: 'Dry Powder' },
           { label: 'Capital Recycled', value: fmt(returned), helper: 'Returned to flywheel', color: 'text-emerald-700' },
         ].map(m => (
           <StaggerItem key={m.label}>
             <Card className="border-0 bg-[#F8F7F2] shadow-md">
               <CardContent className="p-5">
-                <p className="text-xs font-semibold text-[var(--dynasty-black)]/55">{m.label}</p>
+                <p className="flex items-center gap-1.5 text-xs font-semibold text-[var(--dynasty-black)]/55">{m.label} {m.term && <GlossaryHint term={m.term} />}</p>
                 <p className={`mt-1 font-display text-2xl font-black ${m.color}`}>{m.value}</p>
                 <p className="mt-1 text-xs text-[var(--dynasty-black)]/45">{m.helper}</p>
               </CardContent>
@@ -228,13 +229,13 @@ export function CapitalEngineClient({ investors: initialInvestors, transactions:
                 </div>
                 <div><label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Email</label><Input placeholder="jane@example.com" value={invForm.email} onChange={e => setInvForm(f => ({ ...f, email: e.target.value }))} /></div>
                 <div><label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Phone</label><Input placeholder="(555) 555-5555" value={invForm.phone} onChange={e => setInvForm(f => ({ ...f, phone: e.target.value }))} /></div>
-                <div><label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Investment Type</label>
+                <div><label className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[var(--dynasty-black)]/60">Investment Type <GlossaryHint term="Capital Stack" /></label>
                   <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={invForm.investmentType} onChange={e => setInvForm(f => ({ ...f, investmentType: e.target.value }))}>
                     {Object.entries(INVEST_TYPES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
                 </div>
                 <div><label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Available Capital ($)</label><Input type="number" placeholder="250000" value={invForm.availableCapital} onChange={e => setInvForm(f => ({ ...f, availableCapital: e.target.value }))} /></div>
-                <div><label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Preferred Return (%)</label><Input type="number" placeholder="8" value={invForm.preferredReturn} onChange={e => setInvForm(f => ({ ...f, preferredReturn: e.target.value }))} /></div>
+                <div><label className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[var(--dynasty-black)]/60">Preferred Return (%) <GlossaryHint term="Preferred Return" /></label><Input type="number" placeholder="8" value={invForm.preferredReturn} onChange={e => setInvForm(f => ({ ...f, preferredReturn: e.target.value }))} /></div>
                 <div><label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Markets</label><Input placeholder="Atlanta, GA · Charlotte, NC" value={invForm.markets} onChange={e => setInvForm(f => ({ ...f, markets: e.target.value }))} /></div>
                 <div><label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Evidence Source</label>
                   <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={invForm.evidenceSource} onChange={e => setInvForm(f => ({ ...f, evidenceSource: e.target.value }))}>

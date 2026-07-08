@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { FadeIn, Stagger, StaggerItem } from '@/components/ui/animate'
+import { GlossaryHint } from '@/components/dynasty/glossary-hint'
 import { fmt } from '@/lib/format'
 
 type Deal = {
@@ -205,7 +206,7 @@ export function DealEngineClient({ deals: initialDeals }: { deals: Deal[] }) {
             <div><p className="font-display text-2xl font-black text-[var(--dynasty-gold)]">{deals.length}</p><p className="text-xs text-[#F8F7F2]/60">Total Deals</p></div>
             <div><p className="font-display text-2xl font-black text-emerald-400">{approvedDeals}</p><p className="text-xs text-[#F8F7F2]/60">GO Decisions</p></div>
             <div><p className="font-display text-2xl font-black text-red-400">{killDeals}</p><p className="text-xs text-[#F8F7F2]/60">Killed Deals</p></div>
-            <div><p className="font-display text-2xl font-black text-[var(--dynasty-gold)]">{fmt(pipelineValue)}</p><p className="text-xs text-[#F8F7F2]/60">Pipeline ARV</p></div>
+            <div><p className="font-display text-2xl font-black text-[var(--dynasty-gold)]">{fmt(pipelineValue)}</p><p className="flex items-center gap-1.5 text-xs text-[#F8F7F2]/60">Pipeline ARV <GlossaryHint term="ARV" className="text-[#F8F7F2]/50 hover:text-[var(--dynasty-gold)]" /></p></div>
           </div>
         </div>
       </FadeIn>
@@ -257,15 +258,15 @@ export function DealEngineClient({ deals: initialDeals }: { deals: Deal[] }) {
                     <Input type="number" placeholder="150000" value={form.purchasePrice} onChange={e => handleFormChange({ purchasePrice: e.target.value })} />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">ARV (After Repair Value)</label>
+                    <label className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[var(--dynasty-black)]/60">ARV (After Repair Value) <GlossaryHint term="ARV" /></label>
                     <Input type="number" placeholder="250000" value={form.arv} onChange={e => handleFormChange({ arv: e.target.value })} />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Repair Costs</label>
+                    <label className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[var(--dynasty-black)]/60">Repair Costs <GlossaryHint term="Rehab Budget" /></label>
                     <Input type="number" placeholder="45000" value={form.repairCosts} onChange={e => handleFormChange({ repairCosts: e.target.value })} />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Holding Costs</label>
+                    <label className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[var(--dynasty-black)]/60">Holding Costs <GlossaryHint term="Holding Costs" /></label>
                     <Input type="number" placeholder="8000" value={form.holdingCosts} onChange={e => handleFormChange({ holdingCosts: e.target.value })} />
                   </div>
                   <div>
@@ -296,19 +297,19 @@ export function DealEngineClient({ deals: initialDeals }: { deals: Deal[] }) {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className={`rounded-xl p-4 text-center ${calc.decision === 'go' ? 'bg-emerald-600' : calc.decision === 'kill' ? 'bg-red-600' : 'bg-amber-600'} text-white`}>
-                    <p className="text-xs font-bold uppercase tracking-widest opacity-80">Decision</p>
+                    <p className="flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-widest opacity-80">Decision <GlossaryHint term="GO / KILL / WATCH Decision" className="text-white/70 hover:text-white" /></p>
                     <p className="font-display text-3xl font-black">{DECISION_CONFIG[calc.decision]?.label ?? calc.decision}</p>
                   </div>
                   {[
-                    { label: 'MAO (70% Rule)', value: fmt(calc.mao) },
+                    { label: 'MAO (70% Rule)', value: fmt(calc.mao), term: 'MAO' },
                     { label: 'Flip Profit', value: fmt(calc.flipProfit), good: calc.flipProfit > 0 },
-                    { label: 'Wholesale Fee', value: fmt(calc.wholesaleFee) },
+                    { label: 'Wholesale Fee', value: fmt(calc.wholesaleFee), term: 'Assignment Fee' },
                     { label: 'ROI', value: fmt(calc.roi, 'percent'), good: calc.roi >= 0.25 },
                     { label: 'Risk Score', value: `${calc.riskScore}/100`, good: calc.riskScore < 30 },
                     { label: 'Capital Required', value: fmt(calc.capitalRequired) },
                   ].map(row => (
                     <div key={row.label} className="flex items-center justify-between rounded-lg bg-white/60 px-3 py-2">
-                      <span className="text-xs text-[var(--dynasty-black)]/60">{row.label}</span>
+                      <span className="flex items-center gap-1.5 text-xs text-[var(--dynasty-black)]/60">{row.label} {row.term && <GlossaryHint term={row.term} />}</span>
                       <span className={`text-sm font-bold ${row.good === true ? 'text-emerald-700' : row.good === false ? 'text-red-700' : 'text-[var(--dynasty-navy)]'}`}>{row.value}</span>
                     </div>
                   ))}

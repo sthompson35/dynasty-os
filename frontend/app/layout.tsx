@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { DynastyChatWidget } from '@/components/dynasty/dynasty-chat-widget';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,8 +30,10 @@ export default function RootLayout(props: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans" suppressHydrationWarning>
-        {props?.children}
-        <DynastyChatWidget />
+        <TooltipProvider delayDuration={200}>
+          {props?.children}
+          <DynastyChatWidget />
+        </TooltipProvider>
       </body>
     </html>
   );

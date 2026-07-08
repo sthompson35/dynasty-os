@@ -29,11 +29,19 @@ const LEVEL_ORDER: ModuleLevel[] = ['beginner', 'intermediate', 'advanced']
 
 type TrackSelection = StrategyId | 'glossary'
 
-export function LearningCenterClient({ strategies, glossary }: { strategies: Strategy[]; glossary: GlossaryTerm[] }) {
-  const [activeTrack, setActiveTrack] = useState<TrackSelection>(strategies[0]?.id ?? 'glossary')
+export function LearningCenterClient({
+  strategies,
+  glossary,
+  initialTerm,
+}: {
+  strategies: Strategy[]
+  glossary: GlossaryTerm[]
+  initialTerm?: string
+}) {
+  const [activeTrack, setActiveTrack] = useState<TrackSelection>(initialTerm ? 'glossary' : strategies[0]?.id ?? 'glossary')
   const [activeLevel, setActiveLevel] = useState<ModuleLevel>('beginner')
   const [expandedModuleId, setExpandedModuleId] = useState<string | null>(null)
-  const [glossarySearch, setGlossarySearch] = useState('')
+  const [glossarySearch, setGlossarySearch] = useState(initialTerm ? initialTerm.split(' (')[0] : '')
   const [glossaryFilter, setGlossaryFilter] = useState<StrategyId | 'all'>('all')
 
   const totalModules = strategies.reduce((sum, s) => sum + s.modules.length, 0)
