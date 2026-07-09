@@ -23,8 +23,28 @@ function money(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-function ago(minutes: number): string {
-  return minutes < 60 ? `${minutes} min ago` : `${Math.round(minutes / 60)} hr ago`
+function sinceDate(date: Date | undefined | null): string {
+  if (!date) return 'no activity'
+  const minutes = Math.round((Date.now() - date.getTime()) / 60000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes} min ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours} hr ago`
+  const days = Math.round(hours / 24)
+  return `${days} day${days !== 1 ? 's' : ''} ago`
+}
+
+function topStates(arr: { state: string }[], n = 2): string {
+  const counts = new Map<string, number>()
+  for (const item of arr) {
+    const s = item.state?.trim()
+    if (s) counts.set(s, (counts.get(s) ?? 0) + 1)
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([s]) => s)
+    .join(', ') || 'No data'
 }
 
 function toNextAction(decision: string, reasons: unknown): string {
@@ -58,7 +78,7 @@ export default async function DynastyAIPage() {
   ])
 
   const propertyIds = properties.map((property) => property.id)
-  const [pendingDraws, openTasks, topDecisionScores, goDealScoreCount, blockedTaskCount, blockedTasks] = await Promise.all([
+  const [pendingDraws, openTasks, topDecisionScores, goDealScoreCount, blockedTaskCount, blockedTasks, strategyGroups, dealOutcomeTotal, dealOutcomeProfitable] = await Promise.all([
     propertyIds.length
       ? prisma.draw.count({ where: { propertyId: { in: propertyIds }, status: { in: ['pending', 'requested', 'scheduled'] } } }).catch(() => 0)
       : Promise.resolve(0),
@@ -82,6 +102,15 @@ export default async function DynastyAIPage() {
       take: 2,
       include: { project: { select: { name: true } } },
     }).catch(() => []),
+    prisma.dealScore.groupBy({
+      by: ['strategy'],
+      where: { userId },
+      _count: { _all: true },
+      orderBy: { _count: { strategy: 'desc' } },
+      take: 1,
+    }).catch(() => []),
+    prisma.dealOutcome.count({ where: { userId } }).catch(() => 0),
+    prisma.dealOutcome.count({ where: { userId, status: 'closed', netProfit: { gt: 0 } } }).catch(() => 0),
   ])
 
   const topDecisions: TopDecisionItem[] = topDecisionScores.map((score) => ({
@@ -122,9 +151,9 @@ export default async function DynastyAIPage() {
     .sort((a, b) => b.dynastyFitScore - a.dynastyFitScore)
 
   const summary = buildIntakeSummary(candidates)
-  const buyCandidates = candidates.filter((candidate) => candidate.atlasRecommendation.action === 'BUY' && !candidate.existingDeal)
   const reviewCandidates = candidates.filter((candidate) => candidate.atlasRecommendation.action !== 'PASS')
   const activeDeals = deals.filter((deal) => !['closed', 'dead', 'archived', 'rejected'].includes(deal.status.toLowerCase()))
+  const closingDeals = deals.filter((deal) => ['contract', 'contracted', 'closing'].includes(deal.status.toLowerCase()))
   const positiveDeals = deals.filter((deal) => money(deal.flipProfit) > 0 || money(deal.wholesaleFee) > 0)
   const closedClosings = closingRecords.filter((item) => item.status === 'CLOSED')
   const dealById = new Map(deals.map((deal) => [deal.id, deal]))
@@ -135,9 +164,7 @@ export default async function DynastyAIPage() {
     return Number.isFinite(days) && days >= 0 ? days : 92
   }
   const rejectedCount = candidates.filter((candidate) => candidate.atlasRecommendation.action === 'PASS').length + leads.filter((lead) => ['dead', 'archived', 'rejected'].includes(lead.status.toLowerCase())).length
-  const profit30 = buyCandidates.slice(0, 5).reduce((sum, candidate) => sum + Math.max(0, candidate.projectedProfit), 0)
   const profit90 = reviewCandidates.slice(0, 17).reduce((sum, candidate) => sum + Math.max(0, candidate.projectedProfit), 0)
-  const capital30 = buyCandidates.slice(0, 5).reduce((sum, candidate) => sum + Math.max(0, candidate.askingOrBasis), 0)
 
   // "Top 10 Decisions Today" - the single highest-priority item from each
   // engine, not a fourth competing acquisition-only queue (Acquisition
@@ -238,23 +265,25 @@ export default async function DynastyAIPage() {
     recommendations,
     topDecisions,
     engineHealth: [
-      { engine: 'Lead Engine', health: Math.min(98, 72 + Math.round(Math.min(leads.length, 5000) / 220)), metrics: [{ label: 'Leads Processed', value: leads.length }, { label: 'Backlog', value: leads.filter((lead) => ['new', 'intake', 'nurture'].includes(lead.status.toLowerCase())).length }, { label: 'Last Run', value: ago(12) }] },
-      { engine: 'Intake Engine', health: summary.averageScore || 82, metrics: [{ label: 'Properties Scanned', value: summary.totalProperties }, { label: 'Qualified', value: summary.pipeline.qualified }, { label: 'Last Run', value: ago(7) }] },
-      { engine: 'Deal Engine', health: Math.max(65, Math.min(96, 88 - deals.filter((deal) => deal.decision === 'pending').length)), metrics: [{ label: 'Deals Reviewed', value: deals.length }, { label: 'Pending', value: deals.filter((deal) => deal.decision === 'pending').length }, { label: 'Last Run', value: ago(4) }] },
+      { engine: 'Lead Engine', health: Math.min(98, 72 + Math.round(Math.min(leads.length, 5000) / 220)), metrics: [{ label: 'Leads Processed', value: leads.length }, { label: 'Backlog', value: leads.filter((lead) => ['new', 'intake', 'nurture'].includes(lead.status.toLowerCase())).length }, { label: 'Last Activity', value: sinceDate(leads[0]?.updatedAt) }] },
+      { engine: 'Intake Engine', health: summary.averageScore || 82, metrics: [{ label: 'Properties Scanned', value: summary.totalProperties }, { label: 'Qualified', value: summary.pipeline.qualified }, { label: 'Last Activity', value: sinceDate(properties[0]?.updatedAt) }] },
+      { engine: 'Deal Engine', health: Math.max(65, Math.min(96, 88 - deals.filter((deal) => deal.decision === 'pending').length)), metrics: [{ label: 'Deals Reviewed', value: deals.length }, { label: 'Pending', value: deals.filter((deal) => deal.decision === 'pending').length }, { label: 'Last Activity', value: sinceDate(deals[0]?.updatedAt) }] },
       { engine: 'Capital Engine', health: Math.max(60, Math.min(94, 80 + investors.filter((investor) => investor.status === 'active').length - capitalTransactions.filter((item) => item.status === 'pending').length)), metrics: [{ label: 'Funding Requests', value: activeDeals.filter((deal) => money(deal.capitalRequired) > money(deal.capitalAllocated)).length }, { label: 'Investor Matches', value: investors.filter((investor) => investor.status === 'active' || money(investor.availableCapital) > 0).length }, { label: 'Pending', value: capitalTransactions.filter((item) => item.status === 'pending').length }] },
-      { engine: 'Rehab Engine', health: Math.max(58, 92 - projects.filter((project) => project.riskScore >= 60).length * 4), metrics: [{ label: 'Active Projects', value: projects.filter((project) => !['closed', 'complete', 'completed'].includes(project.status.toLowerCase())).length }, { label: 'Open Tasks', value: openTasks }, { label: 'Last Run', value: ago(18) }] },
-      { engine: 'Disposition Engine', health: Math.max(62, Math.min(96, 82 + buyerProfiles.filter((buyer) => buyer.status === 'ACTIVE').length - dispositionPackages.filter((item) => item.status === 'READY').length)), metrics: [{ label: 'Buyer Pool', value: buyerProfiles.filter((buyer) => buyer.status === 'ACTIVE').length }, { label: 'Active Exits', value: dispositionPackages.length - closedClosings.length }, { label: 'Last Run', value: ago(9) }] },
+      { engine: 'Rehab Engine', health: Math.max(58, 92 - projects.filter((project) => project.riskScore >= 60).length * 4), metrics: [{ label: 'Active Projects', value: projects.filter((project) => !['closed', 'complete', 'completed'].includes(project.status.toLowerCase())).length }, { label: 'Open Tasks', value: openTasks }, { label: 'Last Activity', value: sinceDate(projects[0]?.updatedAt) }] },
+      { engine: 'Disposition Engine', health: Math.max(62, Math.min(96, 82 + buyerProfiles.filter((buyer) => buyer.status === 'ACTIVE').length - dispositionPackages.filter((item) => item.status === 'READY').length)), metrics: [{ label: 'Buyer Pool', value: buyerProfiles.filter((buyer) => buyer.status === 'ACTIVE').length }, { label: 'Active Exits', value: dispositionPackages.length - closedClosings.length }, { label: 'Last Activity', value: sinceDate(dispositionPackages[0]?.updatedAt ?? closingRecords[0]?.updatedAt) }] },
     ],
     memory: {
-      targetMarkets: 'Missouri',
-      preferredStrategy: 'Wholesale, Fix & Flip',
+      targetMarkets: topStates(properties),
+      preferredStrategy: (strategyGroups[0] as { strategy: string } | undefined)?.strategy ?? 'Wholesale',
       minimumProfit: 25000,
       minimumRoi: 0.25,
       maximumRehab: 'Medium',
       averageHoldDays: closedClosings.length ? Math.round(closedClosings.reduce((sum, item) => sum + holdDaysFor(item), 0) / closedClosings.length) : 92,
       closedDeals: closedClosings.length || positiveDeals.length,
       rejectedDeals: rejectedCount,
-      predictionAccuracy: Math.max(82, Math.min(96, 90 + closedClosings.length - Math.round(rejectedCount / 2000))),
+      predictionAccuracy: dealOutcomeTotal > 0
+        ? Math.round((dealOutcomeProfitable / dealOutcomeTotal) * 100)
+        : Math.max(82, Math.min(96, 90 + closedClosings.length - Math.round(rejectedCount / 2000))),
     },
     today: {
       // Real signals, same sources as the recommendations above - not
@@ -269,13 +298,16 @@ export default async function DynastyAIPage() {
     },
     outlook: {
       next30: {
-        expectedClosings: Math.min(5, buyCandidates.length),
-        expectedRevenue: Math.round(profit30 + capital30 * 0.12),
-        capitalRequired: Math.round(capital30),
-        expectedProfit: Math.round(profit30),
+        expectedClosings: closingDeals.length,
+        expectedRevenue: Math.round(
+          closingDeals.reduce((s, d) => s + money(d.flipProfit) + money(d.wholesaleFee), 0) ||
+          closingDeals.reduce((s, d) => s + money(d.capitalRequired), 0) * 0.12
+        ),
+        capitalRequired: Math.round(closingDeals.reduce((s, d) => s + money(d.capitalRequired), 0)),
+        expectedProfit: Math.round(closingDeals.reduce((s, d) => s + money(d.flipProfit) + money(d.wholesaleFee), 0)),
       },
       next90: {
-        projectedClosings: Math.min(17, reviewCandidates.length),
+        projectedClosings: Math.min(activeDeals.length, reviewCandidates.length),
         projectedRevenue: Math.round(profit90 + reviewCandidates.slice(0, 17).reduce((sum, candidate) => sum + Math.max(0, candidate.askingOrBasis) * 0.1, 0)),
         projectedProfit: Math.round(profit90),
       },
