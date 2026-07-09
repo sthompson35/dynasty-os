@@ -6,6 +6,7 @@ import {
   buildGisEnrichedActivity,
   buildFemaUpdatedActivity,
   buildPurchasePriceActivity,
+  buildOutcomeRecordedActivity,
   collapseActivityFeed,
   type ActivityFeedRow,
 } from './property-activity'
@@ -121,6 +122,19 @@ test('an IMPORT_COMPLETED batch adjacent to an unrelated event does not absorb i
   assert.equal(result[0].count, 2)
   assert.equal(result[1].eventType, 'DECISION_CHANGED')
   assert.equal(result[2].count, 1)
+})
+
+test('a closed outcome summary includes the predicted decision and net profit', () => {
+  const activity = buildOutcomeRecordedActivity({ status: 'closed', predictedDecision: 'GO', netProfit: 42000 })
+  assert.equal(activity.eventType, 'OUTCOME_RECORDED')
+  assert.match(activity.summary, /Closed/)
+  assert.match(activity.summary, /predicted GO/)
+  assert.match(activity.summary, /\$42,000/)
+})
+
+test('a fell-through outcome is labeled distinctly from a close', () => {
+  const activity = buildOutcomeRecordedActivity({ status: 'fell_through', predictedDecision: 'GO', netProfit: null })
+  assert.match(activity.summary, /Fell through/)
 })
 
 if (failed) {

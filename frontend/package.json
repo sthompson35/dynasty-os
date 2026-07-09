@@ -15,7 +15,8 @@
     "test:biggest-assumption": "tsx lib/portfolio-scoring/biggest-assumption.test.ts",
     "test:investor-qualification": "tsx lib/investor-qualification.test.ts",
     "test:investor-qualification-change": "tsx lib/investor-qualification-change.test.ts",
-    "verify:predeploy": "npm run test:portfolio-metrics && npm run test:portfolio-scoring && npm run test:next-best-action && npm run test:property-activity && npm run test:biggest-assumption && npm run test:investor-qualification && npm run test:investor-qualification-change && tsx scripts/verify_migration_state.ts --base-url=http://localhost:3000 && tsc --noEmit && next build"
+    "test:deal-outcome": "tsx lib/deal-outcome.test.ts",
+    "verify:predeploy": "npm run test:portfolio-metrics && npm run test:portfolio-scoring && npm run test:next-best-action && npm run test:property-activity && npm run test:biggest-assumption && npm run test:investor-qualification && npm run test:investor-qualification-change && npm run test:deal-outcome && tsx scripts/verify_migration_state.ts --base-url=http://localhost:3000 && tsc --noEmit && next build"
   },
   "prisma": {
     "seed": "tsx --require dotenv/config scripts/safe-seed.ts"

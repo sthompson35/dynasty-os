@@ -41,7 +41,7 @@ export default async function PropertyDetailPage(props: PropertyDetailPageProps)
     notFound()
   }
 
-  const [rehabItems, shares, documents, contactLinks, draws, propertyImages] = await Promise.all([
+  const [rehabItems, shares, documents, contactLinks, draws, propertyImages, dealScore, dealOutcome] = await Promise.all([
     prisma.rehabItem.findMany({
       where: { propertyId: id },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
@@ -78,6 +78,8 @@ export default async function PropertyDetailPage(props: PropertyDetailPageProps)
       where: { propertyId: id, userId },
       orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
     }),
+    prisma.dealScore.findUnique({ where: { userId_propertyId: { userId, propertyId: id } } }),
+    prisma.dealOutcome.findUnique({ where: { userId_propertyId: { userId, propertyId: id } } }),
   ])
 
   const initialContacts = contactLinks?.map?.((link: Record<string, unknown>) => {
@@ -109,6 +111,27 @@ export default async function PropertyDetailPage(props: PropertyDetailPageProps)
         initialContacts={initialContacts}
         initialDraws={draws?.map?.((draw: unknown) => serializeDraw(draw)) ?? []}
         initialImages={propertyImages?.map?.((image: Record<string, unknown>) => serializePropertyImage(image)) ?? []}
+        dealScore={dealScore ? { decision: dealScore.decision, dealScore: dealScore.dealScore, strategy: dealScore.strategy } : null}
+        dealOutcome={dealOutcome ? {
+          id: dealOutcome.id,
+          status: dealOutcome.status,
+          closeDate: dealOutcome.closeDate ? dealOutcome.closeDate.toISOString() : null,
+          predictedDecision: dealOutcome.predictedDecision,
+          predictedScore: dealOutcome.predictedScore,
+          predictedStrategy: dealOutcome.predictedStrategy,
+          projectedPurchase: dealOutcome.projectedPurchase ? Number(dealOutcome.projectedPurchase) : null,
+          projectedRehab: dealOutcome.projectedRehab ? Number(dealOutcome.projectedRehab) : null,
+          projectedExit: dealOutcome.projectedExit ? Number(dealOutcome.projectedExit) : null,
+          actualStrategy: dealOutcome.actualStrategy,
+          actualPurchase: dealOutcome.actualPurchase ? Number(dealOutcome.actualPurchase) : null,
+          actualRehab: dealOutcome.actualRehab ? Number(dealOutcome.actualRehab) : null,
+          actualExit: dealOutcome.actualExit ? Number(dealOutcome.actualExit) : null,
+          holdMonths: dealOutcome.holdMonths ? Number(dealOutcome.holdMonths) : null,
+          netProfit: dealOutcome.netProfit ? Number(dealOutcome.netProfit) : null,
+          roi: dealOutcome.roi ? Number(dealOutcome.roi) : null,
+          decisionSource: dealOutcome.decisionSource,
+          postMortemNote: dealOutcome.postMortemNote,
+        } : null}
       />
     </main>
   )

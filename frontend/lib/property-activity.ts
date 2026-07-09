@@ -15,6 +15,7 @@ export type ActivityEventType =
   | 'FEMA_UPDATED'
   | 'PURCHASE_PRICE_ADDED'
   | 'IMPORT_COMPLETED'
+  | 'OUTCOME_RECORDED'
 
 export type ActivityDraft = {
   eventType: ActivityEventType
@@ -87,6 +88,20 @@ export function buildPurchasePriceActivity(input: { previousPurchasePrice: numbe
 
 export function buildImportCompletedActivity(): ActivityDraft {
   return { eventType: 'IMPORT_COMPLETED', summary: 'Added to the portfolio via import', metadata: {} }
+}
+
+export function buildOutcomeRecordedActivity(input: {
+  status: string
+  predictedDecision: string | null
+  netProfit: number | null
+}): ActivityDraft {
+  const outcomeLabel = input.status === 'fell_through' ? 'Fell through' : 'Closed'
+  const profitPart = input.netProfit !== null ? ` - net profit $${Math.round(input.netProfit).toLocaleString()}` : ''
+  return {
+    eventType: 'OUTCOME_RECORDED',
+    summary: `${outcomeLabel}${input.predictedDecision ? ` (predicted ${input.predictedDecision})` : ''}${profitPart}`,
+    metadata: { status: input.status, predictedDecision: input.predictedDecision, netProfit: input.netProfit },
+  }
 }
 
 type PrismaLike = PrismaClient | Prisma.TransactionClient

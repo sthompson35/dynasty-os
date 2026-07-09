@@ -22,6 +22,7 @@ import { PropertyContacts } from '@/components/dynasty/property-contacts'
 import { Property3DViewer } from '@/components/dynasty/property-3d-viewer'
 import { PropertyBuilder } from '@/components/dynasty/property-builder'
 import { PropertyDeliveryCenter } from '@/components/dynasty/property-delivery-center'
+import { DealOutcomeTracker, type DealOutcomeDTO } from '@/components/dynasty/deal-outcome-tracker'
 import { PropertyDTO, calculateDealMetrics, formatCurrency, formatNumber, getPropertyDisplayName, getStatusLabel, getTypeLabel } from '@/lib/property-utils'
 import { RehabItemDTO } from '@/lib/rehab-utils'
 import { DrawDTO } from '@/lib/draw-utils'
@@ -131,6 +132,8 @@ export function PropertyDetailClient(props: {
   initialContacts?: LinkedContact[]
   initialDraws?: DrawDTO[]
   initialImages?: PropertyImageDTO[]
+  dealScore?: { decision: string; dealScore: number; strategy: string } | null
+  dealOutcome?: DealOutcomeDTO | null
 }) {
   const router = useRouter()
   const [property, setProperty] = useState<PropertyDTO>(props?.property)
@@ -330,8 +333,9 @@ export function PropertyDetailClient(props: {
             <TabsTrigger value="documents" className={tabTriggerClass}><FolderOpen className="h-4 w-4" /> Document vault</TabsTrigger>
             <TabsTrigger value="people" className={tabTriggerClass}><Users className="h-4 w-4" /> People</TabsTrigger>
           </TabsList>
-          <TabsContent value="record" className="mt-5">
+          <TabsContent value="record" className="mt-5 space-y-6">
             <PropertyForm mode="edit" property={property} onSaved={(savedProperty: PropertyDTO) => setProperty(savedProperty)} />
+            <DealOutcomeTracker propertyId={property?.id ?? ''} dealScore={props?.dealScore ?? null} dealOutcome={props?.dealOutcome ?? null} />
           </TabsContent>
           <TabsContent value="deal" className="mt-5">
             <DealAnalyzer property={property} onSaved={(savedProperty: PropertyDTO) => setProperty(savedProperty)} />

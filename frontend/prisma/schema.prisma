@@ -53,6 +53,7 @@ model User {
   buyers               Buyer[]
   dispositions         Disposition[]
   propertyActivities   PropertyActivity[]
+  dealOutcomes         DealOutcome[]
 
   @@index([email])
   @@schema("dynasty")
@@ -157,6 +158,7 @@ model Property {
   buyerMatches   BuyerMatch[]
   dispositionPackages DispositionPackage[]
   activities     PropertyActivity[]
+  dealOutcomes   DealOutcome[]
 
   @@index([userId])
   @@index([userId, status])
@@ -281,6 +283,7 @@ model DealScore {
   property      Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   leadActionQueue LeadActionQueue[]
+  dealOutcomes  DealOutcome[]
 
   @@unique([userId, propertyId])
   @@index([propertyId])
@@ -289,6 +292,54 @@ model DealScore {
   @@index([userId, scoreBucket])
   @@index([userId, dealScore])
   @@map("deal_scores")
+  @@schema("dynasty")
+}
+
+// Closes the prediction-vs-reality loop on the real, DealScore-scored
+// portfolio (not the disconnected manual Deal model - see project memory
+// on why this anchors to Property/DealScore instead). One row per property;
+// predicted fields are a frozen snapshot taken at record time, not a live
+// join to DealScore, since DealScore is upserted per property and would
+// otherwise silently drift out from under a recorded outcome.
+model DealOutcome {
+  id                String    @id @default(cuid())
+  userId            String
+  propertyId        String
+  dealScoreId       String?
+
+  status            String    @default("closed") // closed | fell_through
+  closeDate         DateTime?
+
+  predictedDecision String?
+  predictedScore    Int?
+  predictedStrategy String?
+  projectedPurchase Decimal?  @db.Decimal(14, 2)
+  projectedRehab    Decimal?  @db.Decimal(14, 2)
+  projectedExit     Decimal?  @db.Decimal(14, 2)
+
+  actualStrategy    String?
+  actualPurchase    Decimal?  @db.Decimal(14, 2)
+  actualRehab       Decimal?  @db.Decimal(14, 2)
+  actualExit        Decimal?  @db.Decimal(14, 2)
+  holdMonths        Decimal?  @db.Decimal(6, 2)
+
+  // Derived from the actuals above at save time (see lib/deal-outcome.ts)
+  netProfit         Decimal?  @db.Decimal(14, 2)
+  roi               Decimal?  @db.Decimal(8, 4)
+
+  decisionSource    String?
+  postMortemNote    String?   @db.Text
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  property          Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  dealScoreRef      DealScore? @relation(fields: [dealScoreId], references: [id], onDelete: SetNull)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@index([userId])
+  @@index([userId, status])
+  @@map("deal_outcomes")
   @@schema("dynasty")
 }
 
