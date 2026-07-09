@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { GlossaryHint } from '@/components/dynasty/glossary-hint'
 import { formatCurrency } from '@/lib/property-utils'
 
 async function safeJson(response: Response): Promise<Record<string, unknown>> {
@@ -497,7 +498,7 @@ export function DispositionCommandCenterClient() {
                 </div>
               </div>
               <div>
-                <p className="mb-1 text-xs font-bold text-[var(--dynasty-black)]/55">Exit strategies</p>
+                <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-[var(--dynasty-black)]/55">Exit strategies <GlossaryHint term="Exit Strategy" /></p>
                 <div className="flex flex-wrap gap-1">
                   {EXIT_STRATEGY_OPTIONS.map((strategy) => (
                     <button key={strategy} type="button" onClick={() => toggleExitStrategy(strategy)} className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${buyerForm.exitStrategies.includes(strategy) ? 'border-[var(--dynasty-gold)] bg-[var(--dynasty-gold)]/20 text-[var(--dynasty-navy)]' : 'border-[var(--dynasty-tan)]/30 text-[var(--dynasty-black)]/50'}`}>{strategy.replace(/_/g, ' ')}</button>
