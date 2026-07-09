@@ -3,9 +3,11 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { AppNavigation } from '@/components/dynasty/app-navigation'
-import { DynastyAIClient, type DynastyAICommandCenterData } from '@/components/dynasty/dynasty-ai-client'
+import { DynastyAIClient, type DynastyAICommandCenterData, type AtlasRecommendationCommand } from '@/components/dynasty/dynasty-ai-client'
+import { type TopDecisionItem } from '@/components/dynasty/atlas-decisions-panel'
 import { ExistingDealSignal, analyzePropertyForIntake, buildIntakeSummary } from '@/lib/intake-analysis'
 import { getAgentArchitecture } from '@/lib/dynasty-architecture'
+import { computeInvestorQualification } from '@/lib/investor-qualification'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Dynasty AI' }
@@ -23,6 +25,15 @@ function money(value: unknown): number {
 
 function ago(minutes: number): string {
   return minutes < 60 ? `${minutes} min ago` : `${Math.round(minutes / 60)} hr ago`
+}
+
+function toNextAction(decision: string, reasons: unknown): string {
+  if (decision === 'RENEGOTIATE') return 'Prepare revised offer'
+  const list = Array.isArray(reasons) ? (reasons as unknown[]).map(String) : []
+  const first = (list[0] ?? '').toLowerCase()
+  if (first.includes('price') || first.includes('purchase')) return 'Get a firm asking price'
+  if (first.includes('gis') || first.includes('flood') || first.includes('zone')) return 'Run GIS enrichment'
+  return 'Begin offer package'
 }
 
 export default async function DynastyAIPage() {
@@ -47,14 +58,46 @@ export default async function DynastyAIPage() {
   ])
 
   const propertyIds = properties.map((property) => property.id)
-  const [pendingDraws, openTasks] = await Promise.all([
+  const [pendingDraws, openTasks, topDecisionScores, goDealScoreCount, blockedTaskCount, blockedTasks] = await Promise.all([
     propertyIds.length
       ? prisma.draw.count({ where: { propertyId: { in: propertyIds }, status: { in: ['pending', 'requested', 'scheduled'] } } }).catch(() => 0)
       : Promise.resolve(0),
     projects.length
       ? prisma.projectTask.count({ where: { projectId: { in: projects.map((project) => project.id) }, status: { notIn: ['done', 'complete', 'completed'] } } }).catch(() => 0)
       : Promise.resolve(0),
+    prisma.dealScore.findMany({
+      where: { userId, decision: { in: ['GO', 'RENEGOTIATE'] } },
+      orderBy: [{ dealScore: 'desc' }, { capitalScore: 'desc' }],
+      take: 10,
+      include: { property: { select: { address: true, city: true, state: true, propertyType: true } } },
+    }).catch(() => []),
+    // Real cross-engine signals for the "Top 10 Decisions Today" card below -
+    // reuses topDecisionScores above for the acquisition slice rather than a
+    // second dealScore query.
+    prisma.dealScore.count({ where: { userId, decision: 'GO' } }).catch(() => 0),
+    prisma.projectTask.count({ where: { status: 'blocked', project: { userId } } }).catch(() => 0),
+    prisma.projectTask.findMany({
+      where: { status: 'blocked', project: { userId } },
+      orderBy: { updatedAt: 'asc' },
+      take: 2,
+      include: { project: { select: { name: true } } },
+    }).catch(() => []),
   ])
+
+  const topDecisions: TopDecisionItem[] = topDecisionScores.map((score) => ({
+    propertyId: score.propertyId,
+    address: score.property?.address ?? 'Unknown address',
+    city: score.property?.city ?? '',
+    state: score.property?.state ?? '',
+    dealScore: score.dealScore,
+    riskScore: score.riskScore,
+    decision: score.decision,
+    scoreBucket: score.scoreBucket,
+    strategy: score.strategy,
+    reasons: Array.isArray(score.reasons) ? (score.reasons as unknown[]).map(String) : [],
+    nextAction: toNextAction(score.decision, score.reasons),
+    updatedAt: score.updatedAt.toISOString(),
+  }))
 
   const dealByPropertyId = new Map<string, ExistingDealSignal>()
   const dealByAddress = new Map<string, ExistingDealSignal>()
@@ -96,33 +139,104 @@ export default async function DynastyAIPage() {
   const profit90 = reviewCandidates.slice(0, 17).reduce((sum, candidate) => sum + Math.max(0, candidate.projectedProfit), 0)
   const capital30 = buyCandidates.slice(0, 5).reduce((sum, candidate) => sum + Math.max(0, candidate.askingOrBasis), 0)
 
-  const recommendations = [
-    ...buyCandidates.slice(0, 2).map((candidate) => ({
-      id: candidate.propertyId,
-      address: candidate.address,
-      command: 'BUY',
-      metricLabel: 'Expected Profit',
-      metricValue: candidate.projectedProfit,
-      confidence: candidate.atlasRecommendation.confidence,
-      actionLabel: 'Approve',
-      href: `/properties/${encodeURIComponent(candidate.propertyId)}`,
-      reason: candidate.atlasRecommendation.reason[0] ?? 'Meets Dynasty acquisition criteria.',
-    })),
-    ...reviewCandidates.slice(0, 1).map((candidate) => ({
-      id: `${candidate.propertyId}-refi`,
-      address: candidate.address,
-      command: candidate.atlasRecommendation.recommendedExit === 'Rental' || candidate.atlasRecommendation.recommendedExit === 'BRRRR' ? 'REFINANCE' : 'SELL',
-      metricLabel: candidate.atlasRecommendation.recommendedExit === 'Rental' || candidate.atlasRecommendation.recommendedExit === 'BRRRR' ? 'Estimated Cash Out' : 'Expected Equity Unlock',
-      metricValue: Math.max(0, candidate.estimatedArv * 0.75 - candidate.askingOrBasis - candidate.estimatedRepairCost),
-      confidence: Math.max(68, candidate.atlasRecommendation.confidence - 6),
-      actionLabel: 'Review',
-      href: `/properties/${encodeURIComponent(candidate.propertyId)}`,
-      reason: `Best current exit: ${candidate.atlasRecommendation.recommendedExit}.`,
-    })),
-  ].slice(0, 3)
+  // "Top 10 Decisions Today" - the single highest-priority item from each
+  // engine, not a fourth competing acquisition-only queue (Acquisition
+  // Command Center already has Top 20 / Lead Action Queue / Top Opportunities
+  // for that). Each engine contributes only what's real - an engine with no
+  // qualifying rows contributes zero items rather than a filler placeholder.
+  // Acquisition reuses topDecisionScores (already fetched above for the
+  // Acquisition Deal Queue panel) rather than a second dealScore query.
+
+  const acquisitionItems: AtlasRecommendationCommand[] = topDecisionScores.slice(0, 3).map((score) => ({
+    id: score.id,
+    engine: 'Acquisition',
+    title: score.property?.address ?? 'Unknown address',
+    command: score.decision === 'GO' ? 'BUY' : 'REVIEW',
+    metricLabel: 'Deal Score',
+    metricValue: score.dealScore,
+    metricFormat: 'integer',
+    confidence: score.dealScore,
+    actionLabel: score.decision === 'GO' ? 'Approve' : 'Review',
+    href: `/properties/${encodeURIComponent(score.propertyId)}`,
+    reason: (Array.isArray(score.reasons) ? (score.reasons as unknown[]).map(String) : [])[0] ?? `${score.decision} on ${score.strategy}.`,
+  }))
+
+  const activeInvestors = investors.filter((investor) => investor.status !== 'inactive')
+  const capitalItems: AtlasRecommendationCommand[] = activeInvestors
+    .map((investor) => ({
+      investor,
+      qualification: computeInvestorQualification({
+        status: investor.status,
+        availableCapital: investor.availableCapital ? Number(investor.availableCapital) : null,
+        preferredReturn: investor.preferredReturn ? Number(investor.preferredReturn) : null,
+        markets: investor.markets,
+        email: investor.email,
+        phone: investor.phone,
+        evidenceSource: investor.evidenceSource,
+        hasPriorCapitalActivity: capitalTransactions.some((t) => t.investorId === investor.id),
+      }),
+    }))
+    .sort((a, b) => b.qualification.score - a.qualification.score)
+    .slice(0, 2)
+    .map(({ investor, qualification }) => ({
+      id: investor.id,
+      engine: 'Capital' as const,
+      title: investor.name,
+      command: 'CONTACT',
+      metricLabel: 'Qualification',
+      metricValue: qualification.score,
+      metricFormat: 'integer' as const,
+      confidence: qualification.score,
+      actionLabel: 'Contact',
+      href: '/engines/capital',
+      reason: qualification.reasons[0] ?? 'Worth a check-in.',
+    }))
+
+  const operationsItems: AtlasRecommendationCommand[] = blockedTasks.map((task) => {
+    const daysBlocked = Math.max(0, Math.round((Date.now() - task.updatedAt.getTime()) / (1000 * 60 * 60 * 24)))
+    return {
+      id: task.id,
+      engine: 'Operations' as const,
+      title: task.description,
+      command: 'UNBLOCK',
+      metricLabel: 'Days Blocked',
+      metricValue: daysBlocked,
+      metricFormat: 'integer' as const,
+      confidence: 100,
+      actionLabel: 'Unblock',
+      href: '/engines/operations',
+      reason: `Blocked on ${task.project.name}.`,
+    }
+  })
+
+  const packagedDealIds = new Set(dispositionPackages.map((item) => item.dealId))
+  const dispositionableDeals = deals.filter((deal) => deal.decision !== 'kill' && !['dead', 'closed'].includes(deal.status.toLowerCase()) && !packagedDealIds.has(deal.id))
+  const dispositionItems: AtlasRecommendationCommand[] = dispositionableDeals
+    .slice(0, 2)
+    .map((deal) => ({
+      id: deal.id,
+      engine: 'Disposition' as const,
+      title: deal.address,
+      command: 'PACKAGE',
+      metricLabel: 'Wholesale Fee',
+      metricValue: money(deal.wholesaleFee) || money(deal.flipProfit),
+      metricFormat: 'currency' as const,
+      confidence: 100 - deal.riskScore,
+      actionLabel: 'Create Package',
+      href: '/disposition-command-center',
+      reason: 'Cleared for disposition, no package created yet.',
+    }))
+
+  const recommendations: AtlasRecommendationCommand[] = [
+    ...acquisitionItems,
+    ...capitalItems,
+    ...operationsItems,
+    ...dispositionItems,
+  ].slice(0, 10)
 
   const data: DynastyAICommandCenterData = {
     recommendations,
+    topDecisions,
     engineHealth: [
       { engine: 'Lead Engine', health: Math.min(98, 72 + Math.round(Math.min(leads.length, 5000) / 220)), metrics: [{ label: 'Leads Processed', value: leads.length }, { label: 'Backlog', value: leads.filter((lead) => ['new', 'intake', 'nurture'].includes(lead.status.toLowerCase())).length }, { label: 'Last Run', value: ago(12) }] },
       { engine: 'Intake Engine', health: summary.averageScore || 82, metrics: [{ label: 'Properties Scanned', value: summary.totalProperties }, { label: 'Qualified', value: summary.pipeline.qualified }, { label: 'Last Run', value: ago(7) }] },
@@ -143,12 +257,15 @@ export default async function DynastyAIPage() {
       predictionAccuracy: Math.max(82, Math.min(96, 90 + closedClosings.length - Math.round(rejectedCount / 2000))),
     },
     today: {
-      offersNeeded: buyCandidates.length,
-      contractsClosing: deals.filter((deal) => ['contract', 'contracted', 'closing'].includes(deal.status.toLowerCase())).length,
+      // Real signals, same sources as the recommendations above - not
+      // re-derived from the thin Deal/candidate data engineHealth/memory/
+      // outlook below still use (out of scope for this pass).
+      offersNeeded: goDealScoreCount,
+      contractsClosing: closedClosings.length,
       drawRequests: pendingDraws,
-      investorUpdates: capitalTransactions.filter((item) => item.status === 'pending').length,
-      rehabDelays: projects.filter((project) => project.riskScore >= 60 || project.status.toLowerCase() === 'delayed').length,
-      criticalAlerts: candidates.filter((candidate) => candidate.riskScore >= 75).length + deals.filter((deal) => deal.riskScore >= 75).length,
+      investorUpdates: activeInvestors.length,
+      rehabDelays: blockedTaskCount,
+      criticalAlerts: dispositionableDeals.length,
     },
     outlook: {
       next30: {

@@ -27,13 +27,17 @@ import { Progress } from '@/components/ui/progress'
 import { FadeIn, Stagger, StaggerItem } from '@/components/ui/animate'
 import { generateSessionId, sendDynastyAIMessage } from '@/lib/dynasty-ai-chat'
 import type { AgentArchitectureEntry } from '@/lib/dynasty-architecture'
+import { AtlasDecisionsPanel, type TopDecisionItem } from '@/components/dynasty/atlas-decisions-panel'
+export type { TopDecisionItem } from '@/components/dynasty/atlas-decisions-panel'
 
 export type AtlasRecommendationCommand = {
   id: string
-  address: string
+  engine: 'Acquisition' | 'Capital' | 'Operations' | 'Disposition'
+  title: string
   command: string
   metricLabel: string
   metricValue: number
+  metricFormat: 'currency' | 'integer' | 'percent'
   confidence: number
   actionLabel: string
   href: string
@@ -82,6 +86,7 @@ export type DynastyAICommandCenterData = {
     }
   }
   architecture: AgentArchitectureEntry[]
+  topDecisions: TopDecisionItem[]
 }
 
 const commandExamples = [
@@ -111,7 +116,17 @@ function commandTone(command: string): string {
   if (command === 'BUY') return 'bg-emerald-100 text-emerald-800'
   if (command === 'SELL') return 'bg-blue-100 text-blue-800'
   if (command === 'REFINANCE') return 'bg-violet-100 text-violet-800'
+  if (command === 'CONTACT') return 'bg-sky-100 text-sky-800'
+  if (command === 'UNBLOCK') return 'bg-red-100 text-red-800'
+  if (command === 'PACKAGE') return 'bg-orange-100 text-orange-800'
   return 'bg-amber-100 text-amber-800'
+}
+
+function engineTone(engine: string): string {
+  if (engine === 'Acquisition') return 'bg-[var(--dynasty-navy)]/8 text-[var(--dynasty-navy)]'
+  if (engine === 'Capital') return 'bg-emerald-50 text-emerald-800'
+  if (engine === 'Operations') return 'bg-amber-50 text-amber-800'
+  return 'bg-violet-50 text-violet-800'
 }
 
 function TodayTile(props: { label: string; value: number; tone?: 'good' | 'warn' | 'bad'; icon: React.ElementType }) {
@@ -143,16 +158,24 @@ export function DynastyAIClient({ data }: { data: DynastyAICommandCenterData }) 
   const [atlasResponse, setAtlasResponse] = useState<string | null>(null)
   const [isQuerying, setIsQuerying] = useState(false)
   const sessionId = useRef(generateSessionId())
+  const chatRef = useRef<HTMLDivElement>(null)
+
+  function handleDiscuss(prompt: string) {
+    setChatValue(prompt)
+    setTimeout(() => chatRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+  }
 
   const activeRecommendations = useMemo(() => {
     if (data.recommendations.length > 0) return data.recommendations
     return [
       {
         id: 'placeholder',
-        address: 'No pending commands',
+        engine: 'Acquisition' as const,
+        title: 'No pending commands',
         command: 'REVIEW',
         metricLabel: 'Expected Profit',
         metricValue: 0,
+        metricFormat: 'currency' as const,
         confidence: 0,
         actionLabel: 'Review',
         href: '/engines/intake',
@@ -163,7 +186,7 @@ export function DynastyAIClient({ data }: { data: DynastyAICommandCenterData }) 
 
   function approveCommand(command: AtlasRecommendationCommand) {
     setApproved((prev) => new Set(prev).add(command.id))
-    toast.success(`${command.command} command approved for ${command.address}.`)
+    toast.success(`${command.command} command approved for ${command.title}.`)
   }
 
   async function runAtlasQuery() {
@@ -214,11 +237,11 @@ export function DynastyAIClient({ data }: { data: DynastyAICommandCenterData }) 
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <TodayTile label="Offers Needed" value={data.today.offersNeeded} icon={Target} />
-            <TodayTile label="Contracts Closing" value={data.today.contractsClosing} icon={CheckCircle2} />
+            <TodayTile label="Deals Closed" value={data.today.contractsClosing} icon={CheckCircle2} />
             <TodayTile label="Draw Requests" value={data.today.drawRequests} icon={DollarSign} tone="warn" />
-            <TodayTile label="Investor Updates" value={data.today.investorUpdates} icon={MessageSquare} tone="warn" />
-            <TodayTile label="Rehab Delays" value={data.today.rehabDelays} icon={Clock3} tone={data.today.rehabDelays ? 'bad' : 'good'} />
-            <TodayTile label="Critical Alerts" value={data.today.criticalAlerts} icon={AlertTriangle} tone={data.today.criticalAlerts ? 'bad' : 'good'} />
+            <TodayTile label="Investors to Contact" value={data.today.investorUpdates} icon={MessageSquare} tone="warn" />
+            <TodayTile label="Blocked Tasks" value={data.today.rehabDelays} icon={Clock3} tone={data.today.rehabDelays ? 'bad' : 'good'} />
+            <TodayTile label="Unpackaged Deals" value={data.today.criticalAlerts} icon={AlertTriangle} tone={data.today.criticalAlerts ? 'bad' : 'good'} />
           </div>
         </div>
       </FadeIn>
@@ -228,7 +251,7 @@ export function DynastyAIClient({ data }: { data: DynastyAICommandCenterData }) 
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
               <CardTitle className="flex items-center gap-2 font-display text-xl text-[var(--dynasty-navy)]">
-                <Command className="h-5 w-5 text-[var(--dynasty-gold)]" /> ATLAS commands
+                <Command className="h-5 w-5 text-[var(--dynasty-gold)]" /> Top 10 Decisions Today
               </CardTitle>
               <Badge className="border-0 bg-[var(--dynasty-navy)] text-[#F8F7F2]">{activeRecommendations.length} pending</Badge>
             </div>
@@ -242,16 +265,17 @@ export function DynastyAIClient({ data }: { data: DynastyAICommandCenterData }) 
                     <div className="min-w-0">
                       <div className="mb-2 flex flex-wrap items-center gap-2">
                         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-black text-[var(--dynasty-navy)]">{index + 1}</span>
+                        <Badge className={`border-0 ${engineTone(recommendation.engine)}`}>{recommendation.engine}</Badge>
                         <Badge className={`border-0 ${commandTone(recommendation.command)}`}>{recommendation.command}</Badge>
-                        <Badge className="border-0 bg-white text-[var(--dynasty-black)]/65">Confidence {recommendation.confidence}%</Badge>
+                        {recommendation.confidence > 0 && <Badge className="border-0 bg-white text-[var(--dynasty-black)]/65">Confidence {recommendation.confidence}%</Badge>}
                       </div>
-                      <h2 className="font-display text-xl font-black text-[var(--dynasty-navy)]">{recommendation.address}</h2>
+                      <h2 className="font-display text-xl font-black text-[var(--dynasty-navy)]">{recommendation.title}</h2>
                       <p className="mt-1 text-sm text-[var(--dynasty-black)]/58">{recommendation.reason}</p>
                     </div>
                     <div className="grid min-w-[260px] gap-2 sm:grid-cols-2">
                       <div className="rounded-lg bg-white p-3">
                         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--dynasty-black)]/45">{recommendation.metricLabel}</p>
-                        <p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{fmt(recommendation.metricValue)}</p>
+                        <p className="font-display text-2xl font-black text-[var(--dynasty-navy)]">{fmt(recommendation.metricValue, recommendation.metricFormat)}</p>
                       </div>
                       <div className="flex flex-col gap-2">
                         <Button type="button" onClick={() => approveCommand(recommendation)} disabled={isApproved || recommendation.id === 'placeholder'} className="bg-[var(--dynasty-gold)] text-[var(--dynasty-navy)] hover:bg-[#D8B65B]">
@@ -367,8 +391,12 @@ export function DynastyAIClient({ data }: { data: DynastyAICommandCenterData }) 
         </Card>
       </div>
 
+      <div className="mb-6">
+        <AtlasDecisionsPanel decisions={data.topDecisions} onDiscuss={handleDiscuss} />
+      </div>
+
       <div className="mb-6 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-        <Card className="border-0 bg-[#F8F7F2] shadow-sm">
+        <Card ref={chatRef} className="border-0 bg-[#F8F7F2] shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-display text-xl text-[var(--dynasty-navy)]">
               <MessageSquare className="h-5 w-5 text-[var(--dynasty-gold)]" /> ATLAS command chat
