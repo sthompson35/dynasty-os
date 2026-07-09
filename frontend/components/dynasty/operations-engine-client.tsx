@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { FadeIn, Stagger, StaggerItem } from '@/components/ui/animate'
+import { GlossaryHint } from '@/components/dynasty/glossary-hint'
 
 function fmt(n: number): string {
   const abs = Math.abs(n), sign = n < 0 ? '-' : ''
@@ -181,15 +182,15 @@ export function OperationsEngineClient({ projects: initialProjects }: { projects
             <CardContent className="space-y-4">
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="md:col-span-2"><label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Project Name *</label><Input placeholder="502 Buckley – Full Rehab" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
-                <div><label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Exit Strategy</label>
+                <div><label className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[var(--dynasty-black)]/60">Exit Strategy <GlossaryHint term="Exit Strategy" /></label>
                   <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.exitStrategy} onChange={e => setForm(f => ({ ...f, exitStrategy: e.target.value }))}>
                     {['flip', 'brrrr', 'wholesale', 'development', 'hold'].map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
                   </select>
                 </div>
-                <div><label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Budget ($)</label><Input type="number" placeholder="90000" value={form.budget} onChange={e => setForm(f => ({ ...f, budget: e.target.value }))} /></div>
+                <div><label className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[var(--dynasty-black)]/60">Budget ($) <GlossaryHint term="Rehab Budget" /></label><Input type="number" placeholder="90000" value={form.budget} onChange={e => setForm(f => ({ ...f, budget: e.target.value }))} /></div>
                 <div><label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Start Date</label><Input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} /></div>
                 <div><label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Target Completion</label><Input type="date" value={form.targetCompletion} onChange={e => setForm(f => ({ ...f, targetCompletion: e.target.value }))} /></div>
-                <div className="md:col-span-3"><label className="mb-1 block text-xs font-semibold text-[var(--dynasty-black)]/60">Notes / Scope</label><Input placeholder="Full gut renovation, new roof, kitchen/bath update..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
+                <div className="md:col-span-3"><label className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[var(--dynasty-black)]/60">Notes / Scope <GlossaryHint term="Scope of Work (SOW)" /></label><Input placeholder="Full gut renovation, new roof, kitchen/bath update..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
               </div>
               <div className="flex gap-2">
                 <Button onClick={saveProject} disabled={saving || !form.name} className="bg-[var(--dynasty-gold)] text-[var(--dynasty-navy)] hover:bg-[#D8B65B]">{saving ? 'Saving...' : 'Create Project'}</Button>
