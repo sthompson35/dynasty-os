@@ -78,6 +78,9 @@ class BuckleyCanaryRequest(BaseModel):
     underwriting: UnderwritingEvidence = Field(default_factory=UnderwritingEvidence)
     rehab: RehabEvidence = Field(default_factory=RehabEvidence)
     capital: CapitalControls = Field(default_factory=CapitalControls)
+    project_type: str | None = None
+    strategy: str | None = None
+    accountable_owner: str | None = None
     persist: bool = False
 
 
@@ -137,9 +140,6 @@ def evaluate_502_buckley(payload: BuckleyCanaryRequest) -> BuckleyCanaryResponse
     capital_missing: list[str] = []
     if not payload.capital.capital_stack:
         capital_missing.append("capital_stack")
-    # Debt metrics are not universally required for cash capital. If a debt
-    # source exists, its actual rate/term/amortization/interest_only terms must
-    # be present in the caller-supplied capital stack; this endpoint never guesses.
     for index, source in enumerate(payload.capital.capital_stack):
         if str(source.get("type", "")).lower() in {"debt", "loan", "mortgage", "private_money", "seller_finance"}:
             for field in ("principal", "apr", "term_months", "interest_only"):
@@ -172,16 +172,18 @@ def evaluate_502_buckley(payload: BuckleyCanaryRequest) -> BuckleyCanaryResponse
     if all(status == "READY" for status in stages):
         overall: CanaryStatus = "READY"
         next_gate = "INDEPENDENT_VERIFICATION"
-    elif "BLOCKED" in stages:
+    elif intake.status != "READY":
+        overall = "HOLD_FOR_DATA"
+        next_gate = "INTAKE"
+    elif underwriting.status != "READY":
+        overall = "HOLD_FOR_DATA"
+        next_gate = "UNDERWRITING"
+    elif capital.status != "READY":
+        overall = "HOLD_FOR_DATA"
+        next_gate = "CAPITAL"
+    else:
         overall = "BLOCKED"
         next_gate = "OPERATIONS_EVIDENCE"
-    else:
-        overall = "HOLD_FOR_DATA"
-        next_gate = (
-            "INTAKE" if intake.status != "READY" else
-            "UNDERWRITING" if underwriting.status != "READY" else
-            "CAPITAL"
-        )
 
     return BuckleyCanaryResponse(
         canary_key="502-BUCKLEY-PARK-HILLS-MO",
@@ -249,17 +251,21 @@ def _persist_canary(payload: BuckleyCanaryRequest, result: BuckleyCanaryResponse
         if project.data:
             project_id = project.data[0]["project_id"]
         else:
-            created = db.table("projects").insert({
+            project_record: dict[str, Any] = {
                 "project_code": "PRJ-502-BUCKLEY",
                 "property_id": property_id,
                 "deal_id": deal_id,
-                "project_type": "REHAB",
-                "strategy": "BRRRR",
-                "owner": "Shylow Thompson LLC",
                 "status": "Planning",
                 "budget": payload.rehab.rehab_budget,
                 "completion_percent": 0,
-            }).execute()
+            }
+            if payload.project_type is not None:
+                project_record["project_type"] = payload.project_type
+            if payload.strategy is not None:
+                project_record["strategy"] = payload.strategy
+            if payload.accountable_owner is not None:
+                project_record["owner"] = payload.accountable_owner
+            created = db.table("projects").insert(project_record).execute()
             project_id = created.data[0]["project_id"]
 
         missing_inputs = {
