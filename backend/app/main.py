@@ -21,6 +21,7 @@ from app.api.land_build_uw_dd import router as land_build_router
 from app.api.sync import router as sync_router
 from app.api.dynasty_ai import router as dynasty_ai_router
 from app.api.automation import router as automation_router
+from app.api.canonical_canary import router as canonical_canary_router
 
 load_dotenv()
 
@@ -29,7 +30,7 @@ logger = logging.getLogger("dynasty_property_os.api")
 
 CORRELATION_HEADER = "X-Correlation-ID"
 
-app = FastAPI(title="Dynasty PropertyOS API", version="0.3.0")
+app = FastAPI(title="Dynasty PropertyOS API", version="0.4.0")
 
 # ── Compute engines (stateless) ───────────────────────────────────────────────
 app.include_router(engines_router)
@@ -53,6 +54,9 @@ app.include_router(disposition_router)
 app.include_router(land_build_router)
 app.include_router(sync_router)
 app.include_router(dynasty_ai_router)
+
+# ── Canonical PropertyOS controls / production canary ─────────────────────────
+app.include_router(canonical_canary_router)
 
 # ── Automation event log (n8n write-backs) ────────────────────────────────────
 app.include_router(automation_router)
